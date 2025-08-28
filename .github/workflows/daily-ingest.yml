@@ -13,6 +13,15 @@ on:
         description: 'Region'
         required: false
         default: us-east1
+      start_date:
+        description: 'Start date (YYYY-MM-DD) for historical range (optional)'
+        required: false
+      end_date:
+        description: 'End date (YYYY-MM-DD) for historical range (optional)'
+        required: false
+      date:
+        description: 'Single date (YYYY-MM-DD) override (mutually exclusive with range)'
+        required: false
 
 env:
   PROJECT_ID: durham-weather-466502
@@ -42,6 +51,9 @@ jobs:
         env:
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
           REGION: ${{ github.event.inputs.region || 'us-east1' }}
+          START_DATE: ${{ github.event.inputs.start_date }}
+          END_DATE: ${{ github.event.inputs.end_date }}
+          DATE: ${{ github.event.inputs.date }}
         run: |
           bash scripts/run_cr_job.sh
 
