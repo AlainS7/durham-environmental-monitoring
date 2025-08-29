@@ -167,6 +167,37 @@ for DVAL in "${DATES_TO_RUN[@]}"; do
   done
   log "Fetching last 200 log lines (date=$DVAL)"
   gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || log "No logs retrieved (date=$DVAL)"
+
+  # Fallback staging synthesis (only when a specific date provided)
+  if [ -n "${DVAL}" ]; then
+    DATE_COMPACT="${DVAL//-/}"
+    : "${BQ_DATASET:=sensors}"  # default dataset if not provided
+    if [ -z "${GCS_BUCKET:-}" ] || [ -z "${GCS_PREFIX:-}" ]; then
+      log "GCS_BUCKET or GCS_PREFIX not set; skipping fallback staging synthesis for $DVAL"
+    else
+      for SRC in tsi wu; do
+        TABLE="staging_${SRC}_${DATE_COMPACT}"
+        # Only attempt synthesis if table is missing
+        if ! bq show --project_id="$PROJECT_ID" "${PROJECT_ID}:${BQ_DATASET}.${TABLE}" >/dev/null 2>&1; then
+          SRC_UPPER=$(echo "$SRC" | tr '[:lower:]' '[:upper:]')
+            URI="gs://${GCS_BUCKET}/${GCS_PREFIX}/source=${SRC_UPPER}/agg=raw/dt=${DVAL}/*.parquet"
+            log "Staging table ${TABLE} missing; attempting load from ${URI}"
+            if bq load \
+              --project_id="$PROJECT_ID" \
+              --autodetect \
+              --source_format=PARQUET \
+              "${BQ_DATASET}.${TABLE}" \
+              "${URI}" >/dev/null 2>&1; then
+              log "Synthesized staging table ${TABLE}"
+            else
+              log "Failed to synthesize staging table ${TABLE} (URI may be empty)."
+            fi
+        else
+          log "Staging table ${TABLE} already exists; no synthesis needed."
+        fi
+      done
+    fi
+  fi
 done
 
 if [ $ANY_FAILURE -ne 0 ]; then

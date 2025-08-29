@@ -18,8 +18,8 @@ import os
 import uuid
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Tuple, Optional
+from datetime import datetime, timedelta, date as date_cls
+from typing import Any, Tuple, Optional, List
 
 import pandas as pd
 from sqlalchemy import text
@@ -155,7 +155,7 @@ async def _fetch_raw(start_str: str, end_str: str, source: str, aggregate: bool,
         async with WUClient(**app_config.wu_api_config) as wu_client, TSIClient(**app_config.tsi_api_config) as tsi_client:
             wu_task = wu_client.fetch_data(start_str, end_str, aggregate=aggregate, agg_interval=agg_interval) if (aggregate or agg_interval != 'h') else wu_client.fetch_data(start_str, end_str)
             tsi_task = tsi_client.fetch_data(start_str, end_str, aggregate=aggregate, agg_interval=agg_interval) if (aggregate or agg_interval != 'h') else tsi_client.fetch_data(start_str, end_str)
-            wu_raw, tsi_raw = await asyncio.gather(wu_task, tsi_task)
+            wu_raw, tsi_raw = await asyncio.gather(wu_task, tsi_task, return_exceptions=False)
     elif source == 'wu':
         async with WUClient(**app_config.wu_api_config) as wu_client:
             wu_raw = await (wu_client.fetch_data(start_str, end_str, aggregate=aggregate, agg_interval=agg_interval) if (aggregate or agg_interval != 'h') else wu_client.fetch_data(start_str, end_str))
@@ -246,6 +246,113 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
         else:
             log.critical("DB connection failed; skipped DB sink")
     return wrote_wu, wrote_tsi
+
+
+###########################
+# BigQuery staging writer
+###########################
+
+def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str, end_str: str):
+    """Materialize per-source dated staging tables in BigQuery.
+
+    Table pattern: staging_<source>_<YYYYMMDD> with columns (timestamp, deployment_fk, metric_name, value).
+    Always enabled by default to unblock downstream merge/backfill unless explicitly disabled via
+    DISABLE_BQ_STAGING=1. This avoids needing Cloud Run env var updates.
+
+    If a single run spans multiple days (rare – typical orchestration loops day-by-day), data
+    is split per date and each date's table is (re)written (WRITE_TRUNCATE) to maintain idempotency.
+    """
+    if os.getenv('DISABLE_BQ_STAGING') == '1':  # opt-out switch
+        log.info("BQ staging disabled via DISABLE_BQ_STAGING=1")
+        return
+    if wu_df.empty and tsi_df.empty:
+        log.info("No dataframes to stage to BigQuery (both empty).")
+        return
+    try:
+        from google.cloud import bigquery  # lazy import to keep optional
+    except Exception as e:  # pragma: no cover
+        log.error(f"BigQuery client import failed – cannot write staging tables: {e}")
+        return
+
+    bq_project = os.getenv('BQ_PROJECT') or None  # ADC if None
+    dataset = os.getenv('BQ_DATASET', 'sensors')
+    client = bigquery.Client(project=bq_project)
+
+    # Fetch deployment mapping (active only)
+    deployment_map_df = pd.DataFrame()
+    try:
+        from sqlalchemy import text as _bq_text  # reuse existing DB connection logic if available
+        db = HotDurhamDB()
+        with db.engine.connect() as conn:
+            deployment_map_df = pd.read_sql(_bq_text("""
+                SELECT d.deployment_pk, sm.native_sensor_id, sm.sensor_type
+                FROM deployments d
+                JOIN sensors_master sm ON d.sensor_fk = sm.sensor_pk
+                WHERE d.end_date IS NULL
+            """), conn)
+    except Exception as e:
+        log.error(f"Unable to fetch deployment mapping for staging tables: {e}")
+        return
+    if deployment_map_df.empty:
+        log.error("Deployment map empty – cannot build BigQuery staging tables.")
+        return
+
+    def _prepare_long(df: pd.DataFrame, sensor_type: str) -> pd.DataFrame:
+        if df.empty:
+            return pd.DataFrame(columns=['timestamp','deployment_fk','metric_name','value'])
+        type_map = deployment_map_df[deployment_map_df.sensor_type == sensor_type]
+        if type_map.empty:
+            log.warning(f"No active deployments for type {sensor_type} – skipping staging long melt")
+            return pd.DataFrame(columns=['timestamp','deployment_fk','metric_name','value'])
+        merged = df.merge(type_map, on='native_sensor_id', how='inner')
+        if merged.empty:
+            log.warning(f"No rows matched deployments for {sensor_type} – skipping")
+            return pd.DataFrame(columns=['timestamp','deployment_fk','metric_name','value'])
+        merged = merged.rename(columns={'deployment_pk': 'deployment_fk'})
+        id_vars = ['timestamp', 'deployment_fk']
+        value_vars = [c for c in merged.columns if c not in id_vars + ['native_sensor_id','sensor_type']]
+        if not value_vars:
+            return pd.DataFrame(columns=['timestamp','deployment_fk','metric_name','value'])
+        long_df = pd.melt(merged, id_vars=id_vars, value_vars=value_vars, var_name='metric_name', value_name='value')
+        long_df = long_df.dropna(subset=['value']).drop_duplicates(subset=['timestamp','deployment_fk','metric_name'], keep='last')
+        return long_df
+
+    wu_long = _prepare_long(wu_df, 'WU')
+    tsi_long = _prepare_long(tsi_df, 'TSI')
+
+    def _split_and_load(long_df: pd.DataFrame, source_label: str):
+        if long_df.empty:
+            return 0
+        long_df['date'] = pd.to_datetime(long_df['timestamp']).dt.date
+        distinct_dates: List[date_cls] = sorted(long_df['date'].unique())  # type: ignore[arg-type]
+        total_rows = 0
+        for d in distinct_dates:
+            day_df = long_df[long_df['date'] == d].drop(columns=['date'])
+            table_name = f"staging_{source_label.lower()}_{d.strftime('%Y%m%d')}"
+            fq = f"{client.project}.{dataset}.{table_name}"
+            schema = [
+                bigquery.SchemaField('timestamp','TIMESTAMP'),
+                bigquery.SchemaField('deployment_fk','INT64'),
+                bigquery.SchemaField('metric_name','STRING'),
+                bigquery.SchemaField('value','FLOAT64'),
+            ]
+            # Create table if missing (no partitioning needed – table is per-date)
+            try:
+                client.get_table(fq)
+            except Exception:
+                tbl = bigquery.Table(fq, schema=schema)
+                client.create_table(tbl)
+                log.info(f"Created staging table {fq}")
+            job_config = bigquery.LoadJobConfig(write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE, schema=schema)
+            log.info(f"Loading {len(day_df)} rows into {fq} (truncate replace)")
+            load_job = client.load_table_from_dataframe(day_df[['timestamp','deployment_fk','metric_name','value']], fq, job_config=job_config)
+            load_job.result()
+            total_rows += len(day_df)
+        return total_rows
+
+    wu_rows = _split_and_load(wu_long, 'WU')
+    tsi_rows = _split_and_load(tsi_long, 'TSI')
+    log.info(f"BigQuery staging write complete: WU rows={wu_rows} TSI rows={tsi_rows}")
 
 
 def _log_run_metadata(run_id: str, start_str: str, end_str: str, run_started: datetime, wu_raw: pd.DataFrame, tsi_raw: pd.DataFrame, wu_df: pd.DataFrame, tsi_df: pd.DataFrame, wrote_wu: bool, wrote_tsi: bool, aggregate: bool, agg_interval: str, sink: str, source: str):
@@ -364,6 +471,11 @@ async def run_collection_process(
         return
 
     wrote_wu, wrote_tsi = _sink_data(wu_df, tsi_df, config.sink, config.aggregate, config.agg_interval)
+    # Always attempt staging table write (opt-out via DISABLE_BQ_STAGING=1)
+    try:
+        _write_bq_staging(wu_df, tsi_df, start_str, end_str)
+    except Exception:
+        log.error("Unhandled error while writing BigQuery staging tables", exc_info=True)
     if not (wrote_wu or wrote_tsi):
         log.warning("No data written to any sink.")
 
@@ -396,8 +508,19 @@ def compute_date_range(args: argparse.Namespace) -> Tuple[datetime, datetime]:
         end = datetime.strptime(args.end, '%Y-%m-%d') if args.end else datetime.utcnow()
     else:
         # days=0 means today only
-        end = datetime.utcnow()
-        start = end - timedelta(days=args.days)
+        ingest_env = os.getenv('INGEST_DATE')
+        if ingest_env and args.days == 0:  # environment-provided explicit date
+            try:
+                start = datetime.strptime(ingest_env, '%Y-%m-%d')
+                end = start  # single day
+                log.info(f"Using INGEST_DATE env override: {ingest_env}")
+            except Exception:
+                log.warning(f"Invalid INGEST_DATE '{ingest_env}' – falling back to days offset")
+                end = datetime.utcnow()
+                start = end - timedelta(days=args.days)
+        else:
+            end = datetime.utcnow()
+            start = end - timedelta(days=args.days)
     return start, end
 
 

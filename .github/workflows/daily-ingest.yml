@@ -22,6 +22,18 @@ on:
       date:
         description: 'Single date (YYYY-MM-DD) override (mutually exclusive with range)'
         required: false
+      redeploy_image:
+        description: 'Set to true to build & push latest container image before running job'
+        required: false
+        default: 'false'
+      backfill_merge:
+        description: 'Set to true to run merge_backfill_range after ingestion (range or single)'
+        required: false
+        default: 'true'
+      run_checks:
+        description: 'Set to true to run staging presence & freshness checks after merge'
+        required: false
+        default: 'true'
 
 env:
   PROJECT_ID: durham-weather-466502
@@ -44,8 +56,56 @@ jobs:
           workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{ secrets.GCP_VERIFIER_SA }}'
 
+      - name: Validate required secrets (fail-fast)
+        run: |
+          set -euo pipefail
+          missing=()
+          req=(GCP_WORKLOAD_IDENTITY_PROVIDER GCP_VERIFIER_SA HOTD_DB_USER HOTD_DB_PASSWORD HOTD_DB_HOST HOTD_DB_NAME HOTD_DB_PORT)
+          for k in "${req[@]}"; do
+            if [ -z "${!k:-}" ]; then
+              missing+=("$k")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+          echo "All required secrets present: ${req[*]}"
+        env:
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_VERIFIER_SA: ${{ secrets.GCP_VERIFIER_SA }}
+          HOTD_DB_USER: ${{ secrets.HOTD_DB_USER }}
+          HOTD_DB_PASSWORD: ${{ secrets.HOTD_DB_PASSWORD }}
+          HOTD_DB_HOST: ${{ secrets.HOTD_DB_HOST }}
+          HOTD_DB_NAME: ${{ secrets.HOTD_DB_NAME }}
+          HOTD_DB_PORT: ${{ secrets.HOTD_DB_PORT }}
+
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build & Push container image (optional)
+        if: ${{ github.event.inputs.redeploy_image == 'true' }}
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+        run: |
+          IMAGE="us-east1-docker.pkg.dev/$PROJECT_ID/weather-data-images/weather-data-uploader:git-${GITHUB_SHA}"
+          echo "Building image $IMAGE"
+          gcloud builds submit --tag "$IMAGE" .
+          echo "IMAGE_URI=$IMAGE" >> $GITHUB_ENV
+
+      - name: Update Cloud Run job image (optional)
+        if: ${{ github.event.inputs.redeploy_image == 'true' }}
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
+        run: |
+          if [ -z "${IMAGE_URI:-}" ]; then
+            echo "IMAGE_URI not set; previous step may have failed" >&2; exit 1; fi
+          echo "Updating Cloud Run job $JOB_NAME to image $IMAGE_URI"
+            gcloud run jobs update $JOB_NAME \
+              --image "$IMAGE_URI" \
+              --region "${{ github.event.inputs.region || 'us-east1' }}" \
+              --project "$PROJECT_ID"
 
       - name: Execute ingestion job
         env:
@@ -54,8 +114,58 @@ jobs:
           START_DATE: ${{ github.event.inputs.start_date }}
           END_DATE: ${{ github.event.inputs.end_date }}
           DATE: ${{ github.event.inputs.date }}
+          # BigQuery env for staging writer inside container
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          BQ_DATASET: sensors
+          # Database connectivity (provided via secrets) - adapt names to your secrets
+          HOTD_DB_USER: ${{ secrets.HOTD_DB_USER }}
+          HOTD_DB_PASSWORD: ${{ secrets.HOTD_DB_PASSWORD }}
+          HOTD_DB_HOST: ${{ secrets.HOTD_DB_HOST }}
+          HOTD_DB_NAME: ${{ secrets.HOTD_DB_NAME }}
+          HOTD_DB_PORT: ${{ secrets.HOTD_DB_PORT }}
         run: |
           bash scripts/run_cr_job.sh
+
+      - name: Merge backfill range (optional)
+        if: ${{ github.event.inputs.backfill_merge == 'true' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then
+            START="$SINGLE"; END="$SINGLE"; fi
+          if [ -z "$START" ] || [ -z "$END" ]; then
+            echo "No start/end (and no single date) provided; skipping backfill merge"; exit 0; fi
+          echo "Running per-source dated merge backfill $START -> $END"
+          python scripts/merge_backfill_range.py \
+            --project "$BQ_PROJECT" \
+            --dataset sensors \
+            --start "$START" \
+            --end "$END" \
+            --per-source-dated \
+            --sources tsi,wu \
+            --update-only-if-changed
+
+      - name: Staging presence check (optional)
+        if: ${{ github.event.inputs.run_checks == 'true' && github.event.inputs.date != '' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          python scripts/check_staging_presence.py \
+            --project "$BQ_PROJECT" \
+            --dataset sensors \
+            --date "${{ github.event.inputs.date }}" \
+            --sources tsi,wu
+
+      - name: Freshness check (optional)
+        if: ${{ github.event.inputs.run_checks == 'true' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset sensors --table sensor_readings --max-lag-days 1
 
       - name: Upload execution log (always)
         if: always()
