@@ -78,11 +78,25 @@ fi
 echo "$GCP_SERVICE_ACCOUNT_KEY_DB_ACCESS" | base64 -d > /tmp/gcp-sa-key.json
 gcloud auth activate-service-account --key-file=/tmp/gcp-sa-key.json
 
-# Set GCP project and export DATABASE_URL from Secret Manager
-echo "Setting GCP project and exporting DATABASE_URL from Secret Manager..."
+# Set GCP project and derive DATABASE_URL from structured prod-db-credentials secret
+echo "Setting GCP project and deriving DATABASE_URL from prod-db-credentials secret..."
 gcloud config set project durham-weather-466502
-export DATABASE_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL)
-echo 'export DATABASE_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL)' >> ~/.bashrc
+
+# The application code now uses the JSON secret prod-db-credentials directly via DB_CREDS_SECRET_ID.
+# We still export DATABASE_URL here purely for developer convenience (manual psql/sqlalchemy usage).
+# The old standalone DATABASE_URL secret is deprecated and can be deleted after confirming no other tooling depends on it.
+if command -v jq >/dev/null 2>&1; then
+  CREDS_JSON="$(gcloud secrets versions access latest --secret=prod-db-credentials 2>/dev/null || true)"
+  if [ -n "$CREDS_JSON" ] && echo "$CREDS_JSON" | jq -e 'type=="object" and has("DB_USER") and has("DB_PASSWORD") and has("DB_HOST") and has("DB_PORT") and has("DB_NAME")' >/dev/null 2>&1; then
+    export DATABASE_URL="$(echo "$CREDS_JSON" | jq -r '"postgresql://\(.DB_USER):\(.DB_PASSWORD)@\(.DB_HOST):\(.DB_PORT)/\(.DB_NAME)"')"
+    echo "Derived DATABASE_URL for local convenience."
+    printf "export DATABASE_URL='%s'\n" "$DATABASE_URL" >> ~/.bashrc
+  else
+    echo "WARNING: prod-db-credentials secret missing required keys; skipping DATABASE_URL export." >&2
+  fi
+else
+  echo "jq not installed; skipping DATABASE_URL derivation." >&2
+fi
 
 # Start supervisord with the config (will manage cloud-sql-proxy)
 # supervisord -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf

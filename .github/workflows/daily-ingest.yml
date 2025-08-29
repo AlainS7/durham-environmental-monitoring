@@ -60,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          req=(GCP_WORKLOAD_IDENTITY_PROVIDER GCP_VERIFIER_SA HOTD_DB_USER HOTD_DB_PASSWORD HOTD_DB_HOST HOTD_DB_NAME HOTD_DB_PORT)
+          req=(GCP_WORKLOAD_IDENTITY_PROVIDER GCP_VERIFIER_SA DB_CREDS_SECRET_ID TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID)
           for k in "${req[@]}"; do
             if [ -z "${!k:-}" ]; then
               missing+=("$k")
@@ -74,11 +74,9 @@ jobs:
         env:
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_VERIFIER_SA: ${{ secrets.GCP_VERIFIER_SA }}
-          HOTD_DB_USER: ${{ secrets.HOTD_DB_USER }}
-          HOTD_DB_PASSWORD: ${{ secrets.HOTD_DB_PASSWORD }}
-          HOTD_DB_HOST: ${{ secrets.HOTD_DB_HOST }}
-          HOTD_DB_NAME: ${{ secrets.HOTD_DB_NAME }}
-          HOTD_DB_PORT: ${{ secrets.HOTD_DB_PORT }}
+          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -117,12 +115,10 @@ jobs:
           # BigQuery env for staging writer inside container
           BQ_PROJECT: ${{ env.PROJECT_ID }}
           BQ_DATASET: sensors
-          # Database connectivity (provided via secrets) - adapt names to your secrets
-          HOTD_DB_USER: ${{ secrets.HOTD_DB_USER }}
-          HOTD_DB_PASSWORD: ${{ secrets.HOTD_DB_PASSWORD }}
-          HOTD_DB_HOST: ${{ secrets.HOTD_DB_HOST }}
-          HOTD_DB_NAME: ${{ secrets.HOTD_DB_NAME }}
-          HOTD_DB_PORT: ${{ secrets.HOTD_DB_PORT }}
+          # Secret Manager IDs (the app will fetch JSON secrets at runtime)
+          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
         run: |
           bash scripts/run_cr_job.sh
 
