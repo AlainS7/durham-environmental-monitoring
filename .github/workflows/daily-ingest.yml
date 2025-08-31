@@ -146,22 +146,54 @@ jobs:
             --update-only-if-changed
 
       - name: Staging presence check (optional)
-        if: ${{ github.event.inputs.run_checks == 'true' && github.event.inputs.date != '' }}
+        if: ${{ github.event.inputs.run_checks == 'true' }}
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
-          python scripts/check_staging_presence.py \
-            --project "$BQ_PROJECT" \
-            --dataset sensors \
-            --date "${{ github.event.inputs.date }}" \
-            --sources tsi,wu
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then START="$SINGLE"; END="$SINGLE"; fi
+          # If no explicit dates provided (scheduled run), check yesterday
+          if [ -z "$START" ] || [ -z "$END" ]; then
+            YESTERDAY=$(date -u -d 'yesterday' +%F)
+            START="$YESTERDAY"; END="$YESTERDAY"
+          fi
+          echo "Running staging presence checks for range $START -> $END"
+          CUR="$START"
+          FAIL=0
+          while [ "$CUR" \<= "$END" ]; do
+            echo "Checking $CUR"
+            if ! python scripts/check_staging_presence.py --project "$BQ_PROJECT" --dataset sensors --date "$CUR" --sources tsi,wu; then
+              echo "Staging presence failed for $CUR" >&2
+              FAIL=1
+            fi
+            CUR=$(date -u -d "$CUR +1 day" +%F)
+          done
+          if [ $FAIL -ne 0 ]; then
+            echo "One or more staging presence checks failed" >&2
+            exit 1
+          fi
 
       - name: Freshness check (optional)
         if: ${{ github.event.inputs.run_checks == 'true' }}
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
-          python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset sensors --table sensor_readings --max-lag-days 1
+          set -euo pipefail
+          if ! python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset sensors --table sensor_readings --max-lag-days 1; then
+            echo "Freshness check failed" >&2
+            exit 1
+          fi
+
+      - name: Create issue on monitoring failure
+        if: failure() && github.event_name == 'schedule'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Daily ingestion monitoring failure"
+          content-filepath: ingestion_summary.log
+          labels: monitoring, ingestion
 
       - name: Upload execution log (always)
         if: always()
