@@ -236,14 +236,21 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
             log.warning("WU missing ts/timestamp -> not inserting")
         if (not _has_ts(tsi_df)) and not tsi_df.empty:
             log.warning("TSI missing ts/timestamp -> not inserting")
-        db = HotDurhamDB()
-        if check_db_connection(db):
-            insert_data_to_db(db, wu_db, tsi_db)
-            if (not wu_db.empty):
-                wrote_wu = True
-            if (not tsi_db.empty):
-                wrote_tsi = True
-        else:
+        try:
+            db = HotDurhamDB()
+        except Exception as e:
+            log.critical(f"Skipping DB sink – could not initialize database engine: {e}")
+            db = None
+        if db is not None and check_db_connection(db):
+            try:
+                insert_data_to_db(db, wu_db, tsi_db)
+                if (not wu_db.empty):
+                    wrote_wu = True
+                if (not tsi_db.empty):
+                    wrote_tsi = True
+            except Exception as e:
+                log.error(f"DB insertion encountered an error; continuing without DB sink: {e}")
+        elif db is not None:
             log.critical("DB connection failed; skipped DB sink")
     return wrote_wu, wrote_tsi
 

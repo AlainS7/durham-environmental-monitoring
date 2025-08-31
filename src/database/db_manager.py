@@ -24,7 +24,11 @@ class HotDurhamDB:
     def _create_db_engine(self) -> Engine:
         """Creates and returns a SQLAlchemy engine using the database_url from app_config (Google Secret Manager)."""
         from src.config.app_config import app_config
-        return create_engine(app_config.database_url)
+        db_url = app_config.database_url
+        if not db_url:
+            log.critical("Database URL is not available (secrets missing or malformed). Database features will be disabled.")
+            raise RuntimeError("Database URL not available")
+        return create_engine(db_url)
 
     def _init_database(self):
         """
