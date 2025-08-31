@@ -133,12 +133,40 @@ jobs:
           # BigQuery env for staging writer inside container
           BQ_PROJECT: ${{ env.PROJECT_ID }}
           BQ_DATASET: sensors
+          # GCS location for raw parquet (enables fallback staging synthesis)
+          GCS_BUCKET: sensor-data-to-bigquery
+          GCS_PREFIX: raw/
           # Secret Manager IDs (the app will fetch JSON secrets at runtime)
           DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
         run: |
           bash scripts/run_cr_job.sh
+
+      - name: Debug: list staging tables for supplied dates
+        if: ${{ github.event.inputs.date != '' || github.event.inputs.start_date != '' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"; END="${{ github.event.inputs.end_date }}"; SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then START="$SINGLE"; END="$SINGLE"; fi
+          if [ -z "$START" ]; then echo "No explicit dates provided; skipping"; exit 0; fi
+          cur="$START"
+          echo "Inspecting staging tables in $BQ_PROJECT.sensors for range $START -> $END" >&2
+          while [[ "$cur" <= "$END" ]]; do
+            dcompact=${cur//-/}
+            for src in tsi wu; do
+              tbl="staging_${src}_${dcompact}"
+              if bq show --project_id="$BQ_PROJECT" "$BQ_PROJECT:sensors.$tbl" >/dev/null 2>&1; then
+                rows=$(bq query --nouse_legacy_sql --project_id="$BQ_PROJECT" --format=csv "SELECT COUNT(*) c FROM \`$BQ_PROJECT.sensors.$tbl\`") || rows="?"
+                echo "FOUND $tbl rows=$rows"
+              else
+                echo "MISSING $tbl"
+              fi
+            done
+            cur=$(date -u -d "$cur +1 day" +%F)
+          done
 
       - name: Merge backfill range (optional)
         if: ${{ github.event.inputs.backfill_merge == 'true' }}
@@ -181,7 +209,7 @@ jobs:
           echo "Running staging presence checks for range $START -> $END"
           CUR="$START"
           FAIL=0
-          while [ "$CUR" \<= "$END" ]; do
+          while [[ "$CUR" <= "$END" ]]; do
             echo "Checking $CUR"
             if ! python scripts/check_staging_presence.py --project "$BQ_PROJECT" --dataset sensors --date "$CUR" --sources tsi,wu; then
               echo "Staging presence failed for $CUR" >&2

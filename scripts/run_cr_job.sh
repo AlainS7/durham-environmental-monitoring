@@ -118,7 +118,16 @@ while true; do
 done
 
 log "Fetching last 200 log lines (if available)"
-gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || log "No logs retrieved"
+LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || true)
+if [ -z "$LOGS" ]; then
+  # Fallback: try by job name in case execution label not yet indexed
+  LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME" --project "$PROJECT_ID" --limit=50 --format="value(textPayload)" 2>/dev/null || true)
+fi
+if [ -n "$LOGS" ]; then
+  echo "$LOGS"
+else
+  log "No logs retrieved"
+fi
 
 log "Done."
 ANY_FAILURE=0
@@ -166,7 +175,15 @@ for DVAL in "${DATES_TO_RUN[@]}"; do
     sleep $POLL_DELAY; elapsed=$((elapsed+POLL_DELAY))
   done
   log "Fetching last 200 log lines (date=$DVAL)"
-  gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || log "No logs retrieved (date=$DVAL)"
+  LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || true)
+  if [ -z "$LOGS" ]; then
+    LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME" --project "$PROJECT_ID" --limit=50 --format="value(textPayload)" 2>/dev/null || true)
+  fi
+  if [ -n "$LOGS" ]; then
+    echo "$LOGS"
+  else
+    log "No logs retrieved (date=$DVAL)"
+  fi
 
   # Fallback staging synthesis (only when a specific date provided)
   if [ -n "${DVAL}" ]; then
