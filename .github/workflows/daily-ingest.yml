@@ -2,7 +2,7 @@ name: Daily Ingestion (Cloud Run Job)
 
 on:
   schedule:
-    - cron: '50 6 * * *' # 06:50 UTC before staging presence (07:05)
+    - cron: '45 6 * * *' # 06:45 UTC daily: ingest -> embedded merge -> checks
   workflow_dispatch:
     inputs:
       job_name:
