@@ -2,7 +2,7 @@ name: Daily Ingestion (Cloud Run Job)
 
 on:
   schedule:
-    - cron: '50 6 * * *' # 06:50 UTC before staging presence (07:05)
+    - cron: '45 6 * * *' # 06:45 UTC daily: ingest -> embedded merge -> checks
   workflow_dispatch:
     inputs:
       job_name:
@@ -13,6 +13,27 @@ on:
         description: 'Region'
         required: false
         default: us-east1
+      start_date:
+        description: 'Start date (YYYY-MM-DD) for historical range (optional)'
+        required: false
+      end_date:
+        description: 'End date (YYYY-MM-DD) for historical range (optional)'
+        required: false
+      date:
+        description: 'Single date (YYYY-MM-DD) override (mutually exclusive with range)'
+        required: false
+      redeploy_image:
+        description: 'Set to true to build & push latest container image before running job'
+        required: false
+        default: 'false'
+      backfill_merge:
+        description: 'Set to true to run merge_backfill_range after ingestion (range or single)'
+        required: false
+        default: 'true'
+      run_checks:
+        description: 'Set to true to run staging presence & freshness checks after merge'
+        required: false
+        default: 'true'
 
 env:
   PROJECT_ID: durham-weather-466502
@@ -27,6 +48,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
+      - name: Validate required secrets (fail-fast)
+        run: |
+          set -euo pipefail
+          missing=()
+          req=(GCP_WORKLOAD_IDENTITY_PROVIDER GCP_VERIFIER_SA DB_CREDS_SECRET_ID TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID)
+          for k in "${req[@]}"; do
+            if [ -z "${!k:-}" ]; then
+              missing+=("$k")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+          # Short diagnostic (lengths only) to help debug empty secrets without leaking values
+          echo "Secret presence (lengths):" \
+               "WIP=${#GCP_WORKLOAD_IDENTITY_PROVIDER}" \
+               "SA=${#GCP_VERIFIER_SA}" \
+               "DB=${#DB_CREDS_SECRET_ID}" \
+               "TSI=${#TSI_CREDS_SECRET_ID}" \
+               "WU=${#WU_API_KEY_SECRET_ID}" 
+          echo "All required secrets present: ${req[*]}"
+        env:
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_VERIFIER_SA: ${{ secrets.GCP_VERIFIER_SA }}
+          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies (minimal for merge & checks)
+        run: |
+          python -m pip install --upgrade pip
+          # Full requirements ensures consistency with local dev & other scripts
+          pip install -r requirements.txt
 
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
@@ -38,12 +99,147 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Build & Push container image (optional)
+        if: ${{ github.event.inputs.redeploy_image == 'true' }}
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+        run: |
+          IMAGE="us-east1-docker.pkg.dev/$PROJECT_ID/weather-data-images/weather-data-uploader:git-${GITHUB_SHA}"
+          echo "Building image $IMAGE"
+          gcloud builds submit --tag "$IMAGE" .
+          echo "IMAGE_URI=$IMAGE" >> $GITHUB_ENV
+
+      - name: Update Cloud Run job image (optional)
+        if: ${{ github.event.inputs.redeploy_image == 'true' }}
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
+        run: |
+          if [ -z "${IMAGE_URI:-}" ]; then
+            echo "IMAGE_URI not set; previous step may have failed" >&2; exit 1; fi
+          echo "Updating Cloud Run job $JOB_NAME to image $IMAGE_URI"
+            gcloud run jobs update $JOB_NAME \
+              --image "$IMAGE_URI" \
+              --region "${{ github.event.inputs.region || 'us-east1' }}" \
+              --project "$PROJECT_ID"
+
       - name: Execute ingestion job
         env:
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
           REGION: ${{ github.event.inputs.region || 'us-east1' }}
+          START_DATE: ${{ github.event.inputs.start_date }}
+          END_DATE: ${{ github.event.inputs.end_date }}
+          DATE: ${{ github.event.inputs.date }}
+          # BigQuery env for staging writer inside container
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          BQ_DATASET: sensors
+          # GCS location for raw parquet (enables fallback staging synthesis)
+          GCS_BUCKET: sensor-data-to-bigquery
+          GCS_PREFIX: raw/
+          # Secret Manager IDs (the app will fetch JSON secrets at runtime)
+          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
         run: |
           bash scripts/run_cr_job.sh
+
+      - name: Debug: list staging tables for supplied dates
+        if: ${{ github.event.inputs.date != '' || github.event.inputs.start_date != '' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"; END="${{ github.event.inputs.end_date }}"; SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then START="$SINGLE"; END="$SINGLE"; fi
+          if [ -z "$START" ]; then echo "No explicit dates provided; skipping"; exit 0; fi
+          cur="$START"
+          echo "Inspecting staging tables in $BQ_PROJECT.sensors for range $START -> $END" >&2
+          while [[ "$cur" <= "$END" ]]; do
+            dcompact=${cur//-/}
+            for src in tsi wu; do
+              tbl="staging_${src}_${dcompact}"
+              if bq show --project_id="$BQ_PROJECT" "$BQ_PROJECT:sensors.$tbl" >/dev/null 2>&1; then
+                rows=$(bq query --nouse_legacy_sql --project_id="$BQ_PROJECT" --format=csv "SELECT COUNT(*) c FROM \`$BQ_PROJECT.sensors.$tbl\`") || rows="?"
+                echo "FOUND $tbl rows=$rows"
+              else
+                echo "MISSING $tbl"
+              fi
+            done
+            cur=$(date -u -d "$cur +1 day" +%F)
+          done
+
+      - name: Merge backfill range (optional)
+        if: ${{ github.event.inputs.backfill_merge == 'true' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then
+            START="$SINGLE"; END="$SINGLE"; fi
+          if [ -z "$START" ] || [ -z "$END" ]; then
+            echo "No start/end (and no single date) provided; skipping backfill merge"; exit 0; fi
+          echo "Running per-source dated merge backfill $START -> $END"
+          python scripts/merge_backfill_range.py \
+            --project "$BQ_PROJECT" \
+            --dataset sensors \
+            --start "$START" \
+            --end "$END" \
+            --per-source-dated \
+            --sources tsi,wu \
+            --update-only-if-changed
+
+      - name: Staging presence check (optional)
+        if: ${{ github.event.inputs.run_checks == 'true' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then START="$SINGLE"; END="$SINGLE"; fi
+          # If no explicit dates provided (scheduled run), check yesterday
+          if [ -z "$START" ] || [ -z "$END" ]; then
+            YESTERDAY=$(date -u -d 'yesterday' +%F)
+            START="$YESTERDAY"; END="$YESTERDAY"
+          fi
+          echo "Running staging presence checks for range $START -> $END"
+          CUR="$START"
+          FAIL=0
+          while [[ "$CUR" <= "$END" ]]; do
+            echo "Checking $CUR"
+            if ! python scripts/check_staging_presence.py --project "$BQ_PROJECT" --dataset sensors --date "$CUR" --sources tsi,wu; then
+              echo "Staging presence failed for $CUR" >&2
+              FAIL=1
+            fi
+            CUR=$(date -u -d "$CUR +1 day" +%F)
+          done
+          if [ $FAIL -ne 0 ]; then
+            echo "One or more staging presence checks failed" >&2
+            exit 1
+          fi
+
+      - name: Freshness check (optional)
+        if: ${{ github.event.inputs.run_checks == 'true' }}
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if ! python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset sensors --table sensor_readings --max-lag-days 1; then
+            echo "Freshness check failed" >&2
+            exit 1
+          fi
+
+      - name: Create issue on monitoring failure
+        if: failure() && github.event_name == 'schedule'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Daily ingestion monitoring failure"
+          content-filepath: ingestion_summary.log
+          labels: monitoring, ingestion
 
       - name: Upload execution log (always)
         if: always()

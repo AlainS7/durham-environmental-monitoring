@@ -106,17 +106,34 @@ def resolve_staging_tables(client: bigquery.Client, dataset: str, args) -> List[
     raise SystemExit("No staging table selection resolved (this should not happen)")
 
 
-def build_merge_sql(project: str, dataset: str, staging_tables: List[str], target: str, update_if_changed: bool) -> str:
+def build_merge_sql(project: str, dataset: str, staging_tables, target: str, date_str: str, update_if_changed: bool) -> str:
+    """Build the MERGE SQL statement.
+
+    Backwards compatibility:
+      Previous signature (pre-refactor) included a date parameter before the update flag and
+      accepted a single staging table string. Tests still call it that way. The refactor moved
+      date handling outside and required a list. This function now accepts either a single
+      table name (str) or a list of table names and keeps the date parameter (currently used
+      only for clarity; the query still filters with DATE(timestamp)=@d parameter binding).
+    """
+    # Normalize staging_tables to list
+    if isinstance(staging_tables, str):
+        staging_tables_list: List[str] = [staging_tables]
+    else:
+        staging_tables_list = staging_tables
     predicate = "T.value != S.value" if update_if_changed else "TRUE"
-    if len(staging_tables) == 1:
-        source_sql = f"SELECT timestamp, deployment_fk, metric_name, value FROM `{project}.{dataset}.{staging_tables[0]}` WHERE DATE(timestamp)=@d"
-        ref_for_comment = staging_tables[0]
+    if len(staging_tables_list) == 1:
+        source_sql = (f"SELECT timestamp, deployment_fk, metric_name, value FROM `"
+                      f"{project}.{dataset}.{staging_tables_list[0]}` WHERE DATE(timestamp)=@d")
+        ref_for_comment = staging_tables_list[0]
     else:
         unions = []
-        for t in staging_tables:
-            unions.append(f"SELECT timestamp, deployment_fk, metric_name, value FROM `{project}.{dataset}.{t}` WHERE DATE(timestamp)=@d")
+        for t in staging_tables_list:
+            unions.append(
+                f"SELECT timestamp, deployment_fk, metric_name, value FROM `{project}.{dataset}.{t}` WHERE DATE(timestamp)=@d"
+            )
         source_sql = "\nUNION ALL\n".join(unions)
-        ref_for_comment = ",".join(staging_tables)
+        ref_for_comment = ",".join(staging_tables_list)
     return f"""
 -- MERGE from staging tables: {ref_for_comment}
 MERGE `{project}.{dataset}.{target}` T
@@ -134,7 +151,8 @@ WHEN NOT MATCHED THEN INSERT (timestamp, deployment_fk, metric_name, value) VALU
 def merge_partition(client: bigquery.Client, args, staging_tables: List[str]):
     # create target if needed using first staging table as reference
     ensure_target_exists_from_reference(client, args.dataset, staging_tables[0], args.target_table)
-    sql = build_merge_sql(client.project, args.dataset, staging_tables, args.target_table, args.update_only_if_changed)
+    # Pass args.date explicitly for backward compatible signature
+    sql = build_merge_sql(client.project, args.dataset, staging_tables, args.target_table, args.date, args.update_only_if_changed)
     cfg = bigquery.QueryJobConfig(query_parameters=[bigquery.ScalarQueryParameter('d', 'DATE', args.date)])
     log.info("Running MERGE for %s from %d staging table(s)...", args.date, len(staging_tables))
     job = client.query(sql, job_config=cfg)

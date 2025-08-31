@@ -56,10 +56,28 @@ class Config:
         self._tsi_creds = None
         self._wu_api_key = None
         self.secret_client = None  # Delay initialization
-        self.project_id = self._parse_env_var_value("PROJECT_ID")
+
+        # PROJECT_ID can arrive in several shapes in Cloud Run / GitHub OIDC contexts.
+        # Accept (in priority order): PROJECT_ID, GOOGLE_CLOUD_PROJECT, GCP_PROJECT.
+        self.project_id = (
+            self._parse_env_var_value("PROJECT_ID")
+            or self._parse_env_var_value("GOOGLE_CLOUD_PROJECT")
+            or self._parse_env_var_value("GCP_PROJECT")
+        )
+
+        # Secret ID env vars sometimes get passed through as KEY=VALUE; _parse_env_var_value handles that.
         self.db_creds_secret_id = self._parse_env_var_value("DB_CREDS_SECRET_ID")
         self.tsi_creds_secret_id = self._parse_env_var_value("TSI_CREDS_SECRET_ID")
         self.wu_api_key_secret_id = self._parse_env_var_value("WU_API_KEY_SECRET_ID")
+
+        # Emit a concise debug summary to help diagnose 403 / CONSUMER_INVALID issues showing 'project None'.
+        logging.info(
+            "Config init: project_id=%s db_secret=%s tsi_secret=%s wu_secret=%s",
+            self.project_id,
+            self.db_creds_secret_id,
+            self.tsi_creds_secret_id,
+            self.wu_api_key_secret_id,
+        )
         # GCS configuration (no secrets required)
         self.gcs_bucket = self._parse_env_var_value("GCS_BUCKET")
         self.gcs_prefix = os.getenv("GCS_PREFIX", "sensor_readings")
@@ -128,11 +146,14 @@ class Config:
 
     def _validate_env_vars(self):
         """Ensure all required environment variables are set, unless dummy variables are present (for test/dev)."""
-        required_vars = [
-            "PROJECT_ID", "DB_CREDS_SECRET_ID",
-            "TSI_CREDS_SECRET_ID", "WU_API_KEY_SECRET_ID"
-        ]
-        missing_vars = [var for var in required_vars if not getattr(self, var.lower())]
+        # Map required name -> attribute actually holding it
+        required_map = {
+            "PROJECT_ID": "project_id",
+            "DB_CREDS_SECRET_ID": "db_creds_secret_id",
+            "TSI_CREDS_SECRET_ID": "tsi_creds_secret_id",
+            "WU_API_KEY_SECRET_ID": "wu_api_key_secret_id",
+        }
+        missing_vars = [env_name for env_name, attr in required_map.items() if not getattr(self, attr)]
         # If all dummy variables are present, skip strict validation (for test/dev)
         dummy_vars = [
             os.getenv("DUMMY_DB_USER"),
@@ -153,6 +174,12 @@ class Config:
             client = self.get_secret_client()
             if client is None:
                 logging.critical("Secret Manager client could not be initialized (missing credentials?)")
+                return None
+            if not self.project_id:
+                logging.critical("Cannot fetch secret '%s' because project_id is not set.", secret_id)
+                return None
+            if not secret_id:
+                logging.critical("Attempted to fetch a secret but secret_id was empty or None.")
                 return None
             name = f"projects/{self.project_id}/secrets/{secret_id.strip()}/versions/latest"
             response = client.access_secret_version(request={"name": name})
