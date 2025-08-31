@@ -48,14 +48,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Auth to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_VERIFIER_SA }}'
-
+      
       - name: Validate required secrets (fail-fast)
         run: |
           set -euo pipefail
@@ -70,6 +63,13 @@ jobs:
             echo "Missing required secrets: ${missing[*]}" >&2
             exit 1
           fi
+          # Short diagnostic (lengths only) to help debug empty secrets without leaking values
+          echo "Secret presence (lengths):" \
+               "WIP=${#GCP_WORKLOAD_IDENTITY_PROVIDER}" \
+               "SA=${#GCP_VERIFIER_SA}" \
+               "DB=${#DB_CREDS_SECRET_ID}" \
+               "TSI=${#TSI_CREDS_SECRET_ID}" \
+               "WU=${#WU_API_KEY_SECRET_ID}" 
           echo "All required secrets present: ${req[*]}"
         env:
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -77,6 +77,13 @@ jobs:
           DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ secrets.GCP_VERIFIER_SA }}'
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
