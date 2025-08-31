@@ -78,6 +78,17 @@ jobs:
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies (minimal for merge & checks)
+        run: |
+          python -m pip install --upgrade pip
+          # Full requirements ensures consistency with local dev & other scripts
+          pip install -r requirements.txt
+
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
         with:
