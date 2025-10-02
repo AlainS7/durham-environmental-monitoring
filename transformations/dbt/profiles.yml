@@ -1,0 +1,11 @@
+sensor_transforms:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: durham-weather-466502
+      dataset: sensors
+      location: US
+      threads: 4
+      timeout_seconds: 300

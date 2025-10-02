@@ -98,6 +98,15 @@ data/master_data_metadata/
 # ML Models and pickled files
 *.pkl
 *.joblib
+
+# dbt artifacts (generated files)
+transformations/dbt/target/
+transformations/dbt/logs/
+transformations/dbt/dbt_packages/
+transformations/dbt/.user.yml
+
+# Transformation logs
+/tmp/*.log
 *.model
 src/models/ml/*.pkl
 models/ml/*.pkl
