@@ -62,6 +62,13 @@ Failures surface directly in the Actions tab and block unnoticed schema drift.
 
 See `docs/IAM_HARDENING.md` for least-privilege roles, service account layout, and Workload Identity Federation (GitHub → GCP) guidance.
 
+### Secrets & Local Credentials
+
+- **Never commit service account keys, `.env`, or Cloud Run export snapshots.** Files such as `gcp-creds.json`, `gha-creds.json`, `job_full.yaml`, and Terraform state are ignored by default—keep real values in a private location (for example, `./secrets/`).
+- Populate secrets with `scripts/create_secrets.sh` or Terraform so that Cloud Run jobs read from Secret Manager instead of static files.
+- Copy `.env.example` to `.env` for local work, but store the real `.env` outside the repository or load it via a secrets manager.
+- If you need reference manifests for Cloud Run, regenerate sanitized exports with `gcloud run jobs describe ...` and scrub project-specific metadata before sharing.
+
 ## 📡 Data Collection Specifications
 
 ### High-Resolution Research-Grade Data

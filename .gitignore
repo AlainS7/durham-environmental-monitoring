@@ -49,6 +49,27 @@ onedrive_creds.json
 creds/*.json
 hot_durham_wu_map/backend/wu_api_key.json
 
+# Terraform local state (never commit)
+.terraform/
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+!infra/terraform/terraform.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Cloud Run job exports / snapshots with deployment metadata
+job_export.yaml
+job_full.yaml
+job.json
+
+
 # Changing metrics and analysis
 /metrics-current/
 *.pem

@@ -74,7 +74,7 @@ terraform apply -auto-approve \
 if [[ $PIN -eq 1 ]]; then
   echo "[bootstrap] Pinning digests"
   cd ../.. # back to repo root
-  ./scripts/pin_image_digests.sh "$PROJECT" "$REGION" "$REPO" > /tmp/pin_cmd.txt 2>/dev/null || true
+  ./scripts/pin_image_digests.sh "$PROJECT" "$REGION" "$REPO" > /tmp/pin_cmd.txt
   echo "Review and run the following to pin (if script succeeded):"
   grep terraform /tmp/pin_cmd.txt || echo "(pin script did not produce command)"
 else
