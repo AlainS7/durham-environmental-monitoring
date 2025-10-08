@@ -66,7 +66,7 @@ if ! command -v cloud-sql-proxy &> /dev/null; then
 fi
 
 # Ensure the Cloud SQL Proxy wrapper script is executable
-chmod +x /workspaces/tsi-data-uploader/.devcontainer/start-cloud-sql-proxy.sh
+chmod +x /workspaces/durham-environmental-monitoring/.devcontainer/start-cloud-sql-proxy.sh
 
 
 # Authenticate with GCP using service account key from Codespace secret
@@ -99,7 +99,7 @@ else
 fi
 
 # Start supervisord with the config (will manage cloud-sql-proxy)
-# supervisord -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf
+# supervisord -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf
 
 echo "Post-create setup complete."
 
@@ -113,7 +113,7 @@ echo "To connect to your database:"
 echo "1. Make sure you have set the GCP_SERVICE_ACCOUNT_KEY Codespace secret with your service account JSON key."
 echo "2. The container will automatically authenticate to GCP and fetch secrets."
 echo "3. Start the Cloud SQL Auth Proxy when needed:"
-echo "   supervisord -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf"
+echo "   supervisord -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf"
 echo "   or"
 echo "   .devcontainer/start-cloud-sql-proxy.sh"
 echo "For more information, visit: https://cloud.google.com/sql/docs/mysql/connect-auth-proxy"

@@ -1,6 +1,6 @@
 # Hot Durham Map
 
-This project is a web application that displays sensor data on a map. It is a separate project from the `tsi-data-uploader`.
+This project is a web application that displays sensor data on a map. It is a separate project from the `durham-environmental-monitoring`.
 
 ## Setup
 

@@ -3,7 +3,7 @@ requires = ["setuptools>=78.1.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tsi-data-uploader"
+name = "durham-environmental-monitoring"
 version = "0.1.0"
 description = "A service to collect and upload TSI and Weather Underground sensor data."
 readme = "README.md"

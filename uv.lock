@@ -1972,7 +1972,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tsi-data-uploader"
+name = "durham-environmental-monitoring"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
