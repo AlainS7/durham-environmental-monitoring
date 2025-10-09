@@ -9,7 +9,8 @@ This module enhances the existing anomaly detection system with:
 - Multi-channel notifications (email, webhook, file-based)
 - Configurable thresholds and sensitivity
 """
-
+import os
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 import json
@@ -19,6 +20,9 @@ import smtplib
 import requests
 import logging
 
+sys.path.append(str(Path(__file__).parent.parent / "analysis"))
+from ..analysis.anomaly_detection_and_trend_analysis import AnomalyDetectionSystem  # type: ignore
+
 # Email imports (fix namespace issue)
 try:
     from email.mime.text import MIMEText
@@ -27,11 +31,6 @@ try:
 except ImportError:
     print("Warning: Email functionality not available")
     EMAIL_AVAILABLE = False
-
-# Import existing anomaly detection system
-import sys
-sys.path.append(str(Path(__file__).parent.parent / "analysis"))
-from ..analysis.anomaly_detection_and_trend_analysis import AnomalyDetectionSystem # type: ignore
 
 warnings.filterwarnings('ignore')
 

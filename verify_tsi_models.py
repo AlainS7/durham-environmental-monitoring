@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Verify TSI sensor model variations and field coverage."""
 
+
 from google.cloud import bigquery
-import os
 
 
 
