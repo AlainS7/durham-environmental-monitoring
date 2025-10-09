@@ -36,7 +36,8 @@ jobs:
       - name: Install deps
         run: |
           uv venv
-          uv pip sync requirements.txt requirements-dev.txt
+          uv pip sync requirements.txt
+          uv pip sync requirements-dev.txt || true
 
       - name: Auth to Google Cloud (OIDC)
         uses: google-github-actions/auth@v2

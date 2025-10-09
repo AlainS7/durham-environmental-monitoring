@@ -48,6 +48,9 @@ jobs:
         run: |
           uv venv
           uv pip sync requirements.txt
+
+        - name: Set PYTHONPATH
+          run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src" >> $GITHUB_ENV
       
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
