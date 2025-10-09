@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Diagnose WU and TSI API column availability by fetching fresh data and showing actual column names.
@@ -7,15 +8,15 @@ import os
 import sys
 import pandas as pd
 from dotenv import load_dotenv
+from src.data_collection.clients.wu_client import WUClient, EndpointStrategy
+from src.data_collection.clients.tsi_client import TSIClient
+from typing import cast
 
 # Load environment variables
 load_dotenv()
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.data_collection.clients.wu_client import WUClient, EndpointStrategy
-from src.data_collection.clients.tsi_client import TSIClient
 
 
 async def diagnose_wu():
@@ -65,13 +66,18 @@ async def diagnose_tsi():
     client_id = os.getenv('TSI_CLIENT_ID')
     client_secret = os.getenv('TSI_CLIENT_SECRET')
     auth_url = os.getenv('TSI_AUTH_URL')
-    
     if not all([client_id, client_secret, auth_url]):
         print("ERROR: TSI credentials not set (TSI_CLIENT_ID, TSI_CLIENT_SECRET, TSI_AUTH_URL)")
         return
-    
+    if not all(isinstance(x, str) for x in [client_id, client_secret, auth_url]):
+        print("ERROR: TSI credentials must be strings")
+        return
     print("\n--- Testing TSI flat-format endpoint ---")
-    client = TSIClient(client_id=client_id, client_secret=client_secret, auth_url=auth_url)
+    client = TSIClient(
+        client_id=cast(str, client_id),
+        client_secret=cast(str, client_secret),
+        auth_url=cast(str, auth_url)
+    )
     async with client:
         df = await client.fetch_data('2025-10-04', '2025-10-04', aggregate=False)
         
