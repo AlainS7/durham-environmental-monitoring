@@ -39,7 +39,7 @@ google-cloud-appengine-logging==1.6.2
 google-cloud-audit-log==0.3.2
     # via google-cloud-logging
 google-cloud-bigquery==3.25.0
-    # via tsi-data-uploader (pyproject.toml)
+    # via durham-environmental-monitoring (pyproject.toml)
 google-cloud-core==2.4.3
     # via
     #   google-cloud-bigquery
@@ -121,7 +121,7 @@ protobuf==6.30.0
     #   grpc-google-iam-v1
     #   grpcio-status
     #   proto-plus
-    #   tsi-data-uploader (pyproject.toml)
+    #   durham-environmental-monitoring (pyproject.toml)
 psycopg2-binary==2.9.9
     # via tsi-data-uploader (pyproject.toml)
 pyarrow==16.1.0

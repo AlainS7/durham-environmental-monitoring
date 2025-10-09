@@ -7,10 +7,9 @@ echo "Starting post-create setup..."
 echo "Installing Google Cloud CLI..."
 sudo apt-get update && sudo apt-get install -y lsb-release apt-transport-https ca-certificates gnupg
 
-echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-
+sudo mkdir -p /usr/share/keyrings
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
 sudo apt-get update && sudo apt-get install -y google-cloud-cli
 
 # Create and activate a virtual environment
@@ -18,6 +17,9 @@ echo "Creating Python virtual environment in .venv..."
 python3 -m venv .venv
 source .venv/bin/activate
 
+# Upgrade pip
+echo "Upgrading pip..."
+pip install --upgrade pip
 
 # Install uv (fast Python package manager)
 echo "Installing uv..."
@@ -66,7 +68,7 @@ if ! command -v cloud-sql-proxy &> /dev/null; then
 fi
 
 # Ensure the Cloud SQL Proxy wrapper script is executable
-chmod +x /workspaces/tsi-data-uploader/.devcontainer/start-cloud-sql-proxy.sh
+chmod +x /workspaces/durham-environmental-monitoring/.devcontainer/start-cloud-sql-proxy.sh
 
 
 # Authenticate with GCP using service account key from Codespace secret
@@ -99,7 +101,7 @@ else
 fi
 
 # Start supervisord with the config (will manage cloud-sql-proxy)
-# supervisord -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf
+# supervisord -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf
 
 echo "Post-create setup complete."
 
@@ -113,7 +115,7 @@ echo "To connect to your database:"
 echo "1. Make sure you have set the GCP_SERVICE_ACCOUNT_KEY Codespace secret with your service account JSON key."
 echo "2. The container will automatically authenticate to GCP and fetch secrets."
 echo "3. Start the Cloud SQL Auth Proxy when needed:"
-echo "   supervisord -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf"
+echo "   supervisord -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf"
 echo "   or"
 echo "   .devcontainer/start-cloud-sql-proxy.sh"
 echo "For more information, visit: https://cloud.google.com/sql/docs/mysql/connect-auth-proxy"

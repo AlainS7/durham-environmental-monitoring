@@ -48,10 +48,16 @@ jobs:
         run: |
           uv venv
           uv pip sync requirements.txt
+
+        - name: Set PYTHONPATH
+          run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src" >> $GITHUB_ENV
       
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
+
+            - name: Audit dependencies (ignore local)
+              run: uv pip audit || true
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_VERIFIER_SA }}
           token_format: access_token

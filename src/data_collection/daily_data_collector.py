@@ -36,7 +36,6 @@ from src.utils.schema_validation import (
     validate_wu_schema,
     check_tsi_coverage,
     check_wu_coverage,
-    log_schema_comparison,
     get_schema_info
 )
 

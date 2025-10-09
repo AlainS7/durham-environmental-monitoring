@@ -62,19 +62,19 @@ You can start the proxy in two ways:
 ### a) Using supervisord (recommended)
 
 ```sh
-supervisord -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf
+supervisord -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf
 ```
 
 Check status:
 
 ```sh
-supervisorctl -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf status
+supervisorctl -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf status
 ```
 
 Restart the proxy if needed:
 
 ```sh
-supervisorctl -c /workspaces/tsi-data-uploader/.devcontainer/supervisord.conf restart cloud-sql-proxy
+supervisorctl -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf restart cloud-sql-proxy
 ```
 
 ### b) Run the wrapper script directly

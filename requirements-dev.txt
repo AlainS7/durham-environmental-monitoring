@@ -28,7 +28,7 @@ defusedxml==0.7.1
 filelock==3.18.0
     # via cachecontrol
 flake8==7.3.0
-    # via tsi-data-uploader (pyproject.toml)
+    # via durham-environmental-monitoring (pyproject.toml)
 google-api-core==2.25.1
     # via
     #   google-cloud-appengine-logging
@@ -181,7 +181,7 @@ pyproject-hooks==1.2.0
     #   pip-tools
 pytest==8.4.1
     # via
-    #   tsi-data-uploader (pyproject.toml)
+    #   durham-environmental-monitoring (pyproject.toml)
     #   pytest-asyncio
     #   pytest-mock
 pytest-asyncio==1.1.0
