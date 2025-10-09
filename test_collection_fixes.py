@@ -6,6 +6,7 @@ Tests a recent date (Oct 4, 2025) to validate field extraction.
 
 import asyncio
 import sys
+import pytest
 
 # Add project root to path
 sys.path.insert(0, '/workspaces/durham-environmental-monitoring')
@@ -14,6 +15,7 @@ from src.data_collection.clients.wu_client import WUClient, EndpointStrategy
 from src.data_collection.clients.tsi_client import TSIClient
 import os
 
+@pytest.mark.asyncio
 async def test_wu_client():
     """Test WU client with historical API (should return ALL fields)"""
     print("="*80)
@@ -89,6 +91,7 @@ async def test_wu_client():
         print(df[available_cols].head(3).to_string(index=False))
 
 
+@pytest.mark.asyncio
 async def test_tsi_client():
     """Test TSI client (should capture all available measurement types)"""
     print("\n\n")

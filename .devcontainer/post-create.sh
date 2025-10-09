@@ -17,6 +17,9 @@ echo "Creating Python virtual environment in .venv..."
 python3 -m venv .venv
 source .venv/bin/activate
 
+# Upgrade pip
+echo "Upgrading pip..."
+pip install --upgrade pip
 
 # Install uv (fast Python package manager)
 echo "Installing uv..."

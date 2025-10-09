@@ -50,3 +50,10 @@ run-data-collection = "src.data_collection.daily_data_collector:main"
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = {find = {where = ["src"]}}
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests", "scripts", "."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

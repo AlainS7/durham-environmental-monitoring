@@ -9,6 +9,7 @@ import os
 import sys
 import pandas as pd
 import httpx
+import pytest
 from dotenv import load_dotenv
 from src.utils.config_loader import get_wu_stations, get_tsi_devices
 
@@ -19,6 +20,7 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+@pytest.mark.asyncio
 async def test_wu_endpoints():
     """Test all 3 WU historical endpoints to see which has data."""
     print("="*80)
@@ -158,6 +160,7 @@ async def test_wu_endpoints():
             print(f"❌ Error: {e}")
 
 
+@pytest.mark.asyncio
 async def test_tsi_endpoint():
     """Test TSI flat-format endpoint."""
     print("\n\n" + "="*80)
