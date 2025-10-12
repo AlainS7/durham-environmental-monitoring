@@ -3,7 +3,7 @@ requires = ["setuptools>=78.1.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tsi-data-uploader"
+name = "durham-environmental-monitoring"
 version = "0.1.0"
 description = "A service to collect and upload TSI and Weather Underground sensor data."
 readme = "README.md"
@@ -20,14 +20,14 @@ dependencies = [
     "psycopg2-binary>=2.9.9",
     "google-cloud-secret-manager>=2.21.0",
     "google-cloud-storage>=2.18.2",
-    "google-cloud-bigquery>=3.25.0",
+    "google-cloud-bigquery>=3.38.0",
     "python-dotenv>=1.1.1",
     "tqdm>=4.66.4",
     "nest-asyncio>=1.6.0",
     "google-cloud-logging>=3.10.0",
     "pydantic>=2.0.0",
     "pyarrow>=16.1.0",
-    "PyYAML>=6.0.0",
+    "PyYAML>=6.0.3",
     # Explicit protobuf range to satisfy both google-cloud-* (<7) and dbt-adapters (>=6,<7)
     "protobuf>=6.0.0,<7.0.0",
 ]
@@ -50,3 +50,10 @@ run-data-collection = "src.data_collection.daily_data_collector:main"
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = {find = {where = ["src"]}}
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests", "scripts", "."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

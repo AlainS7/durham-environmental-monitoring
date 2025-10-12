@@ -340,7 +340,7 @@ def check_raw_tsi_metrics(
         df = client.query(query).to_dataframe()
         
         if df.empty:
-            issues.append(f"No TSI raw data found in date range")
+            issues.append("No TSI raw data found in date range")
             return False, issues
         
         # Critical metrics should have <2% NULL values

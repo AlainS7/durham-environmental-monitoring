@@ -5,7 +5,6 @@ This bypasses external table schema issues by loading files directly.
 """
 
 import argparse
-import sys
 from datetime import datetime, timedelta
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
@@ -96,7 +95,8 @@ def main():
                 gcs_uri=gcs_uri,
                 partition_date=date_str
             )
-            total_rows += rows
+            if rows is not None:
+                total_rows += rows
             success_count += 1
         except Exception as e:
             print(f"❌ Error loading {date_str}: {e}")

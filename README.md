@@ -37,8 +37,7 @@ This project uses `uv` for fast and efficient dependency management.
     ```sh
     uv venv
     source .venv/bin/activate
-    uv pip sync requirements.txt
-    uv pip sync requirements-dev.txt
+    uv pip install -e ".[dev]"
     ```
 
 3.  **Configure Credentials**:
@@ -130,6 +129,14 @@ The project relies heavily on GitHub Actions for automation and verification.
 *   `config/base/paths.py`: Defines key paths for data storage and other resources.
 *   `config/environments/*.py`: Environment-specific configurations (development vs. production).
 *   `transformations/sql/*.sql`: The SQL files that define the data transformation logic.
+
+---
+
+## 🔒 Security
+
+This project includes automated security scanning for Python dependencies using `pip-audit`. The security audit runs as part of the CI pipeline to identify known vulnerabilities.
+
+For detailed information about security audit configuration and current status, see **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)**.
 
 ---
 

@@ -1,3 +1,5 @@
+
+
 #!/usr/bin/env python3
 """
 Test different WU and TSI API endpoints to find which ones return actual sensor data.
@@ -7,7 +9,9 @@ import os
 import sys
 import pandas as pd
 import httpx
+import pytest
 from dotenv import load_dotenv
+from src.utils.config_loader import get_wu_stations, get_tsi_devices
 
 # Load environment variables
 load_dotenv()
@@ -15,9 +19,8 @@ load_dotenv()
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.utils.config_loader import get_wu_stations, get_tsi_devices
 
-
+@pytest.mark.asyncio
 async def test_wu_endpoints():
     """Test all 3 WU historical endpoints to see which has data."""
     print("="*80)
@@ -157,6 +160,7 @@ async def test_wu_endpoints():
             print(f"❌ Error: {e}")
 
 
+@pytest.mark.asyncio
 async def test_tsi_endpoint():
     """Test TSI flat-format endpoint."""
     print("\n\n" + "="*80)
@@ -192,6 +196,9 @@ async def test_tsi_endpoint():
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         
         try:
+            if auth_url is None:
+                print("ERROR: TSI_AUTH_URL not set")
+                return
             auth_resp = await client.post(auth_url, params=params, data=data, headers=headers)
             auth_resp.raise_for_status()
             auth_json = auth_resp.json()
