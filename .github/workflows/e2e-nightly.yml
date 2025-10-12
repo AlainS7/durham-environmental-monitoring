@@ -81,7 +81,7 @@ jobs:
           DATASET_ID: ${{ env.DATASET_ID }}
         run: |
           echo "Seeding identity mapping into ${PROJECT_ID}.${DATASET_ID}.sensor_id_map (idempotent)"
-          python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute
+          uv run python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute
 
       - name: Verify outputs
         env:
