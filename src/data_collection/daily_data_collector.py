@@ -26,21 +26,17 @@ import numpy as np
  # DB logic removed for BigQuery-only mode
 
 from src.config.app_config import app_config
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:  # only for type checkers; at runtime we may not have DB layer
-    # from src.database.db_manager import HotDurhamDB
-    # DB logic removed for BigQuery-only mode
-    from src.storage.gcs_uploader import GCSUploader
-    from src.data_collection.clients.wu_client import WUClient
-    from src.data_collection.clients.tsi_client import TSIClient
-    from src.utils.config_loader import get_wu_stations, get_tsi_devices
-    from src.utils.schema_validation import (
-        validate_tsi_schema,
-        validate_wu_schema,
-        check_tsi_coverage,
-        check_wu_coverage,
-        get_schema_info
-    )
+from src.storage.gcs_uploader import GCSUploader
+from src.data_collection.clients.wu_client import WUClient
+from src.data_collection.clients.tsi_client import TSIClient
+from src.utils.config_loader import get_wu_stations, get_tsi_devices
+from src.utils.schema_validation import (
+    validate_tsi_schema,
+    validate_wu_schema,
+    check_tsi_coverage,
+    check_wu_coverage,
+    get_schema_info
+)
 
 log = logging.getLogger(__name__)
 
