@@ -47,7 +47,8 @@ async def test_main_script_flow(mocker, sample_wu_df, sample_tsi_df):
     # Mock DB and its insertion method
     mock_db_instance = mocker.MagicMock()
     mock_db_instance.insert_sensor_readings = mocker.MagicMock()
-    mocker.patch('src.data_collection.daily_data_collector.HotDurhamDB', return_value=mock_db_instance)
+    # mocker.patch('src.data_collection.daily_data_collector.HotDurhamDB', return_value=mock_db_instance)
+     # DB logic removed for BigQuery-only mode
     # Patch pandas.read_sql to return a valid DataFrame for deployment map
     mocker.patch('pandas.read_sql', return_value=pd.DataFrame({
         'deployment_pk': [1, 2, 3],

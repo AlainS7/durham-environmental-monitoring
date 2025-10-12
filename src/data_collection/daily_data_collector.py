@@ -28,18 +28,19 @@ from sqlalchemy import text
 from src.config.app_config import app_config
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # only for type checkers; at runtime we may not have DB layer
-    from src.database.db_manager import HotDurhamDB
-from src.storage.gcs_uploader import GCSUploader
-from src.data_collection.clients.wu_client import WUClient
-from src.data_collection.clients.tsi_client import TSIClient
-from src.utils.config_loader import get_wu_stations, get_tsi_devices
-from src.utils.schema_validation import (
-    validate_tsi_schema,
-    validate_wu_schema,
-    check_tsi_coverage,
-    check_wu_coverage,
-    get_schema_info
-)
+    # from src.database.db_manager import HotDurhamDB
+    # DB logic removed for BigQuery-only mode
+    from src.storage.gcs_uploader import GCSUploader
+    from src.data_collection.clients.wu_client import WUClient
+    from src.data_collection.clients.tsi_client import TSIClient
+    from src.utils.config_loader import get_wu_stations, get_tsi_devices
+    from src.utils.schema_validation import (
+        validate_tsi_schema,
+        validate_wu_schema,
+        check_tsi_coverage,
+        check_wu_coverage,
+        get_schema_info
+    )
 
 log = logging.getLogger(__name__)
 
@@ -231,153 +232,7 @@ def _augment_catalog_with_data(catalog: dict[tuple[str, str], dict[str, Any]], d
             record['start_date'] = start_date
 
 
-def _ensure_deployment_metadata(db: HotDurhamDB, wu_df: pd.DataFrame, tsi_df: pd.DataFrame):
-    catalog = _build_sensor_catalog()
-    _augment_catalog_with_data(catalog, wu_df, 'WU')
-    _augment_catalog_with_data(catalog, tsi_df, 'TSI')
-    if not catalog:
-        return
-
-    with db.engine.begin() as conn:
-        for record in catalog.values():
-            params = {
-                'native_sensor_id': record['native_sensor_id'],
-                'sensor_type': record['sensor_type'],
-                'friendly_name': record['friendly_name'],
-            }
-            sensor_row = conn.execute(text("""
-                SELECT sensor_pk, friendly_name
-                FROM sensors_master
-                WHERE native_sensor_id = :native_sensor_id
-                  AND sensor_type = :sensor_type
-            """), params).fetchone()
-
-            if sensor_row:
-                sensor_pk = sensor_row.sensor_pk
-                if record['friendly_name'] and sensor_row.friendly_name != record['friendly_name']:
-                    conn.execute(text("""
-                        UPDATE sensors_master
-                        SET friendly_name = :friendly_name
-                        WHERE sensor_pk = :sensor_pk
-                    """), {
-                        'friendly_name': record['friendly_name'],
-                        'sensor_pk': sensor_pk,
-                    })
-            else:
-                sensor_pk = conn.execute(text("""
-                    INSERT INTO sensors_master (native_sensor_id, sensor_type, friendly_name)
-                    VALUES (:native_sensor_id, :sensor_type, :friendly_name)
-                    RETURNING sensor_pk
-                """), params).scalar_one()
-                log.info("Created sensors_master row for %s sensor %s", record['sensor_type'], record['native_sensor_id'])
-
-            dep_row = conn.execute(text("""
-                SELECT deployment_pk, location, start_date
-                FROM deployments
-                WHERE sensor_fk = :sensor_fk AND end_date IS NULL
-            """), {'sensor_fk': sensor_pk}).fetchone()
-
-            location_value = record.get('location') or record['native_sensor_id']
-            start_date = record.get('start_date')
-
-            if dep_row:
-                updates: dict[str, Any] = {}
-                if location_value and dep_row.location != location_value:
-                    updates['location'] = location_value
-                if start_date and (dep_row.start_date is None or start_date < dep_row.start_date):
-                    updates['start_date'] = start_date
-                if updates:
-                    updates['deployment_pk'] = dep_row.deployment_pk
-                    set_clause = ", ".join(f"{col} = :{col}" for col in updates if col != 'deployment_pk')
-                    conn.execute(text(f"""
-                        UPDATE deployments
-                        SET {set_clause}
-                        WHERE deployment_pk = :deployment_pk
-                    """), updates)
-            else:
-                conn.execute(text("""
-                    INSERT INTO deployments (sensor_fk, location, latitude, longitude, status, start_date, end_date)
-                    VALUES (:sensor_fk, :location, :latitude, :longitude, 'active', :start_date, NULL)
-                """), {
-                    'sensor_fk': sensor_pk,
-                    'location': location_value,
-                    'latitude': record.get('latitude'),
-                    'longitude': record.get('longitude'),
-                    'start_date': start_date or datetime.utcnow().date(),
-                })
-                log.info("Created deployment for %s sensor %s", record['sensor_type'], record['native_sensor_id'])
-
-
-def insert_data_to_db(db: HotDurhamDB, wu_df: pd.DataFrame, tsi_df: pd.DataFrame):
-    if wu_df.empty and tsi_df.empty:
-        log.info("No data to insert.")
-        return
-    try:
-        _ensure_deployment_metadata(db, wu_df, tsi_df)
-    except Exception as e:
-        log.error(f"Unable to ensure deployment metadata prior to insert: {e}")
-    try:
-        with db.engine.connect() as conn:
-            sql = text("""
-                SELECT d.deployment_pk, sm.native_sensor_id, sm.sensor_type
-                FROM deployments d
-                JOIN sensors_master sm ON d.sensor_fk = sm.sensor_pk
-                WHERE d.end_date IS NULL;""")
-            deployment_map_df = pd.read_sql(sql, conn)
-    except Exception as e:
-        log.error(f"Failed to fetch deployment map: {e}")
-        return
-    if deployment_map_df.empty:
-        log.error("No active deployments found.")
-        return
-    all_long = []
-    for df, typ in [(wu_df, 'WU'), (tsi_df, 'TSI')]:
-        if df.empty:
-            continue
-        if df.columns.duplicated().any():
-            df = df.loc[:, ~df.columns.duplicated()].copy()
-        type_map = deployment_map_df[deployment_map_df.sensor_type == typ]
-        merged = df.merge(type_map, on='native_sensor_id', how='inner')
-        if merged.empty:
-            log.warning(f"No {typ} rows matched deployments.")
-            continue
-        merged = merged.rename(columns={'deployment_pk': 'deployment_fk'})
-        id_vars = ['timestamp', 'deployment_fk']
-        candidate_vars = [c for c in merged.columns if c not in id_vars + ['native_sensor_id', 'sensor_type']]
-        numeric_vars: list[str] = []
-        for col in candidate_vars:
-            coerced = pd.to_numeric(merged[col], errors='coerce')
-            if coerced.notna().any():
-                merged[col] = coerced
-                numeric_vars.append(col)
-        if not numeric_vars:
-            continue
-        long_df = pd.melt(merged, id_vars=id_vars, value_vars=numeric_vars, var_name='metric_name', value_name='value')
-        long_df['value'] = pd.to_numeric(long_df['value'], errors='coerce')
-        all_long.append(long_df)
-    if not all_long:
-        log.warning("Nothing to insert after deployment matching.")
-        return
-    final = pd.concat(all_long, ignore_index=True)
-    final['value'] = pd.to_numeric(final['value'], errors='coerce')
-    final = final.dropna(subset=['value']).drop_duplicates(subset=['timestamp', 'deployment_fk', 'metric_name'], keep='last')
-    if final.empty:
-        log.info("Final DataFrame empty after cleaning.")
-        return
-    try:
-        db.insert_sensor_readings(final)
-        log.info(f"Inserted/upserted {len(final)} sensor readings.")
-    except Exception as e:
-        log.error(f"DB insertion failed: {e}")
-        raise
-
-
-def check_db_connection(db: HotDurhamDB) -> bool:
-    try:
-        with db.engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        return True
-    except Exception as e:
+ # All legacy DB logic removed for BigQuery-only mode
         log.error(f"Database connectivity check failed: {e}")
         return False
 
@@ -509,22 +364,7 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
             log.warning("WU missing ts/timestamp -> not inserting")
         if (not _has_ts(tsi_df)) and not tsi_df.empty:
             log.warning("TSI missing ts/timestamp -> not inserting")
-        try:
-            # Import on demand to avoid hard dependency in BigQuery-only mode
-            from src.database.db_manager import HotDurhamDB as _HotDurhamDB  # type: ignore
-            db = _HotDurhamDB()
-        except Exception as e:
-            log.critical(f"Skipping DB sink – could not initialize database engine: {e}")
-            db = None
-        if db is not None and check_db_connection(db):
-            try:
-                insert_data_to_db(db, wu_db, tsi_db)
-                if (not wu_db.empty):
-                    wrote_wu = True
-                if (not tsi_db.empty):
-                    wrote_tsi = True
-            except Exception as e:
-                log.error(f"DB insertion encountered an error; continuing without DB sink: {e}")
+        # All DB logic removed for BigQuery-only mode
         elif db is not None:
             log.critical("DB connection failed; skipped DB sink")
     elif disable_db:
@@ -570,7 +410,7 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
     deployment_map_df = pd.DataFrame()
     try:
         from sqlalchemy import text as _bq_text  # reuse existing DB connection logic if available
-        db = HotDurhamDB()
+    # DB logic removed for BigQuery-only mode
         with db.engine.connect() as conn:
             deployment_map_df = pd.read_sql(_bq_text("""
                 SELECT d.deployment_pk, sm.native_sensor_id, sm.sensor_type

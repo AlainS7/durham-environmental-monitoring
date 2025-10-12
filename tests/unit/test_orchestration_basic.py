@@ -41,7 +41,8 @@ def test_run_collection_process_gcs(monkeypatch):
     monkeypatch.setattr(dc, 'WUClient', lambda **cfg: DummyWU())
     monkeypatch.setattr(dc, 'TSIClient', lambda **cfg: DummyTSI())
     monkeypatch.setattr(dc, '_build_uploader', lambda bucket, prefix: DummyUploader())
-    monkeypatch.setattr(dc, 'HotDurhamDB', DummyDB)
+    # monkeypatch.setattr(dc, 'HotDurhamDB', DummyDB)
+     # DB logic removed for BigQuery-only mode
     # ensure bucket config so GCS path executes; force fake upload to avoid pyarrow if missing
     monkeypatch.setenv('GCS_FAKE_UPLOAD', '1')
     # run with gcs sink only to avoid DB connection attempt

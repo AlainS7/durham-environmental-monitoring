@@ -34,7 +34,7 @@ def mock_clients(mocker):
 
 @pytest.fixture
 def mock_db(mocker):
-    """Mocks HotDurhamDB and its engine interactions."""
+    # DB logic removed for BigQuery-only mode
     mock_db_instance = MagicMock()
     mock_engine = MagicMock()
     mock_connection = MagicMock()
@@ -44,8 +44,9 @@ def mock_db(mocker):
     mock_db_instance.engine = mock_engine
     mock_engine.connect.return_value.__enter__.return_value = mock_connection
     mock_connection.begin.return_value.__enter__.return_value = mock_transaction
+     # DB logic removed for BigQuery-only mode
+    # mocker.patch('src.data_collection.daily_data_collector.HotDurhamDB', return_value=mock_db_instance)
 
-    mocker.patch('src.data_collection.daily_data_collector.HotDurhamDB', return_value=mock_db_instance)
     mocker.patch('pandas.read_sql', return_value=pd.DataFrame({
         'deployment_pk': [1, 2],
         'native_sensor_id': ['KNCGARNE13', 'd14rfblfk2973f196c5g'],
