@@ -23,7 +23,7 @@ from typing import Any, Tuple, Optional, List
 
 import pandas as pd
 import numpy as np
-from sqlalchemy import text
+ # DB logic removed for BigQuery-only mode
 
 from src.config.app_config import app_config
 from typing import TYPE_CHECKING
@@ -233,8 +233,7 @@ def _augment_catalog_with_data(catalog: dict[tuple[str, str], dict[str, Any]], d
 
 
  # All legacy DB logic removed for BigQuery-only mode
-        log.error(f"Database connectivity check failed: {e}")
-        return False
+    # DB connectivity check removed for BigQuery-only mode
 
 
 ###########################
@@ -358,15 +357,13 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
             wrote_any = wrote_wu or wrote_tsi
 
     if not disable_db and (sink in ('db', 'both') or (sink == 'gcs' and not wrote_any)):
-        wu_db = wu_df if _has_ts(wu_df) else pd.DataFrame()
-        tsi_db = tsi_df if _has_ts(tsi_df) else pd.DataFrame()
+    # DB logic removed for BigQuery-only mode
         if (not _has_ts(wu_df)) and not wu_df.empty:
             log.warning("WU missing ts/timestamp -> not inserting")
         if (not _has_ts(tsi_df)) and not tsi_df.empty:
             log.warning("TSI missing ts/timestamp -> not inserting")
         # All DB logic removed for BigQuery-only mode
-        elif db is not None:
-            log.critical("DB connection failed; skipped DB sink")
+        # DB logic removed for BigQuery-only mode
     elif disable_db:
         log.info("DB sink disabled via DISABLE_DB_SINK=1")
     return wrote_wu, wrote_tsi
@@ -408,19 +405,7 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
 
     # Fetch deployment mapping (active only)
     deployment_map_df = pd.DataFrame()
-    try:
-        from sqlalchemy import text as _bq_text  # reuse existing DB connection logic if available
     # DB logic removed for BigQuery-only mode
-        with db.engine.connect() as conn:
-            deployment_map_df = pd.read_sql(_bq_text("""
-                SELECT d.deployment_pk, sm.native_sensor_id, sm.sensor_type
-                FROM deployments d
-                JOIN sensors_master sm ON d.sensor_fk = sm.sensor_pk
-                WHERE d.end_date IS NULL
-            """), conn)
-    except Exception as e:
-        log.error(f"Unable to fetch deployment mapping for staging tables: {e}")
-        return
     if deployment_map_df.empty:
         log.error("Deployment map empty – cannot build BigQuery staging tables.")
         return
