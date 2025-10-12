@@ -37,8 +37,7 @@ This project uses `uv` for fast and efficient dependency management.
     ```sh
     uv venv
     source .venv/bin/activate
-    uv pip sync requirements.txt
-    uv pip sync requirements-dev.txt
+    uv pip install -e ".[dev]"
     ```
 
 3.  **Configure Credentials**:

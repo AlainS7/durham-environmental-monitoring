@@ -32,7 +32,7 @@ jobs:
     - name: Install dependencies (prod + dev)
       run: |
         uv venv
-        uv pip sync requirements.txt requirements-dev.txt
+        uv pip install -e ".[dev]"
 
     - name: Scan for vulnerabilities with pip-audit
       run: |
