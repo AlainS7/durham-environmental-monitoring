@@ -244,6 +244,68 @@ wheels = [
 ]
 
 [[package]]
+name = "durham-environmental-monitoring"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "google-cloud-bigquery" },
+    { name = "google-cloud-logging" },
+    { name = "google-cloud-secret-manager" },
+    { name = "google-cloud-storage" },
+    { name = "httpx" },
+    { name = "nest-asyncio" },
+    { name = "pandas" },
+    { name = "protobuf" },
+    { name = "psycopg2-binary" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "sqlalchemy" },
+    { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "flake8" },
+    { name = "jinja2" },
+    { name = "pip-audit" },
+    { name = "pip-tools" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "flake8", marker = "extra == 'dev'" },
+    { name = "google-cloud-bigquery", specifier = ">=3.25.0" },
+    { name = "google-cloud-logging", specifier = ">=3.10.0" },
+    { name = "google-cloud-secret-manager", specifier = ">=2.21.0" },
+    { name = "google-cloud-storage", specifier = ">=2.18.2" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jinja2", marker = "extra == 'dev'" },
+    { name = "nest-asyncio", specifier = ">=1.6.0" },
+    { name = "pandas", specifier = ">=2.3.0" },
+    { name = "pip-audit", marker = "extra == 'dev'" },
+    { name = "pip-tools", marker = "extra == 'dev'" },
+    { name = "protobuf", specifier = ">=6.0.0,<7.0.0" },
+    { name = "psycopg2-binary", specifier = ">=2.9.9" },
+    { name = "pyarrow", specifier = ">=16.1.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'" },
+    { name = "pytest-mock", marker = "extra == 'dev'" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.41" },
+    { name = "tqdm", specifier = ">=4.66.4" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1970,68 +2032,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2", size = 78540, upload-time = "2024-11-24T20:12:19.698Z" },
 ]
-
-[[package]]
-name = "durham-environmental-monitoring"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "google-cloud-bigquery" },
-    { name = "google-cloud-logging" },
-    { name = "google-cloud-secret-manager" },
-    { name = "google-cloud-storage" },
-    { name = "httpx" },
-    { name = "nest-asyncio" },
-    { name = "pandas" },
-    { name = "protobuf" },
-    { name = "psycopg2-binary" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "pyyaml" },
-    { name = "sqlalchemy" },
-    { name = "tqdm" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "flake8" },
-    { name = "jinja2" },
-    { name = "pip-audit" },
-    { name = "pip-tools" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "flake8", marker = "extra == 'dev'" },
-    { name = "google-cloud-bigquery", specifier = ">=3.25.0" },
-    { name = "google-cloud-logging", specifier = ">=3.10.0" },
-    { name = "google-cloud-secret-manager", specifier = ">=2.21.0" },
-    { name = "google-cloud-storage", specifier = ">=2.18.2" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jinja2", marker = "extra == 'dev'" },
-    { name = "nest-asyncio", specifier = ">=1.6.0" },
-    { name = "pandas", specifier = ">=2.3.0" },
-    { name = "pip-audit", marker = "extra == 'dev'" },
-    { name = "pip-tools", marker = "extra == 'dev'" },
-    { name = "protobuf", specifier = ">=6.0.0,<7.0.0" },
-    { name = "psycopg2-binary", specifier = ">=2.9.9" },
-    { name = "pyarrow", specifier = ">=16.1.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
-    { name = "pytest-mock", marker = "extra == 'dev'" },
-    { name = "python-dotenv", specifier = ">=1.1.1" },
-    { name = "pyyaml", specifier = ">=6.0.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
-    { name = "sqlalchemy", specifier = ">=2.0.41" },
-    { name = "tqdm", specifier = ">=4.66.4" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "typing-extensions"

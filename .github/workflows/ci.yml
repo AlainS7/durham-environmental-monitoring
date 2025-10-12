@@ -37,7 +37,8 @@ jobs:
     - name: Scan for vulnerabilities with pip-audit
       run: |
         # 'uv run' executes a command within the virtual environment.
-        uv run pip-audit
+        # Skip editable packages and ignore known pip vulnerability (waiting for 25.3 release)
+        uv run pip-audit --skip-editable --ignore-vuln GHSA-4xh5-x5gv-qwph
 
     - name: Lint with ruff
       run: |

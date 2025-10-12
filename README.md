@@ -133,6 +133,14 @@ The project relies heavily on GitHub Actions for automation and verification.
 
 ---
 
+## 🔒 Security
+
+This project includes automated security scanning for Python dependencies using `pip-audit`. The security audit runs as part of the CI pipeline to identify known vulnerabilities.
+
+For detailed information about security audit configuration and current status, see **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)**.
+
+---
+
 ## 🤝 Contributing
 
 1.  Fork the repository.
