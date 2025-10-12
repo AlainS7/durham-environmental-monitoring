@@ -26,7 +26,9 @@ import numpy as np
 from sqlalchemy import text
 
 from src.config.app_config import app_config
-from src.database.db_manager import HotDurhamDB
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # only for type checkers; at runtime we may not have DB layer
+    from src.database.db_manager import HotDurhamDB
 from src.storage.gcs_uploader import GCSUploader
 from src.data_collection.clients.wu_client import WUClient
 from src.data_collection.clients.tsi_client import TSIClient
@@ -52,7 +54,7 @@ if _lvl:
 # Diagnostic: log presence of critical env vars once (not their values) to verify Cloud Run template propagation.
 _diag_logged = False
 critical_env = [
-    'PROJECT_ID','DB_CREDS_SECRET_ID','TSI_CREDS_SECRET_ID','WU_API_KEY_SECRET_ID',
+    'PROJECT_ID','TSI_CREDS_SECRET_ID','WU_API_KEY_SECRET_ID',
     'GCS_BUCKET','GCS_PREFIX','BQ_PROJECT','BQ_DATASET','BQ_LOCATION','DISABLE_BQ_STAGING'
 ]
 present = [k for k in critical_env if os.getenv(k)]
@@ -487,7 +489,8 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
     wrote_wu = wrote_tsi = False
     wrote_any = False
     # Allow hard disable of any DB interaction (Cloud SQL optional) via env DISABLE_DB_SINK=1
-    disable_db = os.getenv('DISABLE_DB_SINK') == '1'
+    # In BigQuery-only mode, default to disabled when env var is unset
+    disable_db = os.getenv('DISABLE_DB_SINK', '1') == '1'
     if sink in ('gcs', 'both'):
         gcs_cfg = app_config.gcs_config
         bucket = gcs_cfg.get('bucket')
@@ -507,7 +510,9 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
         if (not _has_ts(tsi_df)) and not tsi_df.empty:
             log.warning("TSI missing ts/timestamp -> not inserting")
         try:
-            db = HotDurhamDB()
+            # Import on demand to avoid hard dependency in BigQuery-only mode
+            from src.database.db_manager import HotDurhamDB as _HotDurhamDB  # type: ignore
+            db = _HotDurhamDB()
         except Exception as e:
             log.critical(f"Skipping DB sink – could not initialize database engine: {e}")
             db = None
@@ -641,10 +646,10 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
                 ts_converted = pd.to_datetime(ts_series, utc=True, errors='coerce')
             ts_converted = ts_converted.dt.tz_convert('UTC') if ts_converted.dt.tz is not None else ts_converted.dt.tz_localize('UTC')
             ts_py = pd.Series(
-                (
+                [
                     value.to_pydatetime() if pd.notna(value) else None
                     for value in ts_converted
-                ),
+                ],
                 index=ts_converted.index,
                 dtype=object,
             )
@@ -685,7 +690,9 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
                 return None
 
             ensured_py = pd.Series(
-                (_ensure_py_datetime(value) for value in day_df['timestamp']),
+                [
+                    _ensure_py_datetime(value) for value in day_df['timestamp']
+                ],
                 index=day_df.index,
                 dtype=object,
             )
@@ -711,7 +718,7 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
             else:
                 coerced_ts = coerced_ts.dt.tz_convert('UTC')
             py_ts = pd.Series(
-                (ts.to_pydatetime() for ts in coerced_ts),
+                [ts.to_pydatetime() for ts in coerced_ts],
                 index=coerced_ts.index,
                 dtype=object,
             )
@@ -737,7 +744,9 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
                 )
                 day_df.loc[non_dt_mask, 'timestamp'] = day_df.loc[non_dt_mask, 'timestamp'].apply(_ensure_py_datetime)
             ensured_final = pd.Series(
-                (_ensure_py_datetime(value) for value in day_df['timestamp']),
+                [
+                    _ensure_py_datetime(value) for value in day_df['timestamp']
+                ],
                 index=day_df.index,
                 dtype=object,
             )

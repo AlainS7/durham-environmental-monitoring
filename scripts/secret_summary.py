@@ -5,7 +5,7 @@ Outputs a single INFO line summarizing which required keys are present in each s
 No secret values or lengths are logged. Suitable for use in public logs.
 
 Usage (locally):
-  PROJECT_ID=your-project DB_CREDS_SECRET_ID=prod-db-credentials TSI_CREDS_SECRET_ID=tsi_creds WU_API_KEY_SECRET_ID=wu_api_key \
+    PROJECT_ID=your-project TSI_CREDS_SECRET_ID=tsi_creds WU_API_KEY_SECRET_ID=wu_api_key \
   python scripts/secret_summary.py
 
 If running inside Cloud Run with env vars already set, just execute the script.

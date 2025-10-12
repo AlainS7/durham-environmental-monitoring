@@ -91,7 +91,7 @@ jobs:
           --image "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.JOB_NAME }}:${{ github.sha }}" \
           --region ${{ env.REGION }} \
           --service-account="data-runner@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
-          --set-env-vars="PROJECT_ID=${{ env.PROJECT_ID }},DB_CREDS_SECRET_ID=prod-db-credentials,TSI_CREDS_SECRET_ID=tsi_creds,WU_API_KEY_SECRET_ID=wu_api_key,GCS_BUCKET=${{ vars.GCS_BUCKET }},GCS_PREFIX=${{ vars.GCS_PREFIX }}" \
+          --set-env-vars="PROJECT_ID=${{ env.PROJECT_ID }},TSI_CREDS_SECRET_ID=tsi_creds,WU_API_KEY_SECRET_ID=wu_api_key,GCS_BUCKET=${{ vars.GCS_BUCKET }},GCS_PREFIX=${{ vars.GCS_PREFIX }}" \
           --command="python" \
           --args="src/data_collection/daily_data_collector.py" \
           --quiet

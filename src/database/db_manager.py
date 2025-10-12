@@ -17,7 +17,11 @@ class HotDurhamDB:
     """Database manager for PostgreSQL on Google Cloud SQL"""
 
     def __init__(self):
-        """Initializes the database connection and schema."""
+        """Initializes the database connection and schema.
+
+        In BigQuery-only mode, this class should not be instantiated. If attempted
+        without a valid DB URL, it will raise at engine creation time.
+        """
         self.engine = self._create_db_engine()
         self._init_database()
 
@@ -26,7 +30,7 @@ class HotDurhamDB:
         from src.config.app_config import app_config
         db_url = app_config.database_url
         if not db_url:
-            log.critical("Database URL is not available (secrets missing or malformed). Database features will be disabled.")
+            log.critical("Database URL is not available (BigQuery-only mode).")
             raise RuntimeError("Database URL not available")
         return create_engine(db_url)
 

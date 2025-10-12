@@ -1,85 +1,10 @@
-# Cloud SQL Auth Proxy & PostgreSQL Dev Setup
+# [Deprecated] Cloud SQL Auth Proxy & PostgreSQL Dev Setup
 
-This guide explains how to connect your development environment (including GitHub Codespaces) to a Google Cloud SQL PostgreSQL database using the Cloud SQL Auth Proxy, Google Secret Manager, and supervisord.
+**This guide is deprecated.**
 
----
+The project has migrated to a BigQuery-only pipeline. Cloud SQL/PostgreSQL is no longer required for development or production. All instructions for Cloud SQL, PostgreSQL, and the Cloud SQL Auth Proxy can be ignored and removed from your local setup.
 
-## Prerequisites
-
-- Access to the Google Cloud project and Cloud SQL instance
-- The following secrets set up in Google Secret Manager:
-  - **Instance connection name**
-- Your dev environment has:
-  - Python 3, pip, Node.js, npm, and Git (pre-installed in this dev container)
-  - Google Cloud CLI (`gcloud`)
-  - Cloud SQL Auth Proxy (installed automatically by the dev container setup)
-  - supervisord
-
----
-
-## 1. Authenticate with Google Cloud
-
-Open a terminal in your Codespace or dev container and run:
-
-```sh
-gcloud auth login
-gcloud auth application-default login
-gcloud auth application-default set-quota-project <PROJECT_ID>
-```
-
----
-
-## 2. Ensure Cloud SQL Auth Proxy is Installed
-
-The dev container setup script will install the proxy automatically. If you need to install it manually:
-
-```sh
-sudo curl -o /usr/local/bin/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64
-sudo chmod +x /usr/local/bin/cloud-sql-proxy
-```
-
----
-
-## 3. Fetch the Instance Connection Name from Secret Manager
-
-The dev container uses a wrapper script:  
-`.devcontainer/start-cloud-sql-proxy.sh`
-
-This script fetches the instance connection name from Secret Manager and starts the proxy.
-
-**Example secret fetch command:**
-
-```sh
-gcloud secrets versions access latest --secret="YOUR_SECRET_NAME" --project="PROJECT_ID"
-```
-
----
-
-## 4. Start the Cloud SQL Auth Proxy
-
-You can start the proxy in two ways:
-
-### a) Using supervisord (recommended)
-
-```sh
-supervisord -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf
-```
-
-Check status:
-
-```sh
-supervisorctl -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf status
-```
-
-Restart the proxy if needed:
-
-```sh
-supervisorctl -c /workspaces/durham-environmental-monitoring/.devcontainer/supervisord.conf restart cloud-sql-proxy
-```
-
-### b) Run the wrapper script directly
-
-```sh
+For all data ingestion, transformation, and analytics, use BigQuery as described in the main README and scripts.
 .devcontainer/start-cloud-sql-proxy.sh
 ```
 

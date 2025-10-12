@@ -165,7 +165,6 @@ class Config:
         # Map required name -> attribute actually holding it
         required_map = {
             "PROJECT_ID": "project_id",
-            "DB_CREDS_SECRET_ID": "db_creds_secret_id",
             "TSI_CREDS_SECRET_ID": "tsi_creds_secret_id",
             "WU_API_KEY_SECRET_ID": "wu_api_key_secret_id",
         }
@@ -212,11 +211,16 @@ class Config:
             return None
 
     def _validate_secrets(self):
-        """Validate the contents of the fetched secrets."""
+        """Validate the contents of the fetched secrets.
+
+        In BigQuery-only mode, database credentials are optional. We'll only validate
+        TSI and WU secrets here; if DB creds exist, ensure they are well-formed.
+        """
         db_keys = ["DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME"]
         creds = self.db_creds
         tsi = self.tsi_creds
-        if not creds or not all(key in creds for key in db_keys):
+        # DB creds are optional now; if present, validate structure, otherwise ignore
+        if creds and not all(k in creds for k in db_keys):
             logging.critical("Database credentials secret is missing one or more required keys.")
             return False
         if not tsi or "key" not in tsi or "secret" not in tsi:
