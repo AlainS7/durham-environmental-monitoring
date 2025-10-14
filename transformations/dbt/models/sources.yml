@@ -7,9 +7,9 @@ sources:
       error_after: {count: 36, period: hour}
     loaded_at_field: timestamp
     tables:
-      - name: sensor_readings_wu_raw
+      - name: wu_raw_materialized
         description: Weather Underground raw observations
         loaded_at_field: obsTimeUtc
-      - name: sensor_readings_tsi_raw
+      - name: tsi_raw_materialized
         description: TSI device raw observations
         loaded_at_field: cloud_timestamp

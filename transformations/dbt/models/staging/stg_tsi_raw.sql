@@ -1,2 +1,2 @@
 -- Simple staging model selecting from raw TSI table
-select * from `{{ var('project') }}`.{{ target.schema }}.sensor_readings_tsi_raw
+select * from {{ source('raw_sources', 'tsi_raw_materialized') }}
