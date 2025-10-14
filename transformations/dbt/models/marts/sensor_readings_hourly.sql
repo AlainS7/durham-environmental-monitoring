@@ -11,5 +11,5 @@ select
   count(*) as samples,
   farm_fingerprint(concat(cast(timestamp_trunc(timestamp, hour) as string),'|',native_sensor_id,'|',metric_name)) as row_id
 from {{ ref('sensor_readings_long') }}
-where date(timestamp) = var('proc_date')
+where date(timestamp) = '{{ var("proc_date") }}'
 group by 1,2,3,4
