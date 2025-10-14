@@ -36,7 +36,7 @@ test:
 
 run-collector:
 	@# Example: make run-collector START=2025-08-01 END=2025-08-01 SOURCE=all SINK=gcs
-	$(UV) run python -m src.data_collection.daily_data_collector --start $(START) --end $(END) --source $(SOURCE) --sink $(SINK) $(if $(AGG),--aggregate,) $(if $(AGG_INTERVAL),--agg-interval $(AGG_INTERVAL),)
+	python -m src.data_collection.daily_data_collector --start $(START) --end $(END) --source $(SOURCE) --sink $(SINK) $(if $(AGG),--aggregate,) $(if $(AGG_INTERVAL),--agg-interval $(AGG_INTERVAL),)
 
 load-bq:
 	@# Required vars: DATE=YYYY-MM-DD SOURCE=all|WU|TSI AGG=raw|h
