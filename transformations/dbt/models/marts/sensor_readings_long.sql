@@ -2,7 +2,7 @@
 -- Long unified table from staging sources (emulates 01_sensor_readings_long.sql)
 with wu_src as (
     select
-      timestamp,
+      ts as timestamp,
       native_sensor_id,
       temperature,
       humidity,
@@ -14,18 +14,18 @@ with wu_src as (
       solar_radiation,
       uv_high
     from {{ ref('stg_wu_raw') }}
-    where timestamp is not null
-      and date(timestamp) between date_sub(var('proc_date'), interval 0 day) and var('proc_date')
+    where ts is not null
+      and date(ts) between date_sub(var('proc_date'), interval 0 day) and var('proc_date')
 ), tsi_src as (
     select
-      timestamp,
+      ts as timestamp,
       native_sensor_id,
       pm2_5,
       humidity,
       temperature
     from {{ ref('stg_tsi_raw') }}
-    where timestamp is not null
-      and date(timestamp) between date_sub(var('proc_date'), interval 0 day) and var('proc_date')
+    where ts is not null
+      and date(ts) between date_sub(var('proc_date'), interval 0 day) and var('proc_date')
 ), wu_long as (
     select * from wu_src
     unpivot (value for metric_name in (temperature, humidity, precip_rate, precip_total, wind_speed_avg, wind_gust_avg, wind_direction_avg, solar_radiation, uv_high))
