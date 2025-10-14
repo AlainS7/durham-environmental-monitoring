@@ -66,6 +66,7 @@ jobs:
           GCS_BUCKET: sensor-data-to-bigquery
           GCS_PREFIX: raw
           PROJECT_ID: ${{ env.PROJECT_ID }}
+          DISABLE_BQ_STAGING: '1'
           # Secret IDs used by code to fetch credentials from Secret Manager
           TSI_CREDS_SECRET_ID: tsi_creds
           WU_API_KEY_SECRET_ID: wu_api_key

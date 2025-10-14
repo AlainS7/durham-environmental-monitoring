@@ -102,6 +102,11 @@ def clean_and_transform_data(df: pd.DataFrame, source: str) -> pd.DataFrame:
             'is_public': 'is_public', 'latitude': 'latitude', 'longitude': 'longitude'
         }
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+    if source == "WU":
+        for col in ['qc_status', 'epoch']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+
     if 'timestamp' in df.columns:
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
         df['ts'] = df['timestamp']
