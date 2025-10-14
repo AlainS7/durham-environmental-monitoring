@@ -151,7 +151,10 @@ def get_schema_info(df: pd.DataFrame) -> Dict[str, str]:
     Returns:
         Dictionary mapping column names to dtype strings
     """
-    return {col: str(dtype) for col, dtype in df.dtypes.items()}
+    schema = {}
+    for col, dtype in df.dtypes.items():
+        schema[str(col)] = str(dtype)
+    return schema
 
 
 def log_schema_comparison(
