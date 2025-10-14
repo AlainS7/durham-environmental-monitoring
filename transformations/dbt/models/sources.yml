@@ -2,14 +2,15 @@ version: 2
 sources:
   - name: raw_sources
     description: Raw ingestion tables from sensor pipelines
+    schema: sensors
     freshness:
       warn_after: {count: 26, period: hour}
       error_after: {count: 36, period: hour}
-    loaded_at_field: timestamp
+    loaded_at_field: ts
     tables:
-      - name: sensor_readings_wu_raw
+      - name: wu_raw_materialized
         description: Weather Underground raw observations
-        loaded_at_field: obsTimeUtc
-      - name: sensor_readings_tsi_raw
+        loaded_at_field: ts
+      - name: tsi_raw_materialized
         description: TSI device raw observations
-        loaded_at_field: cloud_timestamp
+        loaded_at_field: ts
