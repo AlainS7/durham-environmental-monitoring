@@ -4,6 +4,7 @@ select
   timestamp_trunc(timestamp, day) as day_ts,
   date(timestamp_trunc(timestamp, day)) as day_date,
   native_sensor_id,
+  source,
   metric_name,
   avg(value) as avg_value,
   min(value) as min_value,
@@ -12,4 +13,4 @@ select
   farm_fingerprint(concat(cast(timestamp_trunc(timestamp, day) as string),'|',native_sensor_id,'|',metric_name)) as row_id
 from {{ ref('sensor_readings_long') }}
 where date(timestamp) between date_sub(var('proc_date'), interval 6 day) and var('proc_date')
-group by 1,2,3,4
+group by 1,2,3,4,5
