@@ -360,7 +360,7 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
     #         log.warning("TSI missing ts/timestamp -> not inserting")
     #     # All DB logic removed for BigQuery-only mode
     #     # DB logic removed for BigQuery-only mode
-    elif disable_db:
+    if disable_db:
         log.info("DB sink disabled via DISABLE_DB_SINK=1")
     return wrote_wu, wrote_tsi
 
@@ -399,12 +399,23 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
     dataset = os.getenv('BQ_DATASET', 'sensors')
     client = bigquery.Client(project=bq_project)
 
-    # # Fetch deployment mapping (active only)
-    # deployment_map_df = pd.DataFrame()
-    # # DB logic removed for BigQuery-only mode
-    # if deployment_map_df.empty:
-    #     log.error("Deployment map empty – cannot build BigQuery staging tables.")
-    #     return
+    # Fetch deployment mapping from BigQuery
+    try:
+        deployment_map_sql = f"""
+        SELECT
+            native_sensor_id,
+            source AS sensor_type,
+            FARM_FINGERPRINT(native_sensor_id) AS deployment_pk
+        FROM `{bq_project}.{dataset}.sensor_id_map`
+        """
+        deployment_map_df = client.query(deployment_map_sql).to_dataframe()
+    except Exception as e:
+        log.error(f"Failed to fetch deployment map from BigQuery: {e}")
+        deployment_map_df = pd.DataFrame()
+
+    if deployment_map_df.empty:
+        log.error("Deployment map empty – cannot build BigQuery staging tables.")
+        return
 
     def _prepare_long(df: pd.DataFrame, sensor_type: str) -> pd.DataFrame:
         if df.empty:
