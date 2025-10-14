@@ -2,6 +2,7 @@ version: 2
 sources:
   - name: raw_sources
     description: Raw ingestion tables from sensor pipelines
+    schema: sensors
     freshness:
       warn_after: {count: 26, period: hour}
       error_after: {count: 36, period: hour}
