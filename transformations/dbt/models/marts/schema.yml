@@ -10,7 +10,8 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ["temperature","humidity","precip_rate","precip_total","wind_speed_avg","wind_gust_avg","wind_direction_avg","solar_radiation","uv_high","pm2_5","pm2_5_aqi","temperature_high","temperature_low","humidity_high","humidity_low","wind_speed_high","wind_speed_low","wind_gust_high","wind_gust_low","pressure_max","pressure_min","pressure_trend","wind_chill_avg","wind_chill_high","wind_chill_low","heat_index_avg","heat_index_high","heat_index_low","dew_point_avg","dew_point_high","dew_point_low","qc_status","pm10","pm10_aqi","pm1_0","ncpm4_0","ncpm0_5","ncpm10","ncpm1_0","ncpm2_5","tpsize","co2_ppm","co_ppm","baro_inhg","o3_ppb","no2_ppb","so2_ppb","ch2o_ppb","voc_mgm3"]
+              arguments:
+                values: ["temperature","humidity","precip_rate","precip_total","wind_speed_avg","wind_gust_avg","wind_direction_avg","solar_radiation","uv_high","pm2_5","pm2_5_aqi","temperature_high","temperature_low","humidity_high","humidity_low","wind_speed_high","wind_speed_low","wind_gust_high","wind_gust_low","pressure_max","pressure_min","pressure_trend","wind_chill_avg","wind_chill_high","wind_chill_low","heat_index_avg","heat_index_high","heat_index_low","dew_point_avg","dew_point_high","dew_point_low","qc_status","pm10","pm10_aqi","pm1_0","ncpm4_0","ncpm0_5","ncpm10","ncpm1_0","ncpm2_5","tpsize","co2_ppm","co_ppm","baro_inhg","o3_ppb","no2_ppb","so2_ppb","ch2o_ppb","voc_mgm3"]
       - name: value
         tests: [not_null]
       - name: row_id
