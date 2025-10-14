@@ -14,7 +14,7 @@ with wu_src as (
       solar_radiation,
       uv_high
     from {{ ref('stg_wu_raw') }}
-    where date(ts) = var('proc_date')
+    where date(ts) = '{{ var("proc_date") }}'
 ), tsi_src as (
     select
       ts as timestamp,
@@ -23,7 +23,7 @@ with wu_src as (
       humidity,
       temperature
     from {{ ref('stg_tsi_raw') }}
-    where date(ts) = var('proc_date')
+    where date(ts) = '{{ var("proc_date") }}'
 ), wu_long as (
     select * from wu_src
     unpivot (value for metric_name in (temperature, humidity, precip_rate, precip_total, wind_speed_avg, wind_gust_avg, wind_direction_avg, solar_radiation, uv_high))
