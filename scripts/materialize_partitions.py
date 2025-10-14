@@ -49,8 +49,8 @@ def _resolve_time_field(client: bigquery.Client, dataset: str, external_table: s
     for f in table.schema:
         if f.field_type in ("TIMESTAMP", "DATETIME", "INTEGER", "INT64"):
             return f.name
-    # As last resort
-    return next(iter(field_names))
+    # As last resort, raise an error
+    raise RuntimeError(f"Could not determine time field for table {table_ref}")
 
 
 def ensure_materialized_table(client: bigquery.Client, dataset: str, table: str, external_table: str, cluster_by: List[str] | None = None) -> None:
