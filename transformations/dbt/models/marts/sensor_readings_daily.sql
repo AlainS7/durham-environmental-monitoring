@@ -13,4 +13,9 @@ select
   farm_fingerprint(concat(cast(timestamp_trunc(timestamp, day) as string),'|',native_sensor_id,'|',metric_name)) as row_id
 from {{ ref('sensor_readings_long') }}
 where date(timestamp) between date_sub(date('{{ var("proc_date") }}'), interval 6 day) and date('{{ var("proc_date") }}')
-group by 1,2,3,4,5
+group by
+  timestamp_trunc(timestamp, day),
+  date(timestamp_trunc(timestamp, day)),
+  native_sensor_id,
+  source,
+  metric_name

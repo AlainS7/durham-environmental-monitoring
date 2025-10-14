@@ -4,6 +4,7 @@ select
   timestamp_trunc(timestamp, hour) as hour_ts,
   date(timestamp_trunc(timestamp, hour)) as hour_date,
   native_sensor_id,
+  source,
   metric_name,
   avg(value) as avg_value,
   min(value) as min_value,
@@ -12,4 +13,9 @@ select
   farm_fingerprint(concat(cast(timestamp_trunc(timestamp, hour) as string),'|',native_sensor_id,'|',metric_name)) as row_id
 from {{ ref('sensor_readings_long') }}
 where date(timestamp) = '{{ var("proc_date") }}'
-group by 1,2,3,4
+group by
+  timestamp_trunc(timestamp, hour),
+  date(timestamp_trunc(timestamp, hour)),
+  native_sensor_id,
+  source,
+  metric_name
