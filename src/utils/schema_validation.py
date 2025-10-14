@@ -151,7 +151,10 @@ def get_schema_info(df: pd.DataFrame) -> Dict[str, str]:
     Returns:
         Dictionary mapping column names to dtype strings
     """
-    return {col: str(dtype) for col, dtype in df.dtypes.items()}
+    schema = {}
+    for col, dtype in df.dtypes.items():
+        schema[str(col)] = str(dtype)
+    return schema
 
 
 def log_schema_comparison(
@@ -234,39 +237,53 @@ TSI_CRITICAL_COLUMNS = [
 
 WU_EXPECTED_SCHEMA = {
     'timestamp': 'datetime64',
-    'station_id': 'object',
-    'temp_f': 'float64',
-    'temp_c': 'float64',
-    'dewpoint_f': 'float64',
-    'dewpoint_c': 'float64',
-    'heat_index_f': 'float64',
-    'heat_index_c': 'float64',
-    'windchill_f': 'float64',
-    'windchill_c': 'float64',
+    'native_sensor_id': 'object',
+    'temperature': 'float64',
+    'temperature_high': 'float64',
+    'temperature_low': 'float64',
     'humidity': 'float64',
-    'pressure_in': 'float64',
-    'pressure_mb': 'float64',
-    'precip_rate_in': 'float64',
-    'precip_rate_mm': 'float64',
-    'precip_total_in': 'float64',
-    'precip_total_mm': 'float64',
-    'wind_speed_mph': 'float64',
-    'wind_speed_kph': 'float64',
-    'wind_gust_mph': 'float64',
-    'wind_gust_kph': 'float64',
-    'wind_dir': 'float64',
-    'uv': 'float64',
+    'humidity_high': 'float64',
+    'humidity_low': 'float64',
+    'precip_rate': 'float64',
+    'precip_total': 'float64',
+    'wind_speed_avg': 'float64',
+    'wind_speed_high': 'float64',
+    'wind_speed_low': 'float64',
+    'wind_gust_avg': 'float64',
+    'wind_gust_high': 'float64',
+    'wind_gust_low': 'float64',
+    'wind_direction_avg': 'float64',
+    'pressure_max': 'float64',
+    'pressure_min': 'float64',
+    'pressure_trend': 'float64',
     'solar_radiation': 'float64',
-    'latitude': 'float64',
-    'longitude': 'float64'
+    'uv_high': 'float64',
+    'wind_chill_avg': 'float64',
+    'wind_chill_high': 'float64',
+    'wind_chill_low': 'float64',
+    'heat_index_avg': 'float64',
+    'heat_index_high': 'float64',
+    'heat_index_low': 'float64',
+    'dew_point_avg': 'float64',
+    'dew_point_high': 'float64',
+    'dew_point_low': 'float64',
+    'qc_status': 'float64',
+    'obsTimeLocal': 'object',
+    'ts': 'datetime64',
+    'lat_f': 'float64',
+    'lon_f': 'float64',
+    'epoch': 'float64',
+    'lat': 'float64',
+    'lon': 'float64',
+    'tz': 'object',
 }
 
 WU_CRITICAL_COLUMNS = [
     'timestamp',
-    'station_id',
-    'temp_f',
+    'native_sensor_id',
+    'temperature',
     'humidity',
-    'pressure_in'
+    'pressure_max'
 ]
 
 
