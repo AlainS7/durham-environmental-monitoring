@@ -27,10 +27,10 @@ with wu_src as (
     where timestamp is not null
       and date(timestamp) between date_sub(var('proc_date'), interval 0 day) and var('proc_date')
 ), wu_long as (
-    select timestamp, native_sensor_id, metric_name, value from wu_src
+    select * from wu_src
     unpivot (value for metric_name in (temperature, humidity, precip_rate, precip_total, wind_speed_avg, wind_gust_avg, wind_direction_avg, solar_radiation, uv_high))
 ), tsi_long as (
-    select timestamp, native_sensor_id, metric_name, value from tsi_src
+    select * from tsi_src
     unpivot (value for metric_name in (pm2_5, humidity, temperature))
 )
 select timestamp,
