@@ -113,10 +113,20 @@ def delete_partition(client: bigquery.Client, dataset: str, table: str, d: dt.da
 
 
 def insert_partition_from_external(client: bigquery.Client, dataset: str, table: str, external_table: str, d: dt.date) -> None:
-    # Build SELECT that casts epoch-like ints to TIMESTAMP ts and filters the requested date
-    # Choose correct epoch unit dynamically (ns/us/ms/s) to avoid TIMESTAMP overflow
+    target_table_ref = f"{client.project}.{dataset}.{table}"
+    try:
+        target_table = client.get_table(target_table_ref)
+        target_cols = [f.name for f in target_table.schema]
+    except NotFound:
+        print(f"[materialize] Target table {target_table_ref} not found. Cannot insert.")
+        return
+
+    external_table_ref = f"{client.project}.{dataset}.{external_table}"
+    external_table_obj = client.get_table(external_table_ref)
+    external_cols = {f.name for f in external_table_obj.schema}
+
     time_field = _resolve_time_field(client, dataset, external_table)
-    src_schema = {f.name for f in client.get_table(f"{client.project}.{dataset}.{external_table}").schema}
+
     ts_expr = (
         "CASE "
         f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000000 THEN "
@@ -127,14 +137,20 @@ def insert_partition_from_external(client: bigquery.Client, dataset: str, table:
         f"  TIMESTAMP_MILLIS(CAST(t.{time_field} AS INT64)) "
         f"ELSE TIMESTAMP_SECONDS(CAST(t.{time_field} AS INT64)) END"
     )
-    except_cols = [c for c in ["timestamp", "epoch", "ts"] if c in src_schema]
-    except_clause = f" EXCEPT({', '.join(except_cols)})" if except_cols else ""
+
+    select_list = []
+    for col in target_cols:
+        if col == 'ts':
+            select_list.append(f"{ts_expr} AS ts")
+        elif col in external_cols:
+            select_list.append(f"`{col}`")
+        else:
+            select_list.append(f"NULL AS `{col}`")
+
     sql = f"""
-    INSERT INTO `{client.project}.{dataset}.{table}`
-    SELECT
-      {ts_expr} AS ts,
-            t.*{except_clause}
-    FROM `{client.project}.{dataset}.{external_table}` AS t
+    INSERT INTO `{target_table_ref}` ({', '.join(f'`{c}`' for c in target_cols)})
+    SELECT {', '.join(select_list)}
+    FROM `{external_table_ref}` AS t
     WHERE DATE({ts_expr}) = @d
       AND REGEXP_CONTAINS(_FILE_NAME, @dtpath)
     """
