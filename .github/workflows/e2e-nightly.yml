@@ -66,7 +66,6 @@ jobs:
           GCS_PREFIX: raw
           PROJECT_ID: ${{ env.PROJECT_ID }}
           # Secret IDs used by code to fetch credentials from Secret Manager
-          DB_CREDS_SECRET_ID: db_creds
           TSI_CREDS_SECRET_ID: tsi_creds
           WU_API_KEY_SECRET_ID: wu_api_key
         run: |
@@ -81,7 +80,7 @@ jobs:
           DATASET_ID: ${{ env.DATASET_ID }}
         run: |
           echo "Seeding identity mapping into ${PROJECT_ID}.${DATASET_ID}.sensor_id_map (idempotent)"
-          python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute
+          uv run python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute
 
       - name: Verify outputs
         env:

@@ -1,7 +1,8 @@
 name: dbt-run-test
 on:
   schedule:
-    - cron: '5 5 * * *'
+    # Run after e2e-nightly (07:05 UTC) to ensure raw tables/external tables exist
+    - cron: '15 8 * * *' # 08:15 UTC daily
   workflow_dispatch: {}
   push:
     paths:
@@ -57,16 +58,16 @@ jobs:
         run: |
           PROC_DATE=$(date -u +%Y-%m-%d)
           dbt run --project-dir transformations/dbt --profiles-dir ~/.dbt \
-            --vars "{proc_date: $PROC_DATE, project: ${{ env.GCP_PROJECT_ID }}}"
+            --vars "{proc_date: '$PROC_DATE', project: '${{ env.GCP_PROJECT_ID }}'}"
       - name: dbt test
         run: |
           PROC_DATE=$(date -u +%Y-%m-%d)
           dbt test --project-dir transformations/dbt --profiles-dir ~/.dbt \
-            --vars "{proc_date: $PROC_DATE, project: ${{ env.GCP_PROJECT_ID }}}"
+            --vars "{proc_date: '$PROC_DATE', project: '${{ env.GCP_PROJECT_ID }}'}"
       - name: dbt source freshness
         run: |
           dbt source freshness --project-dir transformations/dbt --profiles-dir ~/.dbt \
-            --vars "{project: ${{ env.GCP_PROJECT_ID }}}"
+            --vars "{project: '${{ env.GCP_PROJECT_ID }}'}"
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4

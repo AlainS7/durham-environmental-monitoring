@@ -44,13 +44,8 @@ async def test_main_script_flow(mocker, sample_wu_df, sample_tsi_df):
     mocker.patch('src.data_collection.clients.wu_client.WUClient.__aenter__', return_value=mock_wu_client)
     mocker.patch('src.data_collection.clients.tsi_client.TSIClient.__aenter__', return_value=mock_tsi_client)
 
-    # Mock DB and its insertion method
-    mock_db_instance = mocker.MagicMock()
-    mock_db_instance.insert_sensor_readings = mocker.MagicMock()
-    mocker.patch('src.data_collection.daily_data_collector.HotDurhamDB', return_value=mock_db_instance)
-    # Patch pandas.read_sql to return a valid DataFrame for deployment map
+    # Patch pandas.read_sql to return a valid DataFrame for deployment map (BigQuery-only)
     mocker.patch('pandas.read_sql', return_value=pd.DataFrame({
-        'deployment_pk': [1, 2, 3],
         'native_sensor_id': ['KNCGARNE13', 'KNCGARNE13', 'd14rfblfk2973f196c5g'],
         'sensor_type': ['WU', 'WU', 'TSI']
     }))
@@ -58,11 +53,8 @@ async def test_main_script_flow(mocker, sample_wu_df, sample_tsi_df):
     # Run the main collection process
     start_date = '2025-07-27'
     end_date = '2025-07-27'
-    await run_collection_process(start_date, end_date, is_dry_run=False, sink='db')
+    await run_collection_process(start_date, end_date, is_dry_run=False, sink='both')
 
     # Assert that the clients were called
     mock_wu_client.fetch_data.assert_called_once_with(start_date, end_date)
     mock_tsi_client.fetch_data.assert_called_once_with(start_date, end_date)
-
-    # Assert that the DB insertion was called
-    assert mock_db_instance.insert_sensor_readings.call_count >= 1

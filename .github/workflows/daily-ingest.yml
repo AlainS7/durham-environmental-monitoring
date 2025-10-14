@@ -45,15 +45,20 @@ permissions:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Write GCP credentials file
+        run: echo "${{ secrets.GCP_SA_KEY_JSON }}" > /tmp/gcp-key.json
       
       - name: Validate required secrets (fail-fast)
         run: |
           set -euo pipefail
           missing=()
-          req=(GCP_WORKLOAD_IDENTITY_PROVIDER GCP_VERIFIER_SA DB_CREDS_SECRET_ID TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID)
+          req=(GCP_WORKLOAD_IDENTITY_PROVIDER GCP_VERIFIER_SA TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID)
           for k in "${req[@]}"; do
             if [ -z "${!k:-}" ]; then
               missing+=("$k")
@@ -64,17 +69,15 @@ jobs:
             exit 1
           fi
           # Short diagnostic (lengths only) to help debug empty secrets without leaking values
-          echo "Secret presence (lengths):" \
-               "WIP=${#GCP_WORKLOAD_IDENTITY_PROVIDER}" \
-               "SA=${#GCP_VERIFIER_SA}" \
-               "DB=${#DB_CREDS_SECRET_ID}" \
-               "TSI=${#TSI_CREDS_SECRET_ID}" \
-               "WU=${#WU_API_KEY_SECRET_ID}" 
+    echo "Secret presence (lengths):" \
+      "WIP=${#GCP_WORKLOAD_IDENTITY_PROVIDER}" \
+      "SA=${#GCP_VERIFIER_SA}" \
+       "TSI=${#TSI_CREDS_SECRET_ID}" \
+      "WU=${#WU_API_KEY_SECRET_ID}" 
           echo "All required secrets present: ${req[*]}"
         env:
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_VERIFIER_SA: ${{ secrets.GCP_VERIFIER_SA }}
-          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
 
@@ -92,7 +95,7 @@ jobs:
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+          credentials_json: '${{ secrets.GCP_SA_KEY_JSON }}'
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -127,13 +130,12 @@ jobs:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
           REGION: ${{ github.event.inputs.region || 'us-east1' }}
-          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
         run: |
           set -euo pipefail
           missing=()
-          for k in DB_CREDS_SECRET_ID TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID; do
+          for k in TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID; do
             if [ -z "${!k:-}" ]; then missing+=("$k"); fi
           done
           if [ ${#missing[@]} -gt 0 ]; then
@@ -142,7 +144,7 @@ jobs:
           gcloud run jobs update "$JOB_NAME" \
             --region "$REGION" \
             --project "$PROJECT_ID" \
-            --set-env-vars "DB_CREDS_SECRET_ID=${DB_CREDS_SECRET_ID},TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=sensor-data-to-bigquery,GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
+            --set-env-vars "TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=sensor-data-to-bigquery,GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
               echo "Failed to update job env vars" >&2; exit 2; }
           echo "Cloud Run job environment updated."
 
@@ -160,7 +162,6 @@ jobs:
           GCS_BUCKET: sensor-data-to-bigquery
           GCS_PREFIX: raw/
           # Secret Manager IDs (the app will fetch JSON secrets at runtime)
-          DB_CREDS_SECRET_ID: ${{ secrets.DB_CREDS_SECRET_ID }}
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
         run: |

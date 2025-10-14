@@ -51,18 +51,6 @@ resource "google_secret_manager_secret" "tsi_auth_url" {
   }
 }
 
-# Placeholder DB creds secret (JSON) expected by application for DB insertion (optional)
-resource "google_secret_manager_secret" "db_creds" {
-  count     = var.create_secrets ? 1 : 0
-  secret_id = "db_creds"
-  replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
-  }
-}
 
 # Optional Artifact Registry repository
 resource "google_artifact_registry_repository" "images" {
@@ -206,10 +194,6 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
         }
   # Application expects secret id environment variables referencing Secret Manager ids containing JSON docs.
   # For now map WU key secret id to same secret; TSI expects JSON secret containing key+secret, but we only have separate secrets.
-        env {
-          name  = "DB_CREDS_SECRET_ID"
-          value = "db_creds"
-        }
         env {
           name  = "TSI_CREDS_SECRET_ID"
           value = "tsi_creds"

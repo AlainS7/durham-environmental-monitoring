@@ -55,7 +55,7 @@ TSI_CLIENT_ID="your-tsi-client-id"
 TSI_CLIENT_SECRET="your-tsi-client-secret"
 WU_API_KEY="your-wu-api-key"
 
-# Database (for local development)
+<!--- Deprecated: Local PostgreSQL/Cloud SQL setup is no longer required. All data operations use BigQuery. -->
 DB_USER="your-db-user"
 DB_PASSWORD="your-db-password"
 DB_HOST="localhost"
@@ -83,23 +83,13 @@ To run the data transformations locally, use the `make run-transformations` comm
 make run-transformations DATE=2025-10-06 DATASET=sensors
 ```
 
-## 4. Local Database Setup (Optional)
+## 4. Local Database Setup (Deprecated)
 
-If you want to use a local PostgreSQL database as a sink, you can use Docker to run a container.
+**This section is deprecated.**
 
-### 4.1. Start PostgreSQL Container
+The project has migrated to a BigQuery-only pipeline. Local PostgreSQL or Cloud SQL setup is no longer required for development or testing. All data ingestion, transformation, and analytics are performed directly in BigQuery.
 
-```sh
-docker run --name durham-postgres -e POSTGRES_PASSWORD=your-db-password -e POSTGRES_USER=your-db-user -e POSTGRES_DB=durham_weather -p 5432:5432 -d postgres
-```
-
-### 4.2. Connect to the Database
-
-You can connect to the database using a tool like `psql` or a GUI client.
-
-```sh
-psql -h localhost -p 5432 -U user -d durham_weather
-```
+If you have legacy scripts or workflows referencing a local database, please update them to use BigQuery. See the main README and scripts for current usage patterns.
 
 ## 5. GCP Authentication
 

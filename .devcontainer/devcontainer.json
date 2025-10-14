@@ -20,7 +20,7 @@
         "ms-python.vscode-pylance",
         "charliermarsh.ruff",
         "ms-azuretools.vscode-docker",
-        "ms-azuretools.vscode-postgresql",
+  // "ms-azuretools.vscode-postgresql", // Deprecated: No longer needed
         "VisualStudioExptTeam.vscodeintellicode",
         "eamodio.gitlens",
         "github.copilot-chat",

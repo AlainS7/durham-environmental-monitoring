@@ -34,7 +34,6 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${JOB_NAME}:${IMAGE_T
 # Env vars
 ENV_VARS=(
   PROJECT_ID=${PROJECT_ID}
-  DB_CREDS_SECRET_ID=prod-db-credentials
   TSI_CREDS_SECRET_ID=tsi_creds
   WU_API_KEY_SECRET_ID=wu_api_key
   GCS_BUCKET=sensor-data-to-bigquery
