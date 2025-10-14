@@ -30,6 +30,7 @@ dependencies = [
     "PyYAML>=6.0.3",
     # Explicit protobuf range to satisfy both google-cloud-* (<7) and dbt-adapters (>=6,<7)
     "protobuf>=6.0.0,<7.0.0",
+    "db-dtypes>=1.2.0",
 ]
 
 [project.optional-dependencies]
