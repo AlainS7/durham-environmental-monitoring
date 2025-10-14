@@ -1,10 +1,11 @@
 # Durham Environmental Monitoring System
 
-**Status (October 2025):** Fully automated and operational.
+**Status (October 2025):** Fully automated and operational. [![CodeScene general](https://codescene.io/images/analyzed-by-codescene-badge.svg)](https://codescene.io/projects/70050)
 
-[![CodeScene general](https://codescene.io/images/analyzed-by-codescene-badge.svg)](https://codescene.io/projects/70050)
 
 A comprehensive, cloud-native environmental monitoring system for Durham, NC. This project features a fully automated pipeline for collecting, processing, and analyzing high-resolution (15-minute interval) data from Weather Underground and TSI air quality sensors.
+
+[![View the interactive map](https://img.shields.io/badge/View-Interactive%20Map-blue)](https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb)
 
 ---
 
