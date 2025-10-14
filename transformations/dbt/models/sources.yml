@@ -10,7 +10,7 @@ sources:
     tables:
       - name: wu_raw_materialized
         description: Weather Underground raw observations
-        loaded_at_field: obsTimeUtc
+        loaded_at_field: timestamp
       - name: tsi_raw_materialized
         description: TSI device raw observations
-        loaded_at_field: cloud_timestamp
+        loaded_at_field: timestamp
