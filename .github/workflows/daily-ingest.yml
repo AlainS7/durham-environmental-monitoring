@@ -45,9 +45,14 @@ permissions:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Write GCP credentials file
+        run: echo "${{ secrets.GCP_SA_KEY_JSON }}" > /tmp/gcp-key.json
       
       - name: Validate required secrets (fail-fast)
         run: |
@@ -90,7 +95,7 @@ jobs:
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+          credentials_json: '${{ secrets.GCP_SA_KEY_JSON }}'
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
