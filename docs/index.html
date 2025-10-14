@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Durham Environmental Monitoring System</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.5em 0.75em;
+            font-size: 0.85em;
+            font-weight: 600;
+            line-height: 1;
+            color: #fff;
+            background-color: #0366d6;
+            border-radius: 3px;
+        }
+        .container {
+            background-color: #f6f8fa;
+            border: 1px solid #eaecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Durham Environmental Monitoring System</h1>
+    <p>
+        A comprehensive, cloud-native environmental monitoring system for Durham, NC. This project features a fully automated pipeline for collecting, processing, and analyzing high-resolution (15-minute interval) data from Weather Underground and TSI air quality sensors.
+    </p>
+    <p>
+        <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb" class="badge">View Interactive Map</a>
+        <a href="https://github.com/AlainS7/durham-environmental-monitoring" class="badge">View on GitHub</a>
+    </p>
+
+    <div class="container">
+        <h2>Key Features</h2>
+        <ul>
+            <li><strong>Fully Automated:</strong> Data is collected, processed, and verified daily via a combination of Google Cloud Scheduler, Cloud Run, and GitHub Actions.</li>
+            <li><strong>High-Resolution Data:</strong> Research-grade 15-minute interval data from multiple sensor types.</li>
+            <li><strong>Cloud-Native:</strong> Leverages Google Cloud Storage (GCS) for raw data storage and BigQuery for warehousing and analytics.</li>
+            <li><strong>Continuous Verification:</strong> A daily GitHub Actions workflow ensures data integrity, schema consistency, and row count expectations.</li>
+            <li><strong>Data Quality Monitoring:</strong> An automated workflow checks for NULLs in critical metrics, validates data coverage, and ensures consistency.</li>
+            <li><strong>Secure & Auditable:</strong> Uses Workload Identity Federation for secure, keyless authentication between GitHub Actions and GCP.</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>Data Pipeline Overview</h2>
+        <ol>
+            <li><strong>Collection:</strong> A Cloud Scheduler job triggers a Cloud Run job that executes the daily data collector script.</li>
+            <li><strong>Storage (Raw):</strong> Raw data is uploaded as Parquet files to a GCS bucket, partitioned by source and date.</li>
+            <li><strong>Materialization:</strong> The raw data is then materialized into partitioned BigQuery tables.</li>
+            <li><strong>Transformation:</strong> A scheduled GitHub Actions workflow runs SQL scripts to transform the raw data into analytics-ready tables.</li>
+            <li><strong>Quality Checks:</strong> Another GitHub Actions workflow runs quality checks against the BigQuery tables.</li>
+            <li><strong>Visualization:</strong> Looker Studio dashboards are connected to the BigQuery tables for visualization and analysis.</li>
+        </ol>
+    </div>
+
+</body>
+</html>
