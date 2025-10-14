@@ -337,7 +337,6 @@ def _safe_upload(uploader: Any, df: pd.DataFrame, src: str, aggregate: bool, agg
 
 def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: bool, agg_interval: str) -> tuple[bool, bool]:
     wrote_wu = wrote_tsi = False
-    wrote_any = False
     # Allow hard disable of any DB interaction (Cloud SQL optional) via env DISABLE_DB_SINK=1
     # In BigQuery-only mode, default to disabled when env var is unset
     disable_db = os.getenv('DISABLE_DB_SINK', '1') == '1'
@@ -350,7 +349,6 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
             uploader = _build_uploader(bucket, gcs_cfg.get('prefix', 'sensor_readings'))
             wrote_wu = _safe_upload(uploader, wu_df, 'WU', aggregate, agg_interval) or wrote_wu
             wrote_tsi = _safe_upload(uploader, tsi_df, 'TSI', aggregate, agg_interval) or wrote_tsi
-            wrote_any = wrote_wu or wrote_tsi
 
     # if not disable_db and (sink in ('db', 'both') or (sink == 'gcs' and not wrote_any)):
     # # DB logic removed for BigQuery-only mode
