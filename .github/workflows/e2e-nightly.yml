@@ -35,9 +35,10 @@ jobs:
 
       - name: Install deps
         run: |
-          uv venv
-          uv pip sync requirements.txt
-          uv pip sync requirements-dev.txt || true
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt || true
 
       - name: Auth to Google Cloud (OIDC)
         uses: google-github-actions/auth@v2
@@ -72,6 +73,7 @@ jobs:
           START=${{ steps.daterange.outputs.start }}
           END=${{ steps.daterange.outputs.end }}
           echo "Running e2e for $START -> $END"
+          source .venv/bin/activate
           make e2e START="$START" END="$END" DATASET="$BQ_DATASET" PROJECT="$BQ_PROJECT"
 
       - name: Seed sensor_id_map (idempotent)
@@ -80,7 +82,8 @@ jobs:
           DATASET_ID: ${{ env.DATASET_ID }}
         run: |
           echo "Seeding identity mapping into ${PROJECT_ID}.${DATASET_ID}.sensor_id_map (idempotent)"
-          uv run python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute
+          source .venv/bin/activate
+          python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute
 
       - name: Verify outputs
         env:
