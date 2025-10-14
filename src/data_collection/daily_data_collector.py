@@ -337,7 +337,6 @@ def _safe_upload(uploader: Any, df: pd.DataFrame, src: str, aggregate: bool, agg
 
 def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: bool, agg_interval: str) -> tuple[bool, bool]:
     wrote_wu = wrote_tsi = False
-    wrote_any = False
     # Allow hard disable of any DB interaction (Cloud SQL optional) via env DISABLE_DB_SINK=1
     # In BigQuery-only mode, default to disabled when env var is unset
     disable_db = os.getenv('DISABLE_DB_SINK', '1') == '1'
@@ -350,17 +349,16 @@ def _sink_data(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, sink: str, aggregate: 
             uploader = _build_uploader(bucket, gcs_cfg.get('prefix', 'sensor_readings'))
             wrote_wu = _safe_upload(uploader, wu_df, 'WU', aggregate, agg_interval) or wrote_wu
             wrote_tsi = _safe_upload(uploader, tsi_df, 'TSI', aggregate, agg_interval) or wrote_tsi
-            wrote_any = wrote_wu or wrote_tsi
 
-    if not disable_db and (sink in ('db', 'both') or (sink == 'gcs' and not wrote_any)):
-    # DB logic removed for BigQuery-only mode
-        if (not _has_ts(wu_df)) and not wu_df.empty:
-            log.warning("WU missing ts/timestamp -> not inserting")
-        if (not _has_ts(tsi_df)) and not tsi_df.empty:
-            log.warning("TSI missing ts/timestamp -> not inserting")
-        # All DB logic removed for BigQuery-only mode
-        # DB logic removed for BigQuery-only mode
-    elif disable_db:
+    # if not disable_db and (sink in ('db', 'both') or (sink == 'gcs' and not wrote_any)):
+    # # DB logic removed for BigQuery-only mode
+    #     if (not _has_ts(wu_df)) and not wu_df.empty:
+    #         log.warning("WU missing ts/timestamp -> not inserting")
+    #     if (not _has_ts(tsi_df)) and not tsi_df.empty:
+    #         log.warning("TSI missing ts/timestamp -> not inserting")
+    #     # All DB logic removed for BigQuery-only mode
+    #     # DB logic removed for BigQuery-only mode
+    if disable_db:
         log.info("DB sink disabled via DISABLE_DB_SINK=1")
     return wrote_wu, wrote_tsi
 
@@ -382,10 +380,10 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
     if os.getenv('DISABLE_BQ_STAGING') == '1':  # opt-out switch
         log.info("BQ staging disabled via DISABLE_BQ_STAGING=1")
         return
-    if os.getenv('DISABLE_DB_SINK') == '1':
-        # Deployment mapping currently sourced from DB; skip quietly when DB disabled.
-        log.info("BQ staging skipped because DB sink disabled (needs deployment mapping refactor).")
-        return
+    # if os.getenv('DISABLE_DB_SINK') == '1':
+    #     # Deployment mapping currently sourced from DB; skip quietly when DB disabled.
+    #     log.info("BQ staging skipped because DB sink disabled (needs deployment mapping refactor).")
+    #     return
     if wu_df.empty and tsi_df.empty:
         log.info("No dataframes to stage to BigQuery (both empty).")
         return
@@ -399,9 +397,20 @@ def _write_bq_staging(wu_df: pd.DataFrame, tsi_df: pd.DataFrame, start_str: str,
     dataset = os.getenv('BQ_DATASET', 'sensors')
     client = bigquery.Client(project=bq_project)
 
-    # Fetch deployment mapping (active only)
-    deployment_map_df = pd.DataFrame()
-    # DB logic removed for BigQuery-only mode
+    # Fetch deployment mapping from BigQuery
+    try:
+        deployment_map_sql = f"""
+        SELECT
+            native_sensor_id,
+            source AS sensor_type,
+            FARM_FINGERPRINT(native_sensor_id) AS deployment_pk
+        FROM `{bq_project}.{dataset}.sensor_id_map`
+        """
+        deployment_map_df = client.query(deployment_map_sql).to_dataframe()
+    except Exception as e:
+        log.error(f"Failed to fetch deployment map from BigQuery: {e}")
+        deployment_map_df = pd.DataFrame()
+
     if deployment_map_df.empty:
         log.error("Deployment map empty – cannot build BigQuery staging tables.")
         return

@@ -9,9 +9,6 @@
       "version": "lts"
     }
   },
-  "forwardPorts": [
-    5432
-  ],
 "postCreateCommand": "sudo apt update && sudo apt upgrade -y && bash .devcontainer/post-create.sh && npm install -g @google/gemini-cli",
   "customizations": {
     "vscode": {
