@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS `{project}.{dataset}.sensor_id_map` (
 """
 INSERT_SQL_TEMPLATE = """
 INSERT INTO `{project}.{dataset}.sensor_id_map` (sensor_id, native_sensor_id, source, updated_at)
-SELECT DISTINCT native_sensor_id AS sensor_id, native_sensor_id, 'seed:identity', CURRENT_TIMESTAMP()
+SELECT DISTINCT native_sensor_id AS sensor_id, native_sensor_id, source, CURRENT_TIMESTAMP()
 FROM (
   {sources_sql}
 ) s
@@ -96,9 +96,9 @@ def main():
     long_fqdn = f"{args.project}.{args.dataset}.sensor_readings_long"
     daily_fqdn = f"{args.project}.{args.dataset}.sensor_readings_daily"
     if table_exists(client, long_fqdn):
-        sources.append(f"SELECT native_sensor_id FROM `{long_fqdn}`")
+        sources.append(f"SELECT native_sensor_id, source FROM `{long_fqdn}`")
     if table_exists(client, daily_fqdn):
-        sources.append(f"SELECT native_sensor_id FROM `{daily_fqdn}`")
+        sources.append(f"SELECT native_sensor_id, source FROM `{daily_fqdn}`")
 
     if not sources:
         print("No source tables found (sensor_readings_long/daily). Nothing to seed.")

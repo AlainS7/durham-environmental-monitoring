@@ -38,6 +38,7 @@ select timestamp,
        native_sensor_id,
        metric_name,
        value,
+       'WU' as source,
        farm_fingerprint(concat(cast(timestamp as string),'|',native_sensor_id,'|',metric_name)) as row_id
 from wu_long
 union all
@@ -46,5 +47,6 @@ select timestamp,
        native_sensor_id,
        metric_name,
        value,
+       'TSI' as source,
        farm_fingerprint(concat(cast(timestamp as string),'|',native_sensor_id,'|',metric_name)) as row_id
 from tsi_long
