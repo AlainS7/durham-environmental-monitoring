@@ -49,8 +49,8 @@ def _resolve_time_field(client: bigquery.Client, dataset: str, external_table: s
     for f in table.schema:
         if f.field_type in ("TIMESTAMP", "DATETIME", "INTEGER", "INT64"):
             return f.name
-    # As last resort
-    return next(iter(field_names))
+    # As last resort, raise an error
+    raise RuntimeError(f"Could not determine time field for table {table_ref}")
 
 
 def ensure_materialized_table(client: bigquery.Client, dataset: str, table: str, external_table: str, cluster_by: List[str] | None = None) -> None:
@@ -198,22 +198,20 @@ def insert_partition_from_gcs(
     stage_table: str,
     d: dt.date,
 ) -> None:
-    # Determine time column from stage_table schema
-    stage = client.get_table(stage_table)
-    field_names = {f.name for f in stage.schema}
-    time_field = None
-    for c in ("timestamp", "epoch", "ts", "time", "event_time"):
-        if c in field_names:
-            time_field = c
-            break
-    if time_field is None:
-        # fallback to first TIMESTAMP/INTEGER-like field
-        for f in stage.schema:
-            if f.field_type in ("TIMESTAMP", "DATETIME", "INTEGER", "INT64"):
-                time_field = f.name
-                break
-    if time_field is None:
-        raise RuntimeError(f"Could not determine time field for staging table {stage_table}")
+    target_table_ref = f"{client.project}.{dataset}.{table}"
+    try:
+        target_table = client.get_table(target_table_ref)
+        target_cols = [f.name for f in target_table.schema]
+    except NotFound:
+        # If the target table doesn't exist, we can't proceed with a targeted insert.
+        # The calling function should have already created it.
+        print(f"[materialize] Target table {target_table_ref} not found. Cannot insert.")
+        return
+
+    stage_table_obj = client.get_table(stage_table)
+    stage_cols = {f.name for f in stage_table_obj.schema}
+
+    time_field = _resolve_time_field(client, dataset, stage_table.split('.')[-1])
 
     ts_expr = (
         "CASE "
@@ -225,13 +223,20 @@ def insert_partition_from_gcs(
         f"  TIMESTAMP_MILLIS(CAST(t.{time_field} AS INT64)) "
         f"ELSE TIMESTAMP_SECONDS(CAST(t.{time_field} AS INT64)) END"
     )
-    except_cols = [c for c in ["timestamp", "epoch", "ts"] if c in field_names]
-    except_clause = f" EXCEPT({', '.join(except_cols)})" if except_cols else ""
+
+    # Build the SELECT list, providing NULL for columns missing in the staging table
+    select_list = []
+    for col in target_cols:
+        if col == 'ts':
+            select_list.append(f"{ts_expr} AS ts")
+        elif col in stage_cols:
+            select_list.append(f"`{col}`")
+        else:
+            select_list.append(f"NULL AS `{col}`")
+
     sql = f"""
-    INSERT INTO `{client.project}.{dataset}.{table}`
-    SELECT
-      {ts_expr} AS ts,
-            t.*{except_clause}
+    INSERT INTO `{target_table_ref}` ({', '.join(f'`{c}`' for c in target_cols)})
+    SELECT {', '.join(select_list)}
     FROM `{stage_table}` AS t
     WHERE DATE({ts_expr}) = @d
     """

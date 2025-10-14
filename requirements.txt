@@ -13,6 +13,8 @@ certifi==2025.10.5
     #   requests
 charset-normalizer==3.4.3
     # via requests
+db-dtypes==1.4.3
+    # via durham-environmental-monitoring (pyproject.toml)
 google-api-core==2.26.0
     # via
     #   google-cloud-appengine-logging
@@ -91,13 +93,19 @@ importlib-metadata==8.7.0
 nest-asyncio==1.6.0
     # via durham-environmental-monitoring (pyproject.toml)
 numpy==2.3.3
-    # via pandas
+    # via
+    #   db-dtypes
+    #   pandas
 opentelemetry-api==1.37.0
     # via google-cloud-logging
 packaging==25.0
-    # via google-cloud-bigquery
+    # via
+    #   db-dtypes
+    #   google-cloud-bigquery
 pandas==2.3.3
-    # via durham-environmental-monitoring (pyproject.toml)
+    # via
+    #   durham-environmental-monitoring (pyproject.toml)
+    #   db-dtypes
 proto-plus==1.26.1
     # via
     #   google-api-core
@@ -119,7 +127,9 @@ protobuf==6.32.1
 psycopg2-binary==2.9.11
     # via durham-environmental-monitoring (pyproject.toml)
 pyarrow==21.0.0
-    # via durham-environmental-monitoring (pyproject.toml)
+    # via
+    #   durham-environmental-monitoring (pyproject.toml)
+    #   db-dtypes
 pyasn1==0.6.1
     # via
     #   pyasn1-modules
