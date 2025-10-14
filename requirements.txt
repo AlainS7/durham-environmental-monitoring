@@ -19,6 +19,7 @@ google-api-core==2.26.0
     # via
     #   google-cloud-appengine-logging
     #   google-cloud-bigquery
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-logging
     #   google-cloud-secret-manager
@@ -28,6 +29,7 @@ google-auth==2.41.1
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-bigquery
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-logging
     #   google-cloud-secret-manager
@@ -37,6 +39,8 @@ google-cloud-appengine-logging==1.6.2
 google-cloud-audit-log==0.3.3
     # via google-cloud-logging
 google-cloud-bigquery==3.38.0
+    # via durham-environmental-monitoring (pyproject.toml)
+google-cloud-bigquery-storage==2.33.1
     # via durham-environmental-monitoring (pyproject.toml)
 google-cloud-core==2.4.3
     # via
@@ -110,6 +114,7 @@ proto-plus==1.26.1
     # via
     #   google-api-core
     #   google-cloud-appengine-logging
+    #   google-cloud-bigquery-storage
     #   google-cloud-logging
     #   google-cloud-secret-manager
 protobuf==6.32.1
@@ -118,6 +123,7 @@ protobuf==6.32.1
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-audit-log
+    #   google-cloud-bigquery-storage
     #   google-cloud-logging
     #   google-cloud-secret-manager
     #   googleapis-common-protos
