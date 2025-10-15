@@ -31,10 +31,15 @@ jobs:
   check-tsi-quality:
     name: Check TSI Data Quality
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Write GCP credentials file
+        run: echo "${{ secrets.GCP_SA_KEY_JSON }}" > /tmp/gcp-key.json
       
       - name: Set up Python
         uses: actions/setup-python@v5

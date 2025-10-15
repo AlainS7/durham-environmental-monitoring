@@ -10,11 +10,15 @@ on:
 jobs:
   dry-run:
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - name: Write GCP credentials file
+        run: echo "${{ secrets.GCP_SA_KEY_JSON }}" > /tmp/gcp-key.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
