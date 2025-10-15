@@ -12,8 +12,7 @@ WITH
     SELECT
       ts AS timestamp,
       native_sensor_id,
-      COALESCE(CAST(lat_f AS FLOAT64), CAST(lat AS FLOAT64)) AS latitude,
-      COALESCE(CAST(lon_f AS FLOAT64), CAST(lon AS FLOAT64)) AS longitude,
+  -- latitude, longitude removed
       -- Core measurements
       CAST(temperature AS FLOAT64) AS temperature,
       CAST(temperature_high AS FLOAT64) AS temperature_high,
@@ -58,8 +57,7 @@ WITH
     SELECT
       ts AS timestamp,
       native_sensor_id,
-      COALESCE(CAST(latitude_f AS FLOAT64), CAST(latitude AS FLOAT64)) AS latitude,
-      COALESCE(CAST(longitude_f AS FLOAT64), CAST(longitude AS FLOAT64)) AS longitude,
+  -- latitude, longitude removed
       -- Particulate Matter measurements
       CAST(pm1_0 AS FLOAT64) AS pm1_0,
       CAST(pm2_5 AS FLOAT64) AS pm2_5,
@@ -91,7 +89,7 @@ WITH
     WHERE ts IS NOT NULL AND DATE(ts) = proc_date
   ),
   wu_long AS (
-    SELECT timestamp, native_sensor_id, latitude, longitude, metric_name, value FROM wu_src
+    SELECT timestamp, native_sensor_id, metric_name, value FROM wu_src
     UNPIVOT (value FOR metric_name IN (
       temperature, temperature_high, temperature_low,
       humidity, humidity_high, humidity_low,
@@ -107,7 +105,7 @@ WITH
     ))
   ),
   tsi_long AS (
-    SELECT timestamp, native_sensor_id, latitude, longitude, metric_name, value FROM tsi_src
+    SELECT timestamp, native_sensor_id, metric_name, value FROM tsi_src
     UNPIVOT (value FOR metric_name IN (
       -- Particulate Matter
       pm1_0, pm2_5, pm4_0, pm10, pm2_5_aqi, pm10_aqi,
@@ -121,14 +119,10 @@ WITH
       baro_inhg
     ))
   )
-SELECT timestamp, native_sensor_id, metric_name, value,
-       latitude, longitude,
-       IF(latitude IS NULL OR longitude IS NULL, NULL, ST_GEOGPOINT(longitude, latitude)) AS geog
+SELECT timestamp, native_sensor_id, metric_name, value
 FROM wu_long
 UNION ALL
-SELECT timestamp, native_sensor_id, metric_name, value,
-       latitude, longitude,
-       IF(latitude IS NULL OR longitude IS NULL, NULL, ST_GEOGPOINT(longitude, latitude)) AS geog
+SELECT timestamp, native_sensor_id, metric_name, value
 FROM tsi_long
 LIMIT 0;
 
@@ -137,7 +131,7 @@ DELETE FROM `${PROJECT}.${DATASET}.sensor_readings_long`
 WHERE DATE(timestamp) = proc_date;
 
 INSERT INTO `${PROJECT}.${DATASET}.sensor_readings_long`
-  (timestamp, native_sensor_id, metric_name, value, latitude, longitude, geog)
+  (timestamp, native_sensor_id, metric_name, value)
 WITH
   wu_src AS (
     SELECT
@@ -222,7 +216,7 @@ WITH
     WHERE ts IS NOT NULL AND DATE(ts) = proc_date
   ),
   wu_long AS (
-    SELECT timestamp, native_sensor_id, latitude, longitude, metric_name, value FROM wu_src
+    SELECT timestamp, native_sensor_id, metric_name, value FROM wu_src
     UNPIVOT (value FOR metric_name IN (
       temperature, temperature_high, temperature_low,
       humidity, humidity_high, humidity_low,
@@ -238,7 +232,7 @@ WITH
     ))
   ),
   tsi_long AS (
-    SELECT timestamp, native_sensor_id, latitude, longitude, metric_name, value FROM tsi_src
+    SELECT timestamp, native_sensor_id, metric_name, value FROM tsi_src
     UNPIVOT (value FOR metric_name IN (
       -- Particulate Matter
       pm1_0, pm2_5, pm4_0, pm10, pm2_5_aqi, pm10_aqi,
@@ -252,12 +246,8 @@ WITH
       baro_inhg
     ))
   )
-SELECT timestamp, native_sensor_id, metric_name, value,
-       latitude, longitude,
-       IF(latitude IS NULL OR longitude IS NULL, NULL, ST_GEOGPOINT(longitude, latitude)) AS geog
+SELECT timestamp, native_sensor_id, metric_name, value
 FROM wu_long
 UNION ALL
-SELECT timestamp, native_sensor_id, metric_name, value,
-       latitude, longitude,
-       IF(latitude IS NULL OR longitude IS NULL, NULL, ST_GEOGPOINT(longitude, latitude)) AS geog
+SELECT timestamp, native_sensor_id, metric_name, value
 FROM tsi_long;

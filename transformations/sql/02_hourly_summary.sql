@@ -9,9 +9,7 @@ SELECT
   TIMESTAMP_TRUNC(timestamp, HOUR) AS hour_ts,
   native_sensor_id,
   metric_name,
-  ANY_VALUE(latitude) AS latitude,
-  ANY_VALUE(longitude) AS longitude,
-  ANY_VALUE(geog) AS geog,
+  -- latitude, longitude, geog removed
   AVG(value) AS avg_value,
   MIN(value) AS min_value,
   MAX(value) AS max_value,
@@ -25,14 +23,12 @@ DELETE FROM `${PROJECT}.${DATASET}.sensor_readings_hourly`
 WHERE DATE(hour_ts) = proc_date;
 
 INSERT INTO `${PROJECT}.${DATASET}.sensor_readings_hourly`
-  (hour_ts, native_sensor_id, metric_name, latitude, longitude, geog, avg_value, min_value, max_value, samples)
+  (hour_ts, native_sensor_id, metric_name, avg_value, min_value, max_value, samples)
 SELECT
   TIMESTAMP_TRUNC(timestamp, HOUR) AS hour_ts,
   native_sensor_id,
   metric_name,
-  ANY_VALUE(latitude) AS latitude,
-  ANY_VALUE(longitude) AS longitude,
-  ANY_VALUE(geog) AS geog,
+  -- latitude, longitude, geog removed
   AVG(value) AS avg_value,
   MIN(value) AS min_value,
   MAX(value) AS max_value,

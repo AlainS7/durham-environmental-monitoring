@@ -46,17 +46,15 @@ SELECT
   d.native_sensor_id,
   COALESCE(m.sensor_id, d.native_sensor_id) AS sensor_id,
   d.metric_name,
-  -- Aliases for Looker template compatibility
   d.metric_name AS metric,
   d.avg_value AS value,
   d.avg_value,
   d.min_value,
   d.max_value,
   d.samples,
-  lc.latitude AS latitude,
-  lc.longitude AS longitude,
-  lc.geog AS geog,
-  -- Surface curated status/effective_date for filters
+  COALESCE(lc.latitude, NULL) AS latitude,
+  COALESCE(lc.longitude, NULL) AS longitude,
+  COALESCE(lc.geog, NULL) AS geog,
   lc.status AS status,
   lc.effective_date AS effective_date
 FROM `${PROJECT}.${DATASET}.sensor_readings_daily` d
@@ -65,7 +63,8 @@ LEFT JOIN `${PROJECT}.${DATASET}.sensor_id_map` m
  AND (m.effective_start_date IS NULL OR DATE(d.day_ts) >= m.effective_start_date)
  AND (m.effective_end_date   IS NULL OR DATE(d.day_ts) <= m.effective_end_date)
 LEFT JOIN `${PROJECT}.${DATASET}.sensor_location_current` lc
-  ON d.native_sensor_id = lc.native_sensor_id;
+  ON d.native_sensor_id = lc.native_sensor_id
+WHERE lc.latitude IS NOT NULL AND lc.longitude IS NOT NULL AND lc.geog IS NOT NULL;
 
 -- Long fact enriched with stable sensor_id mapping (if present)
 CREATE OR REPLACE VIEW `${PROJECT}.${DATASET}.sensor_readings_long_enriched` AS
@@ -75,9 +74,9 @@ SELECT
   COALESCE(m.sensor_id, f.native_sensor_id) AS sensor_id,
   f.metric_name,
   f.value,
-  lc.latitude,
-  lc.longitude,
-  lc.geog,
+  COALESCE(lc.latitude, NULL) AS latitude,
+  COALESCE(lc.longitude, NULL) AS longitude,
+  COALESCE(lc.geog, NULL) AS geog,
   lc.status,
   lc.effective_date
 FROM `${PROJECT}.${DATASET}.sensor_readings_long` f
@@ -86,4 +85,5 @@ LEFT JOIN `${PROJECT}.${DATASET}.sensor_id_map` m
  AND (m.effective_start_date IS NULL OR DATE(f.timestamp) >= m.effective_start_date)
  AND (m.effective_end_date   IS NULL OR DATE(f.timestamp) <= m.effective_end_date)
 LEFT JOIN `${PROJECT}.${DATASET}.sensor_location_current` lc
-  ON f.native_sensor_id = lc.native_sensor_id;
+  ON f.native_sensor_id = lc.native_sensor_id
+WHERE lc.latitude IS NOT NULL AND lc.longitude IS NOT NULL AND lc.geog IS NOT NULL;
