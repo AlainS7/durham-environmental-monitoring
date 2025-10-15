@@ -49,6 +49,9 @@ dev = [
 [project.scripts]
 run-data-collection = "src.data_collection.daily_data_collector:main"
 
+[tool.ruff]
+exclude = ["notebooks/"]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = {find = {where = ["src"]}}
