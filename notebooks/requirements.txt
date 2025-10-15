@@ -1,0 +1,11 @@
+google-cloud-bigquery
+pandas
+matplotlib
+seaborn
+plotly
+prophet
+scikit-learn
+statsmodels
+missingno
+kaleido
+pyarrow

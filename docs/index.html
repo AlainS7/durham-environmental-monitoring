@@ -12,10 +12,18 @@
         A comprehensive, cloud-native environmental monitoring system for Durham, NC. This project features a fully automated pipeline for collecting, processing, and analyzing high-resolution (15-minute interval) data from Weather Underground and TSI air quality sensors.
     </p>
     <p>
-        <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb" class="badge" target="_blank" rel="noopener noreferrer">View Interactive Map</a>
         <a href="https://github.com/AlainS7/durham-environmental-monitoring" class="badge" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+        <a href="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8?utm_content=01675d6c-334a-428e-9914-3106705b40c8&__run=true" class="badge" target="_blank" rel="noopener noreferrer">View Deepnote Notebook</a>
     </p>
-
+<h2><a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb" class="interactive-map-link" target="_blank" rel="noopener noreferrer">Interactive Map 🔗</a></h2>
+<iframe
+  src="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
+  width="100%"
+  height="500"
+  style="border: none;"
+  allowfullscreen
+  loading="lazy"
+></iframe>
     <div class="container">
         <h2>Key Features</h2>
         <ul>
@@ -39,6 +47,99 @@
             <li><strong>Visualization:</strong> Looker Studio dashboards are connected to the BigQuery tables for visualization and analysis.</li>
         </ol>
     </div>
+
+    <div class="container">
+        <h2>Documentation Navigation</h2>
+        <ul>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/AUTOMATED_PIPELINE_OVERVIEW.md" target="_blank">Automated Pipeline Overview</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/IAM_HARDENING.md" target="_blank">IAM Hardening</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/LOCAL_DEVELOPMENT.md" target="_blank">Local Development</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/Monitoring-Alerts.md" target="_blank">Monitoring & Alerts</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/REQUIREMENTS.md" target="_blank">Requirements</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SECURITY_AUDIT.md" target="_blank">Security Audit</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SYSTEM_ARCHITECTURE.md" target="_blank">System Architecture</a></li>
+            <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/TSI-Data-Quality-Monitoring.md" target="_blank">TSI Data Quality Monitoring</a></li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>Weather Analysis Outputs</h2>
+        <h3>Global Forecasts</h3>
+        <ul>
+            <li><a href="weather_analysis_outputs/global_humidity_forecast.html">Global Humidity Forecast</a></li>
+            <li><a href="weather_analysis_outputs/global_pressure_avg_forecast.html">Global Pressure Average Forecast</a></li>
+            <li><a href="weather_analysis_outputs/global_temperature_forecast.html">Global Temperature Forecast</a></li>
+            <li><a href="weather_analysis_outputs/sensor_correlation.html">Sensor Correlation</a></li>
+            <li><a href="weather_analysis_outputs/sensor_map.html">Sensor Map</a></li>
+            <li><a href="weather_analysis_outputs/time_series_humidity_daily.html">Time Series Humidity (Daily)</a></li>
+            <li><a href="weather_analysis_outputs/time_series_pressure_avg_daily.html">Time Series Pressure Avg (Daily)</a></li>
+            <li><a href="weather_analysis_outputs/time_series_temperature_daily.html">Time Series Temperature (Daily)</a></li>
+        </ul>
+        <h3>Sensor-Specific Forecasts</h3>
+        <ul>
+          <li><strong>KNCDURHA609</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA609_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA609_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA609_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA610</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA610_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA610_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA610_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA616</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA616_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA616_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA616_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA617</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA617_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA617_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA617_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA623</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA623_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA623_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA623_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA649</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA649_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA649_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA649_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA652</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA652_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA652_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA652_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <li><strong>KNCDURHA653</strong>
+            <ul>
+              <li><a href="weather_analysis_outputs/KNCDURHA653_humidity_forecast.html">Humidity Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA653_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
+              <li><a href="weather_analysis_outputs/KNCDURHA653_temperature_forecast.html">Temperature Forecast</a></li>
+            </ul>
+          </li>
+          <!-- Add more sensors as needed -->
+        </ul>
+    </div>
+
+<footer style="text-align:center; margin:2em 0; color:#888;">
+  Maintained by Durham Environmental Monitoring Team &mdash; <a href="https://github.com/AlainS7/durham-environmental-monitoring" target="_blank">GitHub</a>
+</footer>
 
 </body>
 </html>

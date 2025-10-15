@@ -1,36 +1,99 @@
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    line-height: 1.6;
-    color: #333;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
+    font-family: Arial, sans-serif;
+    margin: 2em auto;
+    background: #f9f9f9;
+    color: #222;
+    max-width: 900px;
 }
-h1, h2 {
-    border-bottom: 1px solid #eaecef;
-    padding-bottom: 0.3em;
+h1 {
+    color: #1a1a1a;
+}
+h2 {
+    color: #333;
+}
+h3 {
+    color: #555;
 }
 a {
-    color: #0366d6;
+    color: #2980b9;
     text-decoration: none;
 }
 a:hover {
     text-decoration: underline;
 }
-.badge {
-    display: inline-block;
-    padding: 0.5em 0.75em;
-    font-size: 0.85em;
-    font-weight: 600;
-    line-height: 1;
-    color: #fff;
-    background-color: #0366d6;
-    border-radius: 3px;
+.interactive-map-link {
+    text-decoration: none;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+}
+.interactive-map-link .link-icon {
+    width: 1em;
+    height: 1em;
+    margin-left: 0.4em;
+    vertical-align: middle;
+    fill: #2980b9;
+}
+ul {
+    margin-bottom: 2em;
 }
 .container {
-    background-color: #f6f8fa;
-    border: 1px solid #eaecef;
-    border-radius: 6px;
-    padding: 16px;
-    margin-bottom: 16px;
+    background: #fff;
+    padding: 2em;
+    margin-bottom: 2em;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.badge {
+    display: inline-block;
+    padding: 0.5em 1em;
+    margin: 0.2em;
+    background: #2980b9;
+    color: #fff;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+.badge:hover {
+    background: #1c5d99;
+}
+iframe {
+    max-width: 100%;
+    border-radius: 8px;
+}
+footer {
+    text-align: center;
+    margin: 2em 0;
+    color: #888;
+}
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #181a1b;
+        color: #e0e0e0;
+    }
+    a { color: #80bfff; }
+    .container {
+        background: #222326;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    h1 {
+        color: #f3f3f3;
+    }
+    h2 {
+        color: #e0e0e0;
+    }
+    h3 {
+        color: #ffb366;
+    }
+    .badge {
+        background: #80bfff;
+        color: #181a1b;
+    }
+    .badge:hover {
+        background: #3385ff;
+    }
+    footer {
+        color: #aaa;
+    }
 }
