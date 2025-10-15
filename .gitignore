@@ -104,6 +104,9 @@ transformations/dbt/target/
 transformations/dbt/logs/
 transformations/dbt/dbt_packages/
 transformations/dbt/.user.yml
+target/
+logs/
+dbt_project.yml
 
 # Transformation logs
 /tmp/*.log

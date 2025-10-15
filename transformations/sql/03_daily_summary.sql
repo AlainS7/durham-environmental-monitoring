@@ -10,9 +10,6 @@ SELECT
   TIMESTAMP_TRUNC(timestamp, DAY) AS day_ts,
   native_sensor_id,
   metric_name,
-  ANY_VALUE(latitude) AS latitude,
-  ANY_VALUE(longitude) AS longitude,
-  ANY_VALUE(geog) AS geog,
   AVG(value) AS avg_value,
   MIN(value) AS min_value,
   MAX(value) AS max_value,
@@ -26,14 +23,11 @@ DELETE FROM `${PROJECT}.${DATASET}.sensor_readings_daily`
 WHERE DATE(day_ts) BETWEEN start_date AND proc_date;
 
 INSERT INTO `${PROJECT}.${DATASET}.sensor_readings_daily`
-  (day_ts, native_sensor_id, metric_name, latitude, longitude, geog, avg_value, min_value, max_value, samples)
+  (day_ts, native_sensor_id, metric_name, avg_value, min_value, max_value, samples)
 SELECT
   TIMESTAMP_TRUNC(timestamp, DAY) AS day_ts,
   native_sensor_id,
   metric_name,
-  ANY_VALUE(latitude) AS latitude,
-  ANY_VALUE(longitude) AS longitude,
-  ANY_VALUE(geog) AS geog,
   AVG(value) AS avg_value,
   MIN(value) AS min_value,
   MAX(value) AS max_value,
