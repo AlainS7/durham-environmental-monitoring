@@ -69,11 +69,11 @@ jobs:
             exit 1
           fi
           # Short diagnostic (lengths only) to help debug empty secrets without leaking values
-    echo "Secret presence (lengths):" \
-      "WIP=${#GCP_WORKLOAD_IDENTITY_PROVIDER}" \
-      "SA=${#GCP_VERIFIER_SA}" \
-       "TSI=${#TSI_CREDS_SECRET_ID}" \
-      "WU=${#WU_API_KEY_SECRET_ID}" 
+          echo "Secret presence (lengths):" \
+            "WIP=${#GCP_WORKLOAD_IDENTITY_PROVIDER}" \
+            "SA=${#GCP_VERIFIER_SA}" \
+            "TSI=${#TSI_CREDS_SECRET_ID}" \
+            "WU=${#WU_API_KEY_SECRET_ID}" 
           echo "All required secrets present: ${req[*]}"
         env:
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
