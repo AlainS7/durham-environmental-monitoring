@@ -4,9 +4,21 @@
 
 A comprehensive, cloud-native environmental monitoring system for Durham, NC. This project features a fully automated pipeline for collecting, processing, and analyzing high-resolution (15-minute interval) data from Weather Underground and TSI air quality sensors.
 
-[![View the interactive map](https://img.shields.io/badge/View-Interactive%20Map-blue)](https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb)
-[![View Documentation Site](https://img.shields.io/badge/View-Documentation%20Site-green)](https://alains7.github.io/durham-environmental-monitoring/)
-[![View Deepnote Notebook](https://img.shields.io/badge/View-Deepnote%20Notebook-purple)](https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8?utm_content=01675d6c-334a-428e-9914-3106705b40c8&__run=true)
+### 📎 Project Links
+
+<p align="center">
+  <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb">
+    <img src="https://img.shields.io/badge/🗺️_Interactive-Map-0088cc?style=for-the-badge" alt="View Interactive Map">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://alains7.github.io/durham-environmental-monitoring/">
+    <img src="https://img.shields.io/badge/📚_Documentation-Site-10b981?style=for-the-badge" alt="View Documentation Site">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8?utm_content=01675d6c-334a-428e-9914-3106705b40c8&__run=true">
+    <img src="https://img.shields.io/badge/📊_Analysis-Notebook-9333ea?style=for-the-badge" alt="View Deepnote Notebook">
+  </a>
+</p>
 
 ---
 
@@ -16,12 +28,12 @@ For a comprehensive view of the entire system, including data flow, components, 
 
 ### Key Highlights
 
-*   **Fully Automated:** Data is collected, processed, and verified daily via a combination of Google Cloud Scheduler, Cloud Run, and GitHub Actions.
-*   **High-Resolution Data:** Research-grade 15-minute interval data from multiple sensor types.
-*   **Cloud-Native:** Leverages Google Cloud Storage (GCS) for raw data storage and BigQuery for warehousing and analytics.
-*   **Continuous Verification:** A daily GitHub Actions workflow (`daily-verify.yml`) runs a cloud pipeline verifier to ensure data integrity, schema consistency, and row count expectations.
-*   **Data Quality Monitoring:** An automated workflow (`tsi-data-quality.yml`) checks for NULLs in critical metrics, validates data coverage, and ensures consistency between raw and transformed data.
-*   **Secure & Auditable:** Uses Workload Identity Federation for secure, keyless authentication between GitHub Actions and GCP. All infrastructure is managed via Terraform.
+- **Fully Automated:** Data is collected, processed, and verified daily via a combination of Google Cloud Scheduler, Cloud Run, and GitHub Actions.
+- **High-Resolution Data:** Research-grade 15-minute interval data from multiple sensor types.
+- **Cloud-Native:** Leverages Google Cloud Storage (GCS) for raw data storage and BigQuery for warehousing and analytics.
+- **Continuous Verification:** A daily GitHub Actions workflow (`daily-verify.yml`) runs a cloud pipeline verifier to ensure data integrity, schema consistency, and row count expectations.
+- **Data Quality Monitoring:** An automated workflow (`tsi-data-quality.yml`) checks for NULLs in critical metrics, validates data coverage, and ensures consistency between raw and transformed data.
+- **Secure & Auditable:** Uses Workload Identity Federation for secure, keyless authentication between GitHub Actions and GCP. All infrastructure is managed via Terraform.
 
 ---
 
@@ -30,12 +42,14 @@ For a comprehensive view of the entire system, including data flow, components, 
 This project uses `uv` for fast and efficient dependency management.
 
 1.  **Install `uv`**:
+
     ```sh
     curl -LsSf https://astral.sh/uv/install.sh | sh
     source "$HOME/.cargo/bin/env"
     ```
 
 2.  **Set up the environment**:
+
     ```sh
     uv venv
     source .venv/bin/activate
@@ -43,13 +57,15 @@ This project uses `uv` for fast and efficient dependency management.
     ```
 
 3.  **Configure Credentials**:
-    *   Authenticate with GCP for application-default credentials:
-        ```sh
-        gcloud auth application-default login
-        ```
-    *   Ensure your GCP user has the necessary permissions or impersonate a service account.
+
+    - Authenticate with GCP for application-default credentials:
+      ```sh
+      gcloud auth application-default login
+      ```
+    - Ensure your GCP user has the necessary permissions or impersonate a service account.
 
 4.  **Run Local Operations**:
+
     ```sh
     # Lint the codebase
     uv run ruff check .
@@ -88,15 +104,15 @@ The data pipeline is designed for robustness and automation.
 
 The project relies heavily on GitHub Actions for automation and verification.
 
-| Workflow                    | Purpose                                                 | Triggers                |
-| --------------------------- | ------------------------------------------------------- | ----------------------- |
-| `ci.yml`                    | Core linting and unit tests.                            | Push / PR               |
-| `daily-ingest.yml`          | Triggers the daily data collection Cloud Run job.       | Schedule (daily)        |
-| `daily-verify.yml`          | Verifies the integrity of the cloud pipeline.           | Schedule (daily)        |
-| `transformations-execute.yml` | Executes the dbt transformations.                       | Schedule (daily)        |
-| `tsi-data-quality.yml`      | Runs data quality checks and sends alerts on failure.   | Schedule (daily)        |
-| `dbt-run-test.yml`          | Runs dbt tests and checks data freshness.               | Push (dbt paths), Schedule |
-| `deploy.yml`                | Deploys infrastructure changes via Terraform.           | Manual dispatch         |
+| Workflow                      | Purpose                                               | Triggers                   |
+| ----------------------------- | ----------------------------------------------------- | -------------------------- |
+| `ci.yml`                      | Core linting and unit tests.                          | Push / PR                  |
+| `daily-ingest.yml`            | Triggers the daily data collection Cloud Run job.     | Schedule (daily)           |
+| `daily-verify.yml`            | Verifies the integrity of the cloud pipeline.         | Schedule (daily)           |
+| `transformations-execute.yml` | Executes the dbt transformations.                     | Schedule (daily)           |
+| `tsi-data-quality.yml`        | Runs data quality checks and sends alerts on failure. | Schedule (daily)           |
+| `dbt-run-test.yml`            | Runs dbt tests and checks data freshness.             | Push (dbt paths), Schedule |
+| `deploy.yml`                  | Deploys infrastructure changes via Terraform.         | Manual dispatch            |
 
 ---
 
@@ -121,16 +137,16 @@ The project relies heavily on GitHub Actions for automation and verification.
 
 ### Scripts
 
-*   `src/data_collection/daily_data_collector.py`: The main entry point for data collection. Fetches data and uploads to GCS.
-*   `scripts/verify_cloud_pipeline.py`: Verifies that data exists and is consistent across GCS and BigQuery.
-*   `scripts/check_data_quality.py`: Runs a battery of data quality checks against BigQuery data.
-*   `scripts/merge_backfill_range.py`: Merges data from staging tables into the main fact table for a range of dates.
+- `src/data_collection/daily_data_collector.py`: The main entry point for data collection. Fetches data and uploads to GCS.
+- `scripts/verify_cloud_pipeline.py`: Verifies that data exists and is consistent across GCS and BigQuery.
+- `scripts/check_data_quality.py`: Runs a battery of data quality checks against BigQuery data.
+- `scripts/merge_backfill_range.py`: Merges data from staging tables into the main fact table for a range of dates.
 
 ### Configuration
 
-*   `config/base/paths.py`: Defines key paths for data storage and other resources.
-*   `config/environments/*.py`: Environment-specific configurations (development vs. production).
-*   `transformations/sql/*.sql`: The SQL files that define the data transformation logic.
+- `config/base/paths.py`: Defines key paths for data storage and other resources.
+- `config/environments/*.py`: Environment-specific configurations (development vs. production).
+- `transformations/sql/*.sql`: The SQL files that define the data transformation logic.
 
 ---
 
@@ -141,6 +157,10 @@ This project includes automated security scanning for Python dependencies using 
 For detailed information about security audit configuration and current status, see **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)**.
 
 ---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
 
 ## 🤝 Contributing
 

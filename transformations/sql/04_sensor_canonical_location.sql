@@ -1,12 +1,14 @@
 -- Compute a per-sensor canonical location to stabilize mapping when minor jitter occurs.
 -- Strategy:
---  - Consider the last 90 days up to @proc_date
+--  - Consider the last 90 days (rolling window updated daily)
 --  - For each sensor, derive daily distinct rounded positions (ROUND to 5 decimals ~1m)
 --  - Choose the most frequent rounded position (mode); tie-breaker = most recent day seen
 --  - Output canonical_latitude/longitude and a GEOGRAPHY point
+-- 
+-- NOTE: This is now a VIEW (not a table) to avoid expensive daily full-table rewrites.
+-- It uses CURRENT_DATE() for a rolling 90-day window instead of the @proc_date parameter.
 
-CREATE OR REPLACE TABLE `${PROJECT}.${DATASET}.sensor_canonical_location`
-CLUSTER BY native_sensor_id AS
+CREATE OR REPLACE VIEW `${PROJECT}.${DATASET}.sensor_canonical_location` AS
 WITH windowed AS (
   -- Source directly from materialized raw tables to avoid dependency on long table schema
   SELECT
@@ -16,7 +18,7 @@ WITH windowed AS (
     COALESCE(CAST(lon_f AS FLOAT64), CAST(lon AS FLOAT64)) AS longitude
   FROM `${PROJECT}.${DATASET}.wu_raw_materialized`
   WHERE ts IS NOT NULL
-    AND DATE(ts) BETWEEN DATE_SUB(@proc_date, INTERVAL 89 DAY) AND @proc_date
+    AND DATE(ts) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 89 DAY) AND CURRENT_DATE()
     AND COALESCE(CAST(lat_f AS FLOAT64), CAST(lat AS FLOAT64)) IS NOT NULL
     AND COALESCE(CAST(lon_f AS FLOAT64), CAST(lon AS FLOAT64)) IS NOT NULL
   UNION ALL
@@ -27,7 +29,7 @@ WITH windowed AS (
     COALESCE(CAST(longitude_f AS FLOAT64), CAST(longitude AS FLOAT64)) AS longitude
   FROM `${PROJECT}.${DATASET}.tsi_raw_materialized`
   WHERE ts IS NOT NULL
-    AND DATE(ts) BETWEEN DATE_SUB(@proc_date, INTERVAL 89 DAY) AND @proc_date
+    AND DATE(ts) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 89 DAY) AND CURRENT_DATE()
     AND COALESCE(CAST(latitude_f AS FLOAT64), CAST(latitude AS FLOAT64)) IS NOT NULL
     AND COALESCE(CAST(longitude_f AS FLOAT64), CAST(longitude AS FLOAT64)) IS NOT NULL
 ),
@@ -76,7 +78,7 @@ SELECT
   m.lat_r AS canonical_latitude,
   m.lon_r AS canonical_longitude,
   ST_GEOGPOINT(m.lon_r, m.lat_r) AS canonical_geog,
-  @proc_date AS as_of_date,
+  CURRENT_DATE() AS as_of_date,
   s.days_observed,
   s.distinct_locations,
   m.days_count AS coord_mode_count,
