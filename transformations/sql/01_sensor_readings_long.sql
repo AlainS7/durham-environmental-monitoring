@@ -89,7 +89,13 @@ WITH
     WHERE ts IS NOT NULL AND DATE(ts) = proc_date
   ),
   wu_long AS (
-    SELECT timestamp, native_sensor_id, metric_name, value FROM wu_src
+    SELECT 
+      timestamp, 
+      native_sensor_id, 
+      metric_name, 
+      value,
+      'wu' AS source
+    FROM wu_src
     UNPIVOT (value FOR metric_name IN (
       temperature, temperature_high, temperature_low,
       humidity, humidity_high, humidity_low,
@@ -105,7 +111,13 @@ WITH
     ))
   ),
   tsi_long AS (
-    SELECT timestamp, native_sensor_id, metric_name, value FROM tsi_src
+    SELECT 
+      timestamp, 
+      native_sensor_id, 
+      metric_name, 
+      value,
+      'tsi' AS source
+    FROM tsi_src
     UNPIVOT (value FOR metric_name IN (
       -- Particulate Matter
       pm1_0, pm2_5, pm4_0, pm10, pm2_5_aqi, pm10_aqi,
@@ -119,10 +131,24 @@ WITH
       baro_inhg
     ))
   )
-SELECT timestamp, native_sensor_id, metric_name, value
+SELECT 
+  timestamp,
+  DATE(timestamp) AS timestamp_date,
+  native_sensor_id, 
+  metric_name, 
+  value,
+  source,
+  FARM_FINGERPRINT(CONCAT(CAST(timestamp AS STRING), native_sensor_id, metric_name)) AS row_id
 FROM wu_long
 UNION ALL
-SELECT timestamp, native_sensor_id, metric_name, value
+SELECT 
+  timestamp,
+  DATE(timestamp) AS timestamp_date,
+  native_sensor_id, 
+  metric_name, 
+  value,
+  source,
+  FARM_FINGERPRINT(CONCAT(CAST(timestamp AS STRING), native_sensor_id, metric_name)) AS row_id
 FROM tsi_long
 LIMIT 0;
 
@@ -131,7 +157,7 @@ DELETE FROM `${PROJECT}.${DATASET}.sensor_readings_long`
 WHERE DATE(timestamp) = proc_date;
 
 INSERT INTO `${PROJECT}.${DATASET}.sensor_readings_long`
-  (timestamp, native_sensor_id, metric_name, value)
+  (timestamp, timestamp_date, native_sensor_id, metric_name, value, source, row_id)
 WITH
   wu_src AS (
     SELECT
@@ -216,7 +242,13 @@ WITH
     WHERE ts IS NOT NULL AND DATE(ts) = proc_date
   ),
   wu_long AS (
-    SELECT timestamp, native_sensor_id, metric_name, value FROM wu_src
+    SELECT 
+      timestamp, 
+      native_sensor_id, 
+      metric_name, 
+      value,
+      'wu' AS source
+    FROM wu_src
     UNPIVOT (value FOR metric_name IN (
       temperature, temperature_high, temperature_low,
       humidity, humidity_high, humidity_low,
@@ -232,7 +264,13 @@ WITH
     ))
   ),
   tsi_long AS (
-    SELECT timestamp, native_sensor_id, metric_name, value FROM tsi_src
+    SELECT 
+      timestamp, 
+      native_sensor_id, 
+      metric_name, 
+      value,
+      'tsi' AS source
+    FROM tsi_src
     UNPIVOT (value FOR metric_name IN (
       -- Particulate Matter
       pm1_0, pm2_5, pm4_0, pm10, pm2_5_aqi, pm10_aqi,
@@ -246,8 +284,22 @@ WITH
       baro_inhg
     ))
   )
-SELECT timestamp, native_sensor_id, metric_name, value
+SELECT 
+  timestamp,
+  DATE(timestamp) AS timestamp_date,
+  native_sensor_id, 
+  metric_name, 
+  value,
+  source,
+  FARM_FINGERPRINT(CONCAT(CAST(timestamp AS STRING), native_sensor_id, metric_name)) AS row_id
 FROM wu_long
 UNION ALL
-SELECT timestamp, native_sensor_id, metric_name, value
+SELECT 
+  timestamp,
+  DATE(timestamp) AS timestamp_date,
+  native_sensor_id, 
+  metric_name, 
+  value,
+  source,
+  FARM_FINGERPRINT(CONCAT(CAST(timestamp AS STRING), native_sensor_id, metric_name)) AS row_id
 FROM tsi_long;

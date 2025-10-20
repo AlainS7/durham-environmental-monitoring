@@ -1,404 +1,800 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Durham Environmental Monitoring</title>
 
-    <!-- Stylesheet (keep as-is) -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-    <!-- Helpful meta for SEO/preview if you want to add -->
-    <meta name="description" content="Durham Environmental Monitoring — sensors, forecasts and analysis for Durham, NC." />
-</head>
-<body>
-
-    <!-- Header -->
+    <meta
+      name="description"
+      content="Durham Environmental Monitoring — sensors, forecasts and analysis for Durham, NC."
+    />
+  </head>
+  <body>
     <header class="header">
-        <div class="logo">Durham Environmental Monitoring</div>
+      <div class="logo">Durham Environmental Monitoring</div>
 
-        <!-- nav-links is toggled for mobile -->
-        <nav class="nav-links" id="nav-links" aria-label="Main navigation">
-            <a href="#overview">Overview</a>
-            <a href="#analysis">Analysis</a>
-            <a href="#map">Map</a>
-            <a href="#features">Features</a>
+      <nav class="nav-links" id="nav-links" aria-label="Main navigation">
+        <a href="#overview">Overview</a>
+        <a href="#analysis">Analysis</a>
+        <a href="#map">Map</a>
+        <a href="#features">Features</a>
 
-            <div class="theme-switch-wrapper">
-                <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle dark mode" type="button">
-                    <span class="icon sun-icon" id="sun-icon" style="display:inline;">
-                        <!-- Sun icon -->
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="12" r="5"/>
-                            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                        </svg>
-                    </span>
-                    <span class="icon moon-icon" id="moon-icon" style="display:none;">
-                        <!-- Moon icon -->
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
-                        </svg>
-                    </span>
-                </button>
-            </div>
-        </nav>
+        <div class="theme-switch-wrapper">
+          <button
+            id="theme-toggle-btn"
+            class="theme-toggle-btn"
+            aria-label="Toggle dark mode"
+            type="button"
+          >
+            <span class="icon sun-icon" id="sun-icon" style="display: inline">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="5" />
+                <path
+                  d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                />
+              </svg>
+            </span>
+            <span class="icon moon-icon" id="moon-icon" style="display: none">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+              </svg>
+            </span>
+          </button>
+        </div>
+      </nav>
 
-        <!-- Mobile hamburger -->
-        <button class="menu-toggle" id="mobile-menu" aria-label="Toggle menu" type="button">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
+      <button
+        class="menu-toggle"
+        id="mobile-menu"
+        aria-label="Toggle menu"
+        type="button"
+      >
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
     </header>
 
     <main>
-        <!-- Overview / hero -->
-        <section id="overview" class="hero">
-            <div class="weather-animation" aria-hidden="true">
-                <div class="sun" role="presentation"></div>
-                <script>
-                    (function generateRaindrops() {
-                        const wrapper = document.currentScript.parentElement;
-                        const count = 50;
-                        for (let i = 0; i < count; i++) {
-                            const d = document.createElement('div');
-                            d.className = 'raindrop';
-                            // Random left position and animation delay
-                            d.style.left = `${Math.random() * 100}%`;
-                            d.style.animationDelay = `${Math.random() * 20}s`;
-                            wrapper.appendChild(d);
-                        }
-                    })();
-                </script>
-            </div>
-
-            <div class="hero-content">
-                <h1>Environmental Monitoring for Durham, NC</h1>
-                <p>A comprehensive, cloud-native system for collecting, processing, and analyzing high-resolution environmental data across Durham.</p>
-                <a href="https://github.com/AlainS7/durham-environmental-monitoring" class="badge" target="_blank" rel="noopener noreferrer">View on GitHub</a>
-            </div>
-        </section>
-
-        <div class="content-wrapper">
-            <section id="analysis" class="container">
-                <h2>Weather Analysis Notebook</h2>
-
-                <!-- Embedded notebook iframe (height kept large) -->
-                <iframe
-                    title="Durham Environmental Monitoring - Deepnote"
-                    src="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8?utm_source=app-settings&utm_medium=product-embed&utm_campaign=data-app&utm_content=01675d6c-334a-428e-9914-3106705b40c8&__embedded=true"
-                    height="750"
-                    width="100%"
-                    style="border:0;"
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade"
-                    allowfullscreen>
-                </iframe>
-            </section>
+      <section id="overview" class="hero">
+        <div class="weather-animation" aria-hidden="true">
+          <div class="celestial-body">
+            <div class="sun" role="presentation"></div>
+            <div class="moon" role="presentation"></div>
+          </div>
+          <script>
+            // This script generates the raindrops for the animation
+            (function generateRaindrops() {
+              const wrapper = document.currentScript.parentElement;
+              const count = 50; // Number of raindrops
+              for (let i = 0; i < count; i++) {
+                const d = document.createElement("div");
+                d.className = "raindrop";
+                // Randomize position and animation delay for a natural effect
+                d.style.left = `${Math.random() * 100}%`;
+                d.style.animationDelay = `${Math.random() * 20}s`;
+                wrapper.appendChild(d);
+              }
+            })();
+          </script>
         </div>
 
-        <!-- Map section -->
+        <div class="hero-content">
+          <h1>Environmental Monitoring for Durham, NC</h1>
+          <p>
+            A comprehensive, cloud-native system for collecting, processing, and
+            analyzing high-resolution environmental data across Durham.
+          </p>
+          <a
+            href="https://github.com/AlainS7/durham-environmental-monitoring"
+            class="badge"
+            target="_blank"
+            rel="noopener noreferrer"
+            >View on GitHub</a
+          >
+        </div>
+      </section>
+
+      <div class="content-wrapper">
+        <section id="analysis" class="container">
+          <h2>Weather Analysis Notebook</h2>
+          <iframe
+            title="Durham Environmental Monitoring - Deepnote"
+            src="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8?utm_source=app-settings&utm_medium=product-embed&utm_campaign=data-app&utm_content=01675d6c-334a-428e-9914-3106705b40c8&__embedded=true"
+            height="750"
+            width="100%"
+            style="border: 0"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen
+          >
+          </iframe>
+        </section>
+      </div>
+
+      <div class="content-wrapper alt-bg">
         <section id="map" class="container">
-            <div class="content-wrapper">
-                <h2>
-                    <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb" target="_blank" rel="noopener noreferrer">Interactive Sensor Map 🔗</a>
-                </h2>
-            </div>
-
-            <!--
-                Note: if this iframe does not render in your browser, check DevTools Console
-                for messages about X-Frame-Options or Content-Security-Policy frame-ancestors;
-                those mean the remote site refuses to be embedded and you'll need to either
-                use their published "embed" URL or link out to the map instead.
-            -->
+          <h2>
+            <a
+              href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Interactive Sensor Map 🔗</a
+            >
+          </h2>
+          <p class="data-source-notice">
+            <strong>Data Source Note:</strong> The map and analysis currently
+            display data exclusively from public Weather Underground (WU)
+            stations. No private TSI data sensors are shown.
+          </p>
+          <div class="map-container">
             <iframe
-                title="Durham Sensors Map (Carto)"
-                src="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
-                width="100%"
-                height="600"
-                style="border:0;"
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                allowfullscreen>
+              title="Durham Sensors Map (Carto)"
+              src="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
+              width="1200"
+              height="500"
+              style="border-radius: 12px"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen
+            >
             </iframe>
+          </div>
         </section>
+      </div>
 
-        <div class="content-wrapper">
-            <section id="features" class="container">
-                <h2>Key Features</h2>
-                <ul class="features-list">
-                    <li>
-                        <span class="icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-                        </span>
-                        <strong>Fully Automated:</strong> Daily data collection, processing, and verification.
-                    </li>
-                    <li>
-                        <span class="icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><rect x="3" y="13" width="3" height="8" rx="1"/><rect x="8.5" y="9" width="3" height="12" rx="1"/><rect x="14" y="5" width="3" height="16" rx="1"/><rect x="19.5" y="2" width="3" height="19" rx="1"/></svg>
-                        </span>
-                        <strong>High-Resolution Data:</strong> Research-grade 15-minute interval data.
-                    </li>
-                    <li>
-                        <span class="icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 18a5 5 0 10-9.9-1.5A4 4 0 004 19a4 4 0 004 4h8a4 4 0 001-7.9z"/><rect x="9" y="14" width="6" height="4" rx="1"/><path d="M12 16v2"/></svg>
-                        </span>
-                        <strong>Cloud-Native:</strong> Leverages GCS and BigQuery for scalability.
-                    </li>
-                    <li>
-                        <span class="icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </span>
-                        <strong>Continuous Verification:</strong> Daily workflows ensure data integrity.
-                    </li>
-                    <li>
-                        <span class="icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/><circle cx="16" cy="19" r="1.5" fill="currentColor"/></svg>
-                        </span>
-                        <strong>Data Quality Monitoring:</strong> Automated checks for NULLs, coverage, and consistency.
-                    </li>
-                    <li>
-                        <span class="icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg>
-                        </span>
-                        <strong>Secure & Auditable:</strong> Keyless authentication with Workload Identity Federation.
-                    </li>
-                </ul>
-            </section>
+      <div class="content-wrapper">
+        <section id="features" class="container">
+          <h2>Key Features</h2>
+          <ul class="features-list">
+            <li>
+              <span class="icon-wrapper">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path stroke-linecap="round" d="M12 7v5l3 3" />
+                </svg>
+              </span>
+              <strong>Fully Automated:</strong> Daily data collection,
+              processing, and verification.
+            </li>
+            <li>
+              <span class="icon-wrapper">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="13" width="3" height="8" rx="1" />
+                  <rect x="8.5" y="9" width="3" height="12" rx="1" />
+                  <rect x="14" y="5" width="3" height="16" rx="1" />
+                  <rect x="19.5" y="2" width="3" height="19" rx="1" />
+                </svg>
+              </span>
+              <strong>High-Resolution Data:</strong> Research-grade 15-minute
+              interval data.
+            </li>
+            <li>
+              <span class="icon-wrapper">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M17 18a5 5 0 10-9.9-1.5A4 4 0 004 19a4 4 0 004 4h8a4 4 0 001-7.9z"
+                  />
+                  <rect x="9" y="14" width="6" height="4" rx="1" />
+                  <path d="M12 16v2" />
+                </svg>
+              </span>
+              <strong>Cloud-Native:</strong> Leverages GCS and BigQuery for
+              scalability.
+            </li>
+            <li>
+              <span class="icon-wrapper">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </span>
+              <strong>Continuous Verification:</strong> Daily workflows ensure
+              data integrity.
+            </li>
+            <li>
+              <span class="icon-wrapper">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="3" width="16" height="18" rx="2" />
+                  <path d="M8 7h8M8 11h8M8 15h4" />
+                </svg>
+              </span>
+              <strong>Data Quality Monitoring:</strong> Automated checks for
+              NULLs, coverage, and consistency.
+            </li>
+            <li>
+              <span class="icon-wrapper">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z"
+                  />
+                </svg>
+              </span>
+              <strong>Secure & Auditable:</strong> Keyless authentication with
+              Workload Identity Federation.
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="content-wrapper alt-bg">
+        <div class="container">
+          <h2>Data Pipeline Overview</h2>
+          <ol class="pipeline-list">
+            <li>
+              <strong>Collection:</strong> A Cloud Scheduler job triggers a
+              Cloud Run job that executes the daily data collector script.
+            </li>
+            <li>
+              <strong>Storage (Raw):</strong> Raw data is uploaded as Parquet
+              files to a GCS bucket, partitioned by source and date.
+            </li>
+            <li>
+              <strong>Materialization:</strong> The raw data is then
+              materialized into partitioned BigQuery tables.
+            </li>
+            <li>
+              <strong>Transformation:</strong> A scheduled GitHub Actions
+              workflow runs SQL scripts to transform the raw data into
+              analytics-ready tables.
+            </li>
+            <li>
+              <strong>Quality Checks:</strong> Another GitHub Actions workflow
+              runs quality checks against the BigQuery tables.
+            </li>
+            <li>
+              <strong>Visualization:</strong> Looker Studio dashboards are
+              connected to the BigQuery tables for visualization and analysis.
+            </li>
+          </ol>
         </div>
+      </div>
 
-        <div class="content-wrapper">
-            <div class="container">
-                <h2>Data Pipeline Overview</h2>
-                <ol>
-                    <li><strong>Collection:</strong> A Cloud Scheduler job triggers a Cloud Run job that executes the daily data collector script.</li>
-                    <li><strong>Storage (Raw):</strong> Raw data is uploaded as Parquet files to a GCS bucket, partitioned by source and date.</li>
-                    <li><strong>Materialization:</strong> The raw data is then materialized into partitioned BigQuery tables.</li>
-                    <li><strong>Transformation:</strong> A scheduled GitHub Actions workflow runs SQL scripts to transform the raw data into analytics-ready tables.</li>
-                    <li><strong>Quality Checks:</strong> Another GitHub Actions workflow runs quality checks against the BigQuery tables.</li>
-                    <li><strong>Visualization:</strong> Looker Studio dashboards are connected to the BigQuery tables for visualization and analysis.</li>
-                </ol>
+      <div class="content-wrapper">
+        <div class="container">
+          <h2>Documentation Navigation</h2>
+          <ul class="grid-list">
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SYSTEM_ARCHITECTURE.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >System Architecture</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/AUTOMATED_PIPELINE_OVERVIEW.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Pipeline Overview</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/Monitoring-Alerts.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Monitoring & Alerts</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/IAM_HARDENING.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >IAM Hardening</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SECURITY_AUDIT.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Security Audit</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/LOCAL_DEVELOPMENT.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Local Development</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/REQUIREMENTS.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Requirements</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/TSI-Data-Quality-Monitoring.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >TSI Data Quality Monitoring</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="content-wrapper alt-bg">
+        <div class="container">
+          <h2>Weather Analysis Outputs</h2>
+
+          <div class="analysis-grid">
+            <div class="analysis-card">
+              <h4>📈 Time Series & Correlation</h4>
+              <p>
+                Analyze historical trends and relationships between sensors
+                over time.
+              </p>
+              <div class="card-links">
+                <a
+                  href="weather_analysis_outputs/time_series_humidity_daily.html"
+                  >Time Series Humidity (Daily)</a
+                >
+                <a
+                  href="weather_analysis_outputs/time_series_pressure_avg_daily.html"
+                  >Time Series Pressure (Daily)</a
+                >
+                <a
+                  href="weather_analysis_outputs/time_series_temperature_daily.html"
+                  >Time Series Temperature (Daily)</a
+                >
+                <a href="weather_analysis_outputs/sensor_correlation.html"
+                  >Sensor Correlation</a
+                >
+              </div>
             </div>
-        </div>
 
-        <div class="content-wrapper">
-            <div class="container">
-                <h2>Documentation Navigation</h2>
-                <ul>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SYSTEM_ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">System Architecture</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/AUTOMATED_PIPELINE_OVERVIEW.md" target="_blank" rel="noopener noreferrer">Pipeline Overview</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/Monitoring-Alerts.md" target="_blank" rel="noopener noreferrer">Monitoring & Alerts</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/IAM_HARDENING.md" target="_blank" rel="noopener noreferrer">IAM Hardening</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SECURITY_AUDIT.md" target="_blank" rel="noopener noreferrer">Security Audit</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/LOCAL_DEVELOPMENT.md" target="_blank" rel="noopener noreferrer">Local Development</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/REQUIREMENTS.md" target="_blank" rel="noopener noreferrer">Requirements</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/TSI-Data-Quality-Monitoring.md" target="_blank" rel="noopener noreferrer">TSI Data Quality Monitoring</a></li>
-                </ul>
+            <div class="analysis-card">
+              <h4>🌍 Global Forecasts</h4>
+              <p>
+                View aggregated, forward-looking forecasts for the entire
+                Durham area.
+              </p>
+              <div class="card-links">
+                <a
+                  href="weather_analysis_outputs/global_humidity_forecast.html"
+                  >Global Humidity Forecast</a
+                >
+                <a
+                  href="weather_analysis_outputs/global_pressure_avg_forecast.html"
+                  >Global Pressure Forecast</a
+                >
+                <a
+                  href="weather_analysis_outputs/global_temperature_forecast.html"
+                  >Global Temperature Forecast</a
+                >
+              </div>
             </div>
-        </div>
 
-        <div class="content-wrapper">
-            <div class="container">
-                <h2>Weather Analysis Outputs</h2>
-
-                <h3>Global Forecasts</h3>
-                <ul>
-                    <li><a href="weather_analysis_outputs/global_humidity_forecast.html">Global Humidity Forecast</a></li>
-                    <li><a href="weather_analysis_outputs/global_pressure_avg_forecast.html">Global Pressure Average Forecast</a></li>
-                    <li><a href="weather_analysis_outputs/global_temperature_forecast.html">Global Temperature Forecast</a></li>
-                    <li><a href="weather_analysis_outputs/sensor_correlation.html">Sensor Correlation</a></li>
-                    <li><a href="weather_analysis_outputs/sensor_map.html">Sensor Map</a></li>
-                    <li><a href="weather_analysis_outputs/time_series_humidity_daily.html">Time Series Humidity (Daily)</a></li>
-                    <li><a href="weather_analysis_outputs/time_series_pressure_avg_daily.html">Time Series Pressure Avg (Daily)</a></li>
-                    <li><a href="weather_analysis_outputs/time_series_temperature_daily.html">Time Series Temperature (Daily)</a></li>
-                </ul>
-
-                <h3>Sensor-Specific Forecasts</h3>
-                <ul>
-                    <li><strong>KNCDURHA609</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA609_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA609_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA609_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA610</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA610_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA610_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA610_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA616</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA616_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA616_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA616_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA617</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA617_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA617_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA617_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA623</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA623_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA623_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA623_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA649</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA649_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA649_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA649_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA652</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA652_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA652_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA652_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <li><strong>KNCDURHA653</strong>
-                        <ul>
-                            <li><a href="weather_analysis_outputs/KNCDURHA653_humidity_forecast.html">Humidity Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA653_pressure_avg_forecast.html">Pressure Avg Forecast</a></li>
-                            <li><a href="weather_analysis_outputs/KNCDURHA653_temperature_forecast.html">Temperature Forecast</a></li>
-                        </ul>
-                    </li>
-                    <!-- Add more sensors as needed -->
-                </ul>
+            <div class="analysis-card">
+              <h4>🗺️ Spatial Analysis</h4>
+              <p>
+                Explore the geographic distribution and data from individual
+                sensors.
+              </p>
+              <div class="card-links">
+                <a href="weather_analysis_outputs/sensor_map.html"
+                  >Interactive Sensor Map</a
+                >
+              </div>
             </div>
+          </div>
+
+          <h3>Sensor-Specific Forecasts</h3>
+          <ul class="nested-list">
+            <li>
+              <strong>KNCDURHA609</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA609_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA609_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA609_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA610</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA610_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA610_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA610_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA616</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA616_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA616_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA616_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA617</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA617_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA617_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA617_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA623</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA623_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA623_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA623_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA649</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA649_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA649_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA649_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA652</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA652_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA652_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA652_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li>
+              <strong>KNCDURHA653</strong>
+              <ul>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA653_humidity_forecast.html"
+                    >Humidity Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA653_pressure_avg_forecast.html"
+                    >Pressure Avg Forecast</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="weather_analysis_outputs/KNCDURHA653_temperature_forecast.html"
+                    >Temperature Forecast</a
+                  >
+                </li>
+              </ul>
+            </li>
+          </ul>
         </div>
+      </div>
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
-        <div class="footer-content">
-            <div class="footer-column">
-                <h4>Navigation</h4>
-                <ul>
-                    <li><a href="#overview">Overview</a></li>
-                    <li><a href="#analysis">Analysis</a></li>
-                    <li><a href="#map">Map</a></li>
-                    <li><a href="#features">Features</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h4>Documentation</h4>
-                <ul>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SYSTEM_ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">System Architecture</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/AUTOMATED_PIPELINE_OVERVIEW.md" target="_blank" rel="noopener noreferrer">Pipeline Overview</a></li>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/Monitoring-Alerts.md" target="_blank" rel="noopener noreferrer">Monitoring & Alerts</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h4>Source Code</h4>
-                <ul>
-                    <li><a href="https://github.com/AlainS7/durham-environmental-monitoring" target="_blank" rel="noopener noreferrer">Project on GitHub</a></li>
-                </ul>
-            </div>
+      <div class="footer-content">
+        <div class="footer-column">
+          <h4>Navigation</h4>
+          <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#analysis">Analysis</a></li>
+            <li><a href="#map">Map</a></li>
+            <li><a href="#features">Features</a></li>
+          </ul>
         </div>
-        <div class="footer-bottom">
-            Maintained by the Durham Environmental Monitoring Team
+        <div class="footer-column">
+          <h4>Documentation</h4>
+          <ul>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/SYSTEM_ARCHITECTURE.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >System Architecture</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/AUTOMATED_PIPELINE_OVERVIEW.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Pipeline Overview</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/Monitoring-Alerts.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Monitoring & Alerts</a
+              >
+            </li>
+          </ul>
         </div>
+        <div class="footer-column">
+          <h4>Source Code</h4>
+          <ul>
+            <li>
+              <a
+                href="https://github.com/AlainS7/durham-environmental-monitoring"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Project on GitHub</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        Maintained by the Durham Environmental Monitoring Team
+      </div>
     </footer>
 
-    <!-- Page scripts -->
     <script>
-        // Mobile Menu: toggle class if element exists (safe guards added)
-        (function setupMenuToggle() {
-            const menuToggle = document.getElementById('mobile-menu');
-            const navLinks = document.getElementById('nav-links');
+      // Mobile Menu
+      (function setupMenuToggle() {
+        const menuToggle = document.getElementById("mobile-menu");
+        const navLinks = document.getElementById("nav-links");
+        if (menuToggle && navLinks) {
+          menuToggle.addEventListener("click", () => {
+            // This is the fix: toggle active class on BOTH the button and the nav links
+            navLinks.classList.toggle("active");
+            menuToggle.classList.toggle("active");
+          });
+        }
+      })();
 
-            if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('active');
-                });
-            }
-        })();
+      // Header Scroll Effect
+      (function setupHeaderScroll() {
+        const header = document.querySelector(".header");
+        if (!header) return;
+        window.addEventListener("scroll", () => {
+          header.classList.toggle("scrolled", window.scrollY > 10);
+        });
+      })();
 
-        // Header Scroll Effect
-        (function setupHeaderScroll() {
-            const header = document.querySelector('.header');
-            if (!header) return;
-            window.addEventListener('scroll', () => {
-                header.classList.toggle('scrolled', window.scrollY > 10);
+      // Fade-in sections
+      (function setupFadeIn() {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("visible");
+              }
             });
-        })();
+          },
+          { threshold: 0.1 }
+        );
+        document
+          .querySelectorAll(".container")
+          .forEach((section) => observer.observe(section));
+      })();
 
-        // Fade-in sections using IntersectionObserver
-        (function setupFadeIn() {
-            document.addEventListener('DOMContentLoaded', () => {
-                const observer = new IntersectionObserver((entries, obs) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            entry.target.style.animation = `fadeIn 1s forwards`;
-                            obs.unobserve(entry.target);
-                        }
-                    });
-                }, { threshold: 0.1 });
+      // Theme Toggle
+      (function setupThemeToggle() {
+        const sunIcon = document.getElementById("sun-icon");
+        const moonIcon = document.getElementById("moon-icon");
+        const themeToggleBtn = document.getElementById("theme-toggle-btn");
 
-                document.querySelectorAll('.container').forEach(section => observer.observe(section));
-            });
-        })();
+        function applyTheme(theme) {
+          document.body.className = theme;
+          if (sunIcon)
+            sunIcon.style.display = theme === "dark-mode" ? "none" : "inline";
+          if (moonIcon)
+            moonIcon.style.display = theme === "dark-mode" ? "inline" : "none";
+        }
 
-        // Theme Toggle — helper functions and safe-guards
-        (function setupThemeToggle() {
-            const sunIcon = document.getElementById('sun-icon');
-            const moonIcon = document.getElementById('moon-icon');
-            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        try {
+          const savedTheme = localStorage.getItem("theme");
+          const systemPrefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (savedTheme) {
+            applyTheme(savedTheme);
+          } else {
+            applyTheme(systemPrefersDark ? "dark-mode" : "light-mode");
+          }
+        } catch (e) {
+          applyTheme("light-mode");
+        }
 
-            function applyTheme(theme) {
-                if (theme === 'dark-mode') {
-                    document.body.classList.add('dark-mode');
-                    if (sunIcon) sunIcon.style.display = 'none';
-                    if (moonIcon) moonIcon.style.display = 'inline';
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    if (sunIcon) sunIcon.style.display = 'inline';
-                    if (moonIcon) moonIcon.style.display = 'none';
-                }
-            }
-
+        if (themeToggleBtn) {
+          themeToggleBtn.addEventListener("click", function () {
+            const newTheme = document.body.classList.contains("dark-mode")
+              ? "light-mode"
+              : "dark-mode";
+            applyTheme(newTheme);
             try {
-                const savedTheme = localStorage.getItem('theme');
-                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-                if (savedTheme) {
-                    applyTheme(savedTheme);
-                } else if (systemPrefersDark) {
-                    applyTheme('dark-mode');
-                } else {
-                    applyTheme('light-mode');
-                }
+              localStorage.setItem("theme", newTheme);
             } catch (e) {
-                // localStorage might be blocked in some contexts; ignore gracefully
-                applyTheme('light-mode');
+              /* ignore */
             }
-
-            if (themeToggleBtn) {
-                themeToggleBtn.addEventListener('click', function() {
-                    const isDark = document.body.classList.contains('dark-mode');
-                    const theme = isDark ? 'light-mode' : 'dark-mode';
-                    applyTheme(theme);
-
-                    try {
-                        localStorage.setItem('theme', theme);
-                    } catch (e) {
-                        // ignore storage errors
-                    }
-                });
-            }
-        })();
+          });
+        }
+      })();
     </script>
-</body>
+  </body>
 </html>
