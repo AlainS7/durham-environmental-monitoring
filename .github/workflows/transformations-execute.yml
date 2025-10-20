@@ -2,7 +2,7 @@ name: Execute Transformations
 
 on:
   schedule:
-    - cron: '25 07 * * *' # 07:25 UTC daily after ingestion & loads
+    - cron: "25 07 * * *" # 07:25 UTC daily after ingestion & loads
   workflow_dispatch: {}
 
 env:
@@ -51,7 +51,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v1
@@ -77,7 +77,7 @@ jobs:
         run: |
           PROC_DATE=$(date -u -d 'yesterday' +%Y-%m-%d)
           echo "Processing date: $PROC_DATE"
-          uv run python scripts/run_transformations.py --project $BQ_PROJECT --dataset ${{ env.DATASET_ID }} --date $PROC_DATE --execute
+          uv run python scripts/run_transformations.py --project "$BQ_PROJECT" --dataset ${{ env.DATASET_ID }} --date "$PROC_DATE" --execute
       - name: Teams notify failure
         if: failure() && env.TEAMS_WEBHOOK_URL != ''
         env:

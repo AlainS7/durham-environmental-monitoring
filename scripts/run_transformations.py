@@ -9,6 +9,7 @@ Usage:
 
 Without --execute it prints the SQL (dry run). Execution order is lexical (filenames sorted).
 """
+
 from __future__ import annotations
 import argparse
 import os
@@ -20,18 +21,24 @@ from google.cloud import bigquery  # type: ignore
 
 TOKEN_PATTERN = re.compile(r"\$\{(PROJECT|DATASET)\}")
 
+
 def render(sql: str, project: str, dataset: str) -> str:
     def repl(match):
         key = match.group(1)
-        return project if key == 'PROJECT' else dataset
+        return project if key == "PROJECT" else dataset
+
     return TOKEN_PATTERN.sub(repl, sql)
 
+
 def list_sql_files(dir_path: Path) -> List[Path]:
-    return sorted([p for p in dir_path.glob('*.sql') if p.is_file()])
+    return sorted([p for p in dir_path.glob("*.sql") if p.is_file()])
+
 
 def execute_sql(client: bigquery.Client, sql: str, process_date: str):
     job_config = bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ScalarQueryParameter('proc_date', 'DATE', process_date)]
+        query_parameters=[
+            bigquery.ScalarQueryParameter("proc_date", "DATE", process_date)
+        ]
     )
     job = client.query(sql, job_config=job_config)
     job.result()
@@ -39,11 +46,19 @@ def execute_sql(client: bigquery.Client, sql: str, process_date: str):
 
 def main():
     ap = argparse.ArgumentParser(description="Run transformation SQL files")
-    ap.add_argument('--project', default=os.getenv('BQ_PROJECT'))
-    ap.add_argument('--dataset', required=True)
-    ap.add_argument('--dir', default='transformations/sql')
-    ap.add_argument('--date', required=True, help='Processing date (e.g. yesterday) for parameter @proc_date')
-    ap.add_argument('--execute', action='store_true', help='Execute instead of print')
+    ap.add_argument(
+        "--project",
+        default=os.getenv("BQ_PROJECT"),
+        help="GCP project (defaults to BQ_PROJECT env var, required for --execute)",
+    )
+    ap.add_argument("--dataset", required=True)
+    ap.add_argument("--dir", default="transformations/sql")
+    ap.add_argument(
+        "--date",
+        required=True,
+        help="Processing date (e.g. yesterday) for parameter @proc_date",
+    )
+    ap.add_argument("--execute", action="store_true", help="Execute instead of print")
     args = ap.parse_args()
 
     # Only require / instantiate BigQuery client when executing. For a dry run we
@@ -52,6 +67,9 @@ def main():
     if not args.project and args.execute:
         raise SystemExit("--project or BQ_PROJECT env var required for execution")
 
+    # For dry runs, use placeholder if project not provided
+    project_id = args.project or "PROJECT_PLACEHOLDER"
+
     client = bigquery.Client(project=args.project) if args.execute else None
     dir_path = Path(args.dir)
     if not dir_path.exists():
@@ -59,7 +77,7 @@ def main():
 
     for sql_file in list_sql_files(dir_path):
         raw = sql_file.read_text()
-        sql = render(raw, args.project, args.dataset)
+        sql = render(raw, project_id, args.dataset)
         print(f"-- {sql_file.name} --")
         if args.execute:
             # mypy: client is not None in execute path
@@ -68,5 +86,6 @@ def main():
         else:
             print(sql)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
