@@ -7,7 +7,7 @@ set -e
 # Configuration
 PROJECT="${BQ_PROJECT:-durham-weather-466502}"
 DATASET="${BQ_DATASET:-sensors}"
-START_DATE="${1:-2024-07-04}"  # Default to July 4, 2024 (3+ months ago)
+START_DATE="${1:-2025-07-04}"  # Default to July 4, 2025 (3+ months ago)
 END_DATE="${2:-2025-09-30}"     # Default to September 30, 2025
 
 echo "=========================================="
