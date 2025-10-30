@@ -48,6 +48,10 @@ wu_api_key.json
 onedrive_creds.json
 creds/*.json
 hot_durham_wu_map/backend/wu_api_key.json
+# Oura tokens and outputs (kept outside repo)
+pat_r*.env
+**/Oura Ring/
+**/Secure Files/
 
 # Terraform local state (never commit)
 .terraform/
@@ -225,12 +229,15 @@ archive/*_partial_*.log
 backup/verification_logs/
 src/backup/verification_logs/
 
-# Any files containing sensitive API data
+# Any files containing sensitive API data (but not documentation)
 *api_key*
 *creds*
 *credentials*
 *token*
 *secret*
+# Exception: Allow documentation files about secrets
+!*SECRETS*.md
+!*SECRET*.md
 
 # Terraform local state and artifacts
 # Do NOT commit Terraform state; it may contain sensitive metadata

@@ -1,0 +1,22 @@
+# Oura-specific secrets and outputs (belt-and-suspenders approach)
+# These are already in root .gitignore but adding here for clarity
+
+# Token files (never commit)
+pat_r*.env
+*.env
+!.env.sample
+
+# Output data (kept outside repo but just in case)
+*.json
+!.env.sample
+*.csv
+*.log
+
+# Jupyter notebook checkpoints and executed versions
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Compiled Python
+__pycache__/
+*.pyc
+*.pyo
