@@ -190,7 +190,7 @@ def process_resident(
         }
 
     except Exception as e:
-        logger.error(f"❌ Error processing resident {resident_no}: {str(e)}")
+        logger.error(f"❌ Error processing resident {resident_no}: {e}", exc_info=True)
         return {"resident": resident_no, "status": "error", "message": str(e)}
 
 
