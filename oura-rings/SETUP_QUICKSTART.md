@@ -3,6 +3,7 @@
 ## ✅ What You've Already Set Up
 
 1. ✅ **Pre-commit hook** - Installed at `.git/hooks/pre-commit`
+
    - Prevents accidental commits of token files
    - Checks for credentials in staged changes
    - Blocks data files from being committed
@@ -16,6 +17,7 @@
 You need **one Personal Access Token per person** whose Oura data you're collecting.
 
 **How to get them:**
+
 1. Each participant logs into https://cloud.ouraring.com
 2. Goes to "Personal Access Tokens" (top-right menu)
 3. Clicks "Create a new personal access token"
@@ -29,8 +31,9 @@ You need **one Personal Access Token per person** whose Oura data you're collect
 ### Step 1: Create Token Files
 
 ```bash
-# Create the secure directory (outside your repo)
-cd /Users/alainsoto/Projects/Developer/work/github.com/AlainS7/
+# Create the secure directory as a sibling to your repository
+# Navigate to the parent directory of your repository
+cd "$(dirname "$(git rev-parse --show-toplevel)")"
 mkdir -p "Secure Files"
 
 # Create one file per resident (example for 3 residents)
@@ -83,14 +86,14 @@ Go to: https://github.com/AlainS7/durham-environmental-monitoring/settings/secre
 
 Add these secrets:
 
-| Name | Value | Where to Get It |
-|------|-------|----------------|
-| `GCP_PROJECT_ID` | `durham-weather-466502` | Your GCP project ID |
-| `GCP_SA_KEY` | `{...json...}` | See "Get Service Account Key" below |
-| `BQ_DATASET` | `oura` | Your choice (dataset name) |
-| `OURA_PAT_R1` | `token_1` | From each participant's Oura account |
-| `OURA_PAT_R2` | `token_2` | From each participant's Oura account |
-| `OURA_PAT_R3` | `token_3` | From each participant's Oura account |
+| Name             | Value                   | Where to Get It                      |
+| ---------------- | ----------------------- | ------------------------------------ |
+| `GCP_PROJECT_ID` | `durham-weather-466502` | Your GCP project ID                  |
+| `GCP_SA_KEY`     | `{...json...}`          | See "Get Service Account Key" below  |
+| `BQ_DATASET`     | `oura`                  | Your choice (dataset name)           |
+| `OURA_PAT_R1`    | `token_1`               | From each participant's Oura account |
+| `OURA_PAT_R2`    | `token_2`               | From each participant's Oura account |
+| `OURA_PAT_R3`    | `token_3`               | From each participant's Oura account |
 
 ### Get Service Account Key
 
@@ -138,12 +141,14 @@ rm /tmp/github-sa-key.json
 ## 🔒 Security Rules
 
 **NEVER commit:**
+
 - ❌ `pat_r*.env` files
 - ❌ Actual token strings in code
 - ❌ Service account JSON keys
 - ❌ Data files (`.json`, `.csv`)
 
 **ALWAYS:**
+
 - ✅ Use `.env.sample` for examples (no real tokens)
 - ✅ Store tokens outside the repo
 - ✅ Use Secret Manager for production
@@ -154,6 +159,7 @@ rm /tmp/github-sa-key.json
 ## 📚 Full Documentation
 
 See `SECRETS_SETUP.md` for complete details including:
+
 - Cloud Run deployment
 - GitHub Actions workflow examples
 - Troubleshooting guide
