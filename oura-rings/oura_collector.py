@@ -174,8 +174,8 @@ def process_resident(
                 logger.info(
                     f"BigQuery export (dry_run={options.get('bq_dry_run', True)}): {bq_results}"
                 )
-            except Exception as be:
-                logger.error(f"BigQuery export failed for resident {resident_no}: {be}")
+            except Exception:
+                logger.error(f"BigQuery export failed for resident {resident_no}", exc_info=True)
 
         logger.info(f"✅ Successfully processed resident {resident_no}")
         return {
