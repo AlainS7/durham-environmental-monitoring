@@ -25,7 +25,7 @@ DATE_CONFIG = {
 
 # File paths configuration
 PATHS = {
-    "env_files_dir": "../../../../Secure Files",  # Directory containing pat_r*.env files (kept OUT of repo)
+    "env_files_dir": "../Secure Files",  # Directory containing pat_r*.env files (kept OUT of repo)
     "output_base_dir": "../../../Oura Ring",  # Base directory for local outputs (kept OUT of repo)
     "json_subdir": "DataDictionaries",  # Main subdirectory for JSON files
     "combined_subdir": "combined data",  # Subfolder for combined dictionaries
