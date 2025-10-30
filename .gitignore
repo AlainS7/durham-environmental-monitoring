@@ -229,12 +229,15 @@ archive/*_partial_*.log
 backup/verification_logs/
 src/backup/verification_logs/
 
-# Any files containing sensitive API data
+# Any files containing sensitive API data (but not documentation)
 *api_key*
 *creds*
 *credentials*
 *token*
 *secret*
+# Exception: Allow documentation files about secrets
+!*SECRETS*.md
+!*SECRET*.md
 
 # Terraform local state and artifacts
 # Do NOT commit Terraform state; it may contain sensitive metadata
