@@ -3,40 +3,40 @@ name: Hot Durham Maintenance
 on:
   schedule:
     # Daily maintenance at 2:00 AM UTC
-    - cron: '0 2 * * *'
-  
+    - cron: "0 2 * * *"
+
   # Allow manual triggering
   workflow_dispatch:
 
 jobs:
   maintenance:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Create logs directory
-      run: mkdir -p logs temp
-    
-    - name: Run maintenance script
-      run: |
-        chmod +x automated_maintenance.sh
-        ./automated_maintenance.sh
-    
-    - name: Clean up old workflow artifacts
-      run: |
-        # Clean up old logs (this will be handled by the maintenance script)
-        echo "Maintenance tasks completed"
-    
-    - name: Upload maintenance logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: maintenance-logs-${{ github.run_number }}
-        path: logs/maintenance_*.log
-        retention-days: 7
-    
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create logs directory
+        run: mkdir -p logs temp
+
+      - name: Run maintenance script
+        run: |
+          chmod +x automated_maintenance.sh
+          ./automated_maintenance.sh
+
+      - name: Clean up old workflow artifacts
+        run: |
+          # Clean up old logs (this will be handled by the maintenance script)
+          echo "Maintenance tasks completed"
+
+      - name: Upload maintenance logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-logs-${{ github.run_number }}
+          path: logs/maintenance_*.log
+          retention-days: 7
+
   # Note: We intentionally do not commit generated logs back to the repo to
   # avoid noisy commits from scheduled automation. Artifacts are uploaded
   # above and retained for troubleshooting.

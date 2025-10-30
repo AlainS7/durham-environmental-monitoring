@@ -27,7 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Auth to GCP (OIDC)
-        if: env.BQ_PROJECT
+        if: vars.BQ_PROJECT != ''
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -37,8 +37,5 @@ jobs:
         run: |
           TODAY=$(date -u +%F)
           # Use vars.BQ_PROJECT if available, otherwise use placeholder for dry run
-          PROJECT="${{ vars.BQ_PROJECT }}"
-          if [ -z "$PROJECT" ]; then
-            PROJECT="dry-run-project-placeholder"
-          fi
+          PROJECT="${{ vars.BQ_PROJECT || 'dry-run-project-placeholder' }}"
           python scripts/run_transformations.py --project "$PROJECT" --dataset sensors --date "$TODAY"

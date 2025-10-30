@@ -78,12 +78,17 @@ jobs:
           PROC_DATE=$(date -u -d 'yesterday' +%Y-%m-%d)
           echo "Processing date: $PROC_DATE"
           uv run python scripts/run_transformations.py --project "$BQ_PROJECT" --dataset ${{ env.DATASET_ID }} --date "$PROC_DATE" --execute
+
       - name: Teams notify failure
-        if: failure() && env.TEAMS_WEBHOOK_URL != ''
+        if: failure()
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          python scripts/notify_teams.py \
-            --webhook "$TEAMS_WEBHOOK_URL" \
-            --title "Transformations FAILED" \
-            --text "Date: $(date -u +%Y-%m-%d)\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"
+          if [ -n "$TEAMS_WEBHOOK_URL" ]; then
+            python scripts/notify_teams.py \
+              --webhook "$TEAMS_WEBHOOK_URL" \
+              --title "Transformations FAILED" \
+              --text "Date: $(date -u +%Y-%m-%d)\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"
+          else
+            echo "TEAMS_WEBHOOK_URL not configured, skipping notification"
+          fi
