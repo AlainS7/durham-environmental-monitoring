@@ -69,6 +69,7 @@ def test_upload_frames_real(mock_client):
     # Set up fake client and job
     mock_instance = MagicMock()
     mock_client.return_value = mock_instance
+    mock_instance.project = "demo-project"
     mock_instance.get_dataset.side_effect = NotFound("Dataset not found")
     mock_instance.create_dataset.return_value = True
     mock_job = MagicMock()
