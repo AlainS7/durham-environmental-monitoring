@@ -100,7 +100,7 @@ def build_daily_frames(
 def _ensure_dataset(client: bigquery.Client, dataset_id: str) -> None:
     try:
         client.get_dataset(dataset_id)
-    except Exception:
+    except NotFound:
         ds = bigquery.Dataset(f"{client.project}.{dataset_id}")
         client.create_dataset(ds, exists_ok=True)
 
