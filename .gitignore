@@ -48,6 +48,10 @@ wu_api_key.json
 onedrive_creds.json
 creds/*.json
 hot_durham_wu_map/backend/wu_api_key.json
+# Oura tokens and outputs (kept outside repo)
+pat_r*.env
+**/Oura Ring/
+**/Secure Files/
 
 # Terraform local state (never commit)
 .terraform/
