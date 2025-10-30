@@ -26,6 +26,7 @@ from typing import Dict, Any
 import os
 import pandas as pd
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 
 # Reuse the small flattener from batch module at runtime import to avoid circular import
 
