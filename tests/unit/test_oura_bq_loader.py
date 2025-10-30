@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 from importlib.util import spec_from_file_location, module_from_spec
 from pathlib import Path
+from google.cloud.exceptions import NotFound
 
 # Dynamically load the oura_bigquery_loader module (folder name has a hyphen)
 ROOT = Path(__file__).resolve().parents[2]
@@ -68,7 +69,7 @@ def test_upload_frames_real(mock_client):
     # Set up fake client and job
     mock_instance = MagicMock()
     mock_client.return_value = mock_instance
-    mock_instance.get_dataset.side_effect = Exception("not found")
+    mock_instance.get_dataset.side_effect = NotFound("Dataset not found")
     mock_instance.create_dataset.return_value = True
     mock_job = MagicMock()
     mock_job.result.return_value = None
