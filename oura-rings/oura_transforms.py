@@ -5,7 +5,6 @@ Utilities to flatten and transform Oura API responses into DataFrames.
 """
 
 import pandas as pd
-from typing import Any
 
 
 def dict_to_df(

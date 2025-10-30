@@ -15,7 +15,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from oura_client import OuraClient
-from oura_transforms import dict_to_df, combine_daily_dataframes
+from oura_transforms import combine_daily_dataframes
 
 
 logger = logging.getLogger(__name__)
