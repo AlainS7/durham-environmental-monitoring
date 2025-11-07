@@ -7,8 +7,8 @@ from google.cloud.exceptions import NotFound
 ROOT = Path(__file__).resolve().parents[2]
 LOADER_PATH = ROOT / "oura-rings" / "oura_bigquery_loader.py"
 spec = spec_from_file_location("oura_bigquery_loader", str(LOADER_PATH))
-mod = module_from_spec(spec)
-assert spec and spec.loader
+assert spec is not None and spec.loader is not None
+mod = module_from_spec(spec)  # type: ignore[arg-type]
 spec.loader.exec_module(mod)  # type: ignore
 
 build_daily_frames = mod.build_daily_frames
@@ -52,10 +52,12 @@ def test_build_daily_frames_basic():
 @patch("google.cloud.bigquery.Client")
 def test_upload_frames_dry_run(mock_client):
     frames = build_daily_frames(SAMPLE_DATA, resident_no=1)
-    results = upload_frames_to_bigquery(
+    result = upload_frames_to_bigquery(
         frames, dataset="oura", table_prefix="oura", dry_run=True
     )
-    assert set(results.keys()) == {
+    assert "tables" in result and "cost_metrics" in result
+    tables = result["tables"]
+    assert set(tables.keys()) == {
         "oura_daily_sleep",
         "oura_daily_activity",
         "oura_daily_readiness",
@@ -77,9 +79,11 @@ def test_upload_frames_real(mock_client):
     mock_instance.load_table_from_dataframe.return_value = mock_job
 
     frames = build_daily_frames(SAMPLE_DATA, resident_no=2)
-    results = upload_frames_to_bigquery(
+    result = upload_frames_to_bigquery(
         frames, dataset="oura", table_prefix="oura", dry_run=False
     )
-    assert all(isinstance(v, int) and v >= 1 for v in results.values())
+    assert "tables" in result and "cost_metrics" in result
+    for v in result["tables"].values():
+        assert isinstance(v, int) and v >= 1
     mock_client.assert_called_once()
     assert mock_instance.load_table_from_dataframe.call_count == 3
