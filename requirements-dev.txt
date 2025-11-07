@@ -137,6 +137,8 @@ packaging==25.0
     #   pytest
 pandas==2.3.3
     # via durham-environmental-monitoring (pyproject.toml)
+pandas-gbq==0.26.1
+    # via durham-environmental-monitoring (pyproject.toml)
 pip==25.2
     # via
     #   pip-api

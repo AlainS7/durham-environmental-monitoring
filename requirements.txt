@@ -110,6 +110,8 @@ pandas==2.3.3
     # via
     #   durham-environmental-monitoring (pyproject.toml)
     #   db-dtypes
+pandas-gbq==0.26.1
+    # via durham-environmental-monitoring (pyproject.toml)
 proto-plus==1.26.1
     # via
     #   google-api-core

@@ -16,6 +16,8 @@ classifiers = [
 dependencies = [
     "httpx>=0.28.1",
     "pandas>=2.3.0",
+    # BigQuery DataFrame upload future requirement
+    "pandas-gbq>=0.26.1",
     "SQLAlchemy>=2.0.41",
     "psycopg2-binary>=2.9.9",
     "google-cloud-secret-manager>=2.21.0",
