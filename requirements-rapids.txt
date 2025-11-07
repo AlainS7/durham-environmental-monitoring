@@ -1,0 +1,43 @@
+# Requirements for RAPIDS GPU-Accelerated Pipeline
+# Install with: pip install -r requirements-rapids.txt
+
+# Core RAPIDS libraries (install via conda or pip with CUDA)
+# Note: For pip, use: pip install cudf-cu11 cuml-cu11 --extra-index-url=https://pypi.nvidia.com
+# For conda: conda install -c rapidsai -c conda-forge -c nvidia rapids=23.10 python=3.10 cudatoolkit=11.8
+
+# GPU utilities
+cupy-cuda11x>=12.0.0  # GPU-accelerated numpy
+nvidia-ml-py3>=11.0.0  # NVIDIA Management Library for GPU monitoring
+
+# Existing project dependencies (from main requirements.txt)
+httpx>=0.28.1
+pandas>=2.3.0
+SQLAlchemy>=2.0.41
+psycopg2-binary>=2.9.9
+google-cloud-secret-manager>=2.21.0
+google-cloud-storage>=2.18.2
+google-cloud-bigquery>=3.38.0
+python-dotenv>=1.1.1
+tqdm>=4.66.4
+nest-asyncio>=1.6.0
+google-cloud-logging>=3.10.0
+pydantic>=2.0.0
+pyarrow>=16.1.0
+PyYAML>=6.0.3
+protobuf>=6.0.0,<7.0.0
+db-dtypes>=1.2.0
+google-cloud-bigquery-storage>=2.25.0
+
+# Benchmarking and visualization
+matplotlib>=3.8.0
+seaborn>=0.13.0
+plotly>=5.18.0
+
+# Performance profiling
+py-spy>=0.3.14  # Low-overhead CPU profiler
+memory-profiler>=0.61.0  # Memory usage profiler
+
+# Development (optional, for testing)
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-benchmark>=4.0.0  # For automated benchmarking in tests
