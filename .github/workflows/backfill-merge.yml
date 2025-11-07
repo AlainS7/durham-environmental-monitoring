@@ -1,0 +1,108 @@
+name: On-Demand Backfill Merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "Start date (YYYY-MM-DD)"
+        required: true
+        type: string
+      end:
+        description: "End date (YYYY-MM-DD)"
+        required: true
+        type: string
+      sources:
+        description: "Comma list of sources (e.g. tsi,wu)"
+        required: false
+        default: "tsi,wu"
+        type: string
+      update_only_if_changed:
+        description: "Only update existing rows if value changed"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Plan only (no MERGE execution)"
+        required: false
+        default: false
+        type: boolean
+      dataset:
+        description: "BigQuery dataset"
+        required: false
+        default: "sensors"
+        type: string
+      project:
+        description: "GCP Project ID"
+        required: false
+        default: "durham-weather-466502"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  BQ_PROJECT: ${{ inputs.project }}
+  BQ_DATASET: ${{ inputs.dataset }}
+
+jobs:
+  backfill-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies (minimal)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Authenticate to GCP (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          create_credentials_file: true
+          export_environment_variables: true
+          project_id: ${{ env.BQ_PROJECT }}
+
+      - name: Dry-run backfill merge
+        if: inputs.dry_run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/run_merge_backfill.sh \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            --sources "${{ inputs.sources }}" \
+            --project "${{ env.BQ_PROJECT }}" \
+            --dataset "${{ env.BQ_DATASET }}" \
+            ${{ inputs.update_only_if_changed && '--update-only-if-changed' || '' }} \
+            --dry-run
+
+      - name: Execute backfill merge
+        if: inputs.dry_run != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/run_merge_backfill.sh \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            --sources "${{ inputs.sources }}" \
+            --project "${{ env.BQ_PROJECT }}" \
+            --dataset "${{ env.BQ_DATASET }}" \
+            ${{ inputs.update_only_if_changed && '--update-only-if-changed' || '' }}
+
+      - name: Upload logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backfill-merge-logs
+          path: |
+            **/*.log
+            **/merge*.txt

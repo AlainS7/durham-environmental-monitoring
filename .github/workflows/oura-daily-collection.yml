@@ -1,0 +1,248 @@
+name: Oura Daily Collection
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # 09:00 UTC daily (after environmental data transformations)
+  workflow_dispatch:
+    inputs:
+      residents:
+        description: 'Comma-separated resident numbers (e.g., 1,2,3 or "all" for all 13)'
+        required: false
+        default: 'all'
+      start_date:
+        description: 'Start date (YYYY-MM-DD) - optional'
+        required: false
+      end_date:
+        description: 'End date (YYYY-MM-DD) - optional'
+        required: false
+      export_bq:
+        description: 'Export to BigQuery (true/false)'
+        required: false
+        default: 'true'
+      dry_run:
+        description: 'BigQuery dry-run mode (true/false)'
+        required: false
+        default: 'false'
+
+env:
+  PROJECT_ID: durham-weather-466502
+  BQ_DATASET: oura
+  BQ_LOCATION: US
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  collect-oura-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install google-cloud-bigquery pandas python-dotenv requests
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY_JSON }}'
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create Oura token files from secrets
+        run: |
+          mkdir -p /tmp/oura_tokens
+          
+          # Create token files for all 14 residents (excluding R12)
+          for r in 1 2 3 4 5 6 7 8 9 10 11 13 14; do
+            secret_var="OURA_PAT_R${r}"
+            token="${!secret_var:-}"
+            if [ -n "$token" ]; then
+              echo "PERSONAL_ACCESS_TOKEN=$token" > "/tmp/oura_tokens/pat_r${r}.env"
+              echo "Created token file for resident $r"
+            else
+              echo "Warning: No token found for resident $r"
+            fi
+          done
+        env:
+          OURA_PAT_R1: ${{ secrets.OURA_PAT_R1 }}
+          OURA_PAT_R2: ${{ secrets.OURA_PAT_R2 }}
+          OURA_PAT_R3: ${{ secrets.OURA_PAT_R3 }}
+          OURA_PAT_R4: ${{ secrets.OURA_PAT_R4 }}
+          OURA_PAT_R5: ${{ secrets.OURA_PAT_R5 }}
+          OURA_PAT_R6: ${{ secrets.OURA_PAT_R6 }}
+          OURA_PAT_R7: ${{ secrets.OURA_PAT_R7 }}
+          OURA_PAT_R8: ${{ secrets.OURA_PAT_R8 }}
+          OURA_PAT_R9: ${{ secrets.OURA_PAT_R9 }}
+          OURA_PAT_R10: ${{ secrets.OURA_PAT_R10 }}
+          OURA_PAT_R11: ${{ secrets.OURA_PAT_R11 }}
+          OURA_PAT_R13: ${{ secrets.OURA_PAT_R13 }}
+          OURA_PAT_R14: ${{ secrets.OURA_PAT_R14 }}
+
+      - name: Determine resident list
+        id: residents
+        run: |
+          INPUT="${{ github.event.inputs.residents || 'all' }}"
+          if [ "$INPUT" = "all" ]; then
+            RESIDENTS="1 2 3 4 5 6 7 8 9 10 11 13 14"
+          else
+            RESIDENTS="${INPUT//,/ }"
+          fi
+          echo "list=$RESIDENTS" >> $GITHUB_OUTPUT
+          echo "Collecting data for residents: $RESIDENTS"
+
+      - name: Set environment variables
+        run: |
+          echo "BQ_PROJECT=${{ env.PROJECT_ID }}" >> $GITHUB_ENV
+          echo "BQ_LOCATION=${{ env.BQ_LOCATION }}" >> $GITHUB_ENV
+          echo "OURA_ENV_DIR=/tmp/oura_tokens" >> $GITHUB_ENV
+
+      - name: Update Oura import options for CI
+        run: |
+          # Temporarily update paths for CI environment
+          cat > /tmp/oura_config_override.py << 'EOF'
+          import sys
+          from pathlib import Path
+          
+          # Add oura-rings to path
+          sys.path.insert(0, str(Path(__file__).parent.parent / 'oura-rings'))
+          
+          from oura_import_options import PATHS, OPTIONS, OURA_BQ
+          
+          # Override paths for CI
+          PATHS['env_files_dir'] = '/tmp/oura_tokens'
+          PATHS['output_base_dir'] = '/tmp/oura_output'
+          
+          # Enable BigQuery export
+          OPTIONS['export_to_bigquery'] = True
+          OPTIONS['bq_dry_run'] = ${{ github.event.inputs.dry_run == 'true' }}
+          
+          # BigQuery settings
+          OURA_BQ['dataset'] = '${{ env.BQ_DATASET }}'
+          OURA_BQ['table_prefix'] = 'oura'
+          EOF
+
+      - name: Collect Oura data
+        id: collection
+        run: |
+          RESIDENTS="${{ steps.residents.outputs.list }}"
+          START_DATE="${{ github.event.inputs.start_date }}"
+          END_DATE="${{ github.event.inputs.end_date }}"
+          EXPORT_BQ="${{ github.event.inputs.export_bq || 'true' }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+          
+          # Build command
+          CMD="python -m oura-rings.cli --residents $RESIDENTS"
+          
+          if [ -n "$START_DATE" ]; then
+            CMD="$CMD --start-date $START_DATE"
+          fi
+          
+          if [ -n "$END_DATE" ]; then
+            CMD="$CMD --end-date $END_DATE"
+          fi
+          
+          if [ "$EXPORT_BQ" = "true" ]; then
+            CMD="$CMD --export-bq"
+          fi
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          
+          echo "Running: $CMD"
+          $CMD | tee /tmp/oura_collection.log
+          
+          # Extract cost metrics if available
+          if grep -q "Total cost:" /tmp/oura_collection.log; then
+            TOTAL_COST=$(grep "Total cost:" /tmp/oura_collection.log | tail -1 | awk '{print $3}')
+            echo "total_cost=$TOTAL_COST" >> $GITHUB_OUTPUT
+          fi
+          
+          # Extract record counts
+          RECORDS=$(grep -c "Successfully" /tmp/oura_collection.log || echo "0")
+          echo "records_collected=$RECORDS" >> $GITHUB_OUTPUT
+
+      - name: Upload collection log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oura-collection-log
+          path: /tmp/oura_collection.log
+          retention-days: 30
+
+      - name: Log cost metrics
+        if: steps.collection.outputs.total_cost
+        run: |
+          echo "📊 BigQuery Cost Metrics"
+          echo "========================"
+          echo "Total cost: \$${{ steps.collection.outputs.total_cost }}"
+          echo "Records collected: ${{ steps.collection.outputs.records_collected }}"
+
+      - name: Create issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `❌ Oura Daily Collection Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Oura Data Collection Failure
+            
+            **Date:** ${new Date().toISOString()}
+            **Workflow:** ${context.workflow}
+            **Run:** ${context.runNumber}
+            
+            The automated Oura data collection has failed. Please investigate.
+            
+            ### Troubleshooting Steps
+            1. Check the workflow logs: ${context.payload.repository.html_url}/actions/runs/${context.runId}
+            2. Verify Oura API tokens are valid
+            3. Check BigQuery dataset permissions
+            4. Review error messages in the collection log artifact
+            
+            ### Quick Commands
+            \`\`\`bash
+            # Test locally with dry-run
+            python -m oura-rings.cli --residents 1 --export-bq --dry-run
+            
+            # Check BigQuery dataset
+            bq ls -d ${{ env.PROJECT_ID }}:${{ env.BQ_DATASET }}
+            \`\`\`
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['automated-alert', 'oura-pipeline', 'data-collection']
+            });
+
+      - name: Summary
+        if: success()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## ✅ Oura Data Collection Successful
+          
+          **Residents:** ${{ steps.residents.outputs.list }}
+          **Records:** ${{ steps.collection.outputs.records_collected }}
+          **BigQuery Export:** ${{ github.event.inputs.export_bq || 'true' }}
+          **Dry Run:** ${{ github.event.inputs.dry_run || 'false' }}
+          
+          ### Cost Metrics
+          - Total BigQuery cost: \$${{ steps.collection.outputs.total_cost || 'N/A' }}
+          
+          ### Next Steps
+          - Data is available in BigQuery dataset: `${{ env.PROJECT_ID }}.${{ env.BQ_DATASET }}`
+          - Run analysis queries or update dashboards
+          EOF

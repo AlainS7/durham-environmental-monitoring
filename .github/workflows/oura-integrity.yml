@@ -1,0 +1,136 @@
+name: Oura Integrity Check
+
+on:
+  schedule:
+    - cron: '20 9 * * *' # After Oura collection schedule
+  workflow_dispatch:
+    inputs:
+      days_back:
+        description: 'Days back to check (inclusive of today-1)'
+        required: false
+        default: '7'
+        type: string
+      residents:
+        description: 'Space-separated residents (e.g., "1 2 3 4 5 6 7 8 9 10 11 13 14")'
+        required: false
+        default: '1 2 3 4 5 6 7 8 9 10 11 13 14'
+        type: string
+
+env:
+  BQ_PROJECT: durham-weather-466502
+  BQ_DATASET: oura
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install minimal deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-cloud-bigquery python-dateutil
+
+      - name: Auth to GCP (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Check per-resident coverage last N days
+        id: check
+        shell: python
+        env:
+          BQ_PROJECT: ${{ env.BQ_PROJECT }}
+          BQ_DATASET: ${{ env.BQ_DATASET }}
+          DAYS_BACK: ${{ inputs.days_back || '7' }}
+          RESIDENTS: ${{ inputs.residents || '1 2 3 4 5 6 7 8 9 10 11 13 14' }}
+        run: |
+          import os
+          from datetime import date, timedelta
+          from google.cloud import bigquery
+          project = os.environ['BQ_PROJECT']
+          dataset = os.environ['BQ_DATASET']
+          days_back = int(os.environ.get('DAYS_BACK','7'))
+          residents = os.environ.get('RESIDENTS','').split()
+          client = bigquery.Client(project=project)
+          start = date.today() - timedelta(days=days_back)
+          end = date.today() - timedelta(days=1)
+          sql = f"""
+          WITH days AS (
+            SELECT GENERATE_DATE_ARRAY(@start, @end) AS d_arr
+          ),
+          exploded AS (
+            SELECT d FROM days, UNNEST(d_arr) AS d
+          ),
+          facts AS (
+            SELECT CAST(resident AS STRING) AS resident, day, COUNT(*) c
+            FROM `{project}.{dataset}.oura_daily_sleep`
+            WHERE day BETWEEN @start AND @end
+            GROUP BY resident, day
+          )
+          SELECT e.d AS day, r.resident, COALESCE(f.c,0) AS rows
+          FROM exploded e
+          CROSS JOIN UNNEST(@residents) AS r(resident)
+          LEFT JOIN facts f
+            ON f.day = e.d AND f.resident = r.resident
+          ORDER BY day DESC, CAST(r.resident AS INT64)
+          """
+          job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+              bigquery.ScalarQueryParameter('start', 'DATE', start.isoformat()),
+              bigquery.ScalarQueryParameter('end', 'DATE', end.isoformat()),
+              bigquery.ArrayQueryParameter('residents', 'STRING', residents),
+            ]
+          )
+          rows = list(client.query(sql, job_config=job_config))
+          # Identify gaps (zero rows)
+          gaps = [(str(r['resident']), r['day'].isoformat()) for r in rows if r['rows'] == 0]
+          print(f"Checked residents {residents} for {start}..{end}, gaps: {len(gaps)}")
+          if gaps:
+            print('Missing resident-day rows:')
+            for res, d in gaps[:200]:
+              print(f"  resident={res} day={d}")
+            # set output
+            print(f"::set-output name=gaps_count::{len(gaps)}")
+            print(f"::set-output name=gaps_sample::{'; '.join([f'{r}:{d}' for r,d in gaps[:10]])}")
+            raise SystemExit(1)
+          else:
+            print('No gaps detected')
+            print("::set-output name=gaps_count::0")
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const gaps = core.getInput('gaps_sample') || 'See logs.';
+            const title = `❌ Oura integrity gaps detected (${new Date().toISOString().split('T')[0]})`;
+            const body = `One or more resident-day gaps were detected in Oura data.\n\n${gaps}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['monitoring','oura-pipeline']
+            });
+
+      - name: Upload integrity log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oura-integrity-log
+          path: |
+            **/*oura*log
+            **/*integrity*log
