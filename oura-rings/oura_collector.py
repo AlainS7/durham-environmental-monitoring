@@ -75,6 +75,27 @@ def collect_oura_data(
         logger.info("  - Fetching workouts data...")
         data["workouts"] = client.get_workouts(**params)
 
+    # NEW: Additional data types
+    if data_types.get("daily_spo2"):
+        logger.info("  - Fetching daily SpO2 data...")
+        data["daily_spo2"] = client.get_daily_spo2(**params)
+
+    if data_types.get("daily_stress"):
+        logger.info("  - Fetching daily stress data...")
+        data["daily_stress"] = client.get_daily_stress(**params)
+
+    if data_types.get("daily_cardiovascular_age"):
+        logger.info("  - Fetching cardiovascular age data...")
+        data["daily_cardiovascular_age"] = client.get_daily_cardiovascular_age(**params)
+
+    if data_types.get("tags"):
+        logger.info("  - Fetching tags data...")
+        data["tags"] = client.get_tags(**params)
+
+    if data_types.get("rest_mode_periods"):
+        logger.info("  - Fetching rest mode periods...")
+        data["rest_mode_periods"] = client.get_rest_mode_periods(**params)
+
     return data
 
 

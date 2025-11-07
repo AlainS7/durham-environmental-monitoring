@@ -54,6 +54,14 @@ DATA_TYPES = {
     "heart_rate": True,
     "sessions": True,
     "workouts": True,
+    # NEW: Additional data types discovered
+    "daily_spo2": True,  # Blood oxygen levels
+    "daily_stress": True,  # Stress/recovery metrics
+    "daily_cardiovascular_age": True,  # Vascular age estimate
+    "tags": True,  # User-entered tags (e.g., caffeine, alcohol)
+    "rest_mode_periods": True,  # Rest mode activation periods
+    "daily_resilience": True,  # Resilience scores
+    "vo2_max": True,  # VO2 Max cardio fitness
 }
 
 # BigQuery configuration for Oura exports

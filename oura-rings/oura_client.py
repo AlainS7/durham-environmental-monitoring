@@ -104,6 +104,99 @@ class OuraClient:
             params={"start_date": start, "end_date": end},
         )
 
+    def get_daily_spo2(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get daily SpO2 (blood oxygen) averages."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/daily_spo2",
+            params={"start_date": start, "end_date": end},
+        )
+
+    def get_daily_stress(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get daily stress summaries."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/daily_stress",
+            params={"start_date": start, "end_date": end},
+        )
+
+    def get_daily_cardiovascular_age(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get daily cardiovascular age (vascular age) estimates."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/daily_cardiovascular_age",
+            params={"start_date": start, "end_date": end},
+        )
+
+    def get_tags(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get user-entered tags (e.g., 'caffeine', 'alcohol')."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/tag",
+            params={"start_date": start, "end_date": end},
+        )
+
+    def get_rest_mode_periods(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get rest mode periods (when user activates rest mode)."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/rest_mode_period",
+            params={"start_date": start, "end_date": end},
+        )
+
+    def get_ring_configuration(self) -> list[dict[str, Any]]:
+        """Get ring hardware configuration info (no date params)."""
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/ring_configuration",
+            params={},
+        )
+
+    def get_sleep_time(self) -> list[dict[str, Any]]:
+        """Get recommended sleep time (no date params)."""
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/sleep_time",
+            params={},
+        )
+
+    def get_daily_resilience(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get daily resilience scores."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/daily_resilience",
+            params={"start_date": start, "end_date": end},
+        )
+
+    def get_vo2_max(
+        self, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get VO2 Max estimates."""
+        start, end = self._format_dates(start_date, end_date)
+        return self._make_paginated_request(
+            "GET",
+            "v2/usercollection/vO2_max",
+            params={"start_date": start, "end_date": end},
+        )
+
     def _make_paginated_request(
         self, method, url_slug, **kwargs
     ) -> list[dict[str, Any]]:
