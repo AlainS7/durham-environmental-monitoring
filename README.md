@@ -98,6 +98,10 @@ The data pipeline is designed for robustness and automation.
 5.  **Quality Checks (8:30 UTC):** Another GitHub Actions workflow runs quality checks against the BigQuery tables. Failures trigger alerts and create GitHub issues.
 6.  **Visualization:** Looker Studio dashboards are connected to the BigQuery tables for visualization and analysis.
 
+### Oura Data Pipeline
+
+The Oura health metrics ingestion runs separately via the `oura-daily-collection.yml` workflow, exporting sleep/activity/readiness (and supplemental metrics) into the `oura` dataset. Coverage integrity across residents is validated by the `oura-integrity.yml` workflow (see Workflow Shortcuts table). Refer to `oura-rings/README.md` and `oura-rings/SECRETS_SETUP.md` for token management, security, and export configuration details.
+
 ---
 
 ## 🏗️ CI/CD Workflows
@@ -141,6 +145,129 @@ The project relies heavily on GitHub Actions for automation and verification.
 - `scripts/verify_cloud_pipeline.py`: Verifies that data exists and is consistent across GCS and BigQuery.
 - `scripts/check_data_quality.py`: Runs a battery of data quality checks against BigQuery data.
 - `scripts/merge_backfill_range.py`: Merges data from staging tables into the main fact table for a range of dates.
+- `scripts/run_merge_backfill.sh`: Helper wrapper for standardized backfill merges (see "Per-Source Dated Staging & Backfill Merge" below).
+
+### Workflow Shortcuts
+
+| Purpose                  | Workflow File                                 | Trigger            | Notes                                                 |
+| ------------------------ | --------------------------------------------- | ------------------ | ----------------------------------------------------- |
+| On-demand backfill merge | `.github/workflows/backfill-merge.yml`        | Manual (inputs)    | Uses `run_merge_backfill.sh` with date/source inputs  |
+| Daily sensor merge       | `.github/workflows/daily-merge.yml`           | Scheduled          | Merges yesterday partitions (legacy auto-detect mode) |
+| Oura collection          | `.github/workflows/oura-daily-collection.yml` | Scheduled / Manual | Collects Oura data and exports to BigQuery            |
+| Staging presence check   | `.github/workflows/staging-presence.yml`      | Scheduled          | Ensures WU/TSI staging tables exist before transforms |
+| Data freshness           | `.github/workflows/data-freshness.yml`        | Scheduled          | Validates latest sensor_readings timeliness           |
+| Oura integrity check     | `.github/workflows/oura-integrity.yml`        | Scheduled / Manual | Validates resident-day coverage last N days           |
+| Metric coverage          | `.github/workflows/metric-coverage.yml`       | Scheduled          | Confirms expected metric coverage ratios              |
+| Row count threshold      | `.github/workflows/row-count-threshold.yml`   | Scheduled          | Flags abnormally low/high row volumes                 |
+
+### Per-Source Dated Staging & Backfill Merge
+
+Recent pipeline hardening introduced per-day, per-source staging tables in BigQuery:
+
+```text
+staging_wu_YYYYMMDD
+staging_tsi_YYYYMMDD
+```
+
+Each table contains already "melted" long-form rows `(timestamp, deployment_fk, metric_name, value)` specific to one date and source. They are written by `daily_data_collector.py` and have a 30‑day expiration to remain compatible with BigQuery sandbox constraints.
+
+#### Why this pattern?
+
+- Enables incremental, idempotent recovery/backfill (re-running a date overwrites that day’s table with `WRITE_TRUNCATE`).
+- Avoids complexity of managing partitions for short-lived staging.
+- Decouples ingestion reliability from transformation (late source can be merged independently).
+
+#### Merging a Backfill Range
+
+Use `scripts/merge_backfill_range.py` with `--per-source-dated` to MERGE staging rows into the fact table (`sensor_readings`). Missing source tables for a day are skipped; existing sources still merge.
+
+```sh
+python scripts/merge_backfill_range.py \
+  --project "$BQ_PROJECT" \
+  --dataset sensors \
+  --start 2025-10-05 \
+  --end 2025-11-07 \
+  --per-source-dated \
+  --sources tsi,wu
+```
+
+Options:
+
+- `--update-only-if-changed`: Update existing rows only if `value` differs (reduces DML).
+- `--dry-run`: Show planned merges without executing.
+- `--sources`: Comma list; narrow to a single source for late recovery (e.g. `tsi`).
+
+#### Implementation Notes
+
+- Merge script CASTs `timestamp` to TIMESTAMP to handle staging tables that loaded timestamps as STRING.
+- Ingestion infers sensor type (WU / TSI) using config + heuristics to link sensor IDs to `deployment_fk`.
+- Staging tables expire after ~30 days; re-run ingestion if a needed table has expired.
+
+#### Troubleshooting
+
+| Symptom                                                      | Likely Cause                            | Resolution                                                 |
+| ------------------------------------------------------------ | --------------------------------------- | ---------------------------------------------------------- |
+| `No matching signature for operator = for TIMESTAMP, STRING` | Old merge script version                | Pull latest; ensure CAST logic present.                    |
+| Missing `staging_wu_YYYYMMDD` warning                        | No WU data or ingestion failed          | Re-run ingestion for that date; confirm source outage.     |
+| Row counts unusually low                                     | Timestamp coercion dropped invalid rows | Inspect raw parquet & staging; verify normalization logic. |
+
+#### Quick Verification
+
+```sh
+# Count merged rows for a sample date
+bq query --nouse_legacy_sql "SELECT COUNT(*) c FROM \`${BQ_PROJECT}.sensors.sensor_readings\` WHERE DATE(timestamp)='2025-11-07'"
+
+# Count staging rows (TSI) for same date
+bq query --nouse_legacy_sql "SELECT COUNT(*) c FROM \`${BQ_PROJECT}.sensors.staging_tsi_20251107\`"
+```
+
+#### Least-Privilege Post-Backfill IAM (Summary)
+
+#### Cost Estimation (Sensors)
+
+Use the helper script `scripts/estimate_sensor_costs.py` to get an on-demand BigQuery query cost estimate (MERGE dry-run bytes) for a date range of per-source staging tables:
+
+```sh
+python scripts/estimate_sensor_costs.py \
+  --project "$BQ_PROJECT" \
+  --dataset sensors \
+  --start 2025-11-01 \
+  --end 2025-11-07 \
+  --sources tsi,wu \
+  --price-per-tb 6
+```
+
+Outputs per-day processed bytes and an estimated dollar cost (default: $6/TB). Adjust `--price-per-tb` to reflect your billing plan or committed price.
+
+To also estimate storage growth, include `--storage-price-per-gb-month` and `--storage-days` (proration). Storage is approximated by summing logical bytes of the per-day staging tables used in the merge:
+
+```sh
+python scripts/estimate_sensor_costs.py \
+  --project "$BQ_PROJECT" \
+  --dataset sensors \
+  --start 2025-11-01 \
+  --end 2025-11-07 \
+  --sources tsi,wu \
+  --storage-price-per-gb-month 0.02 \
+  --storage-days 30
+```
+
+Note: Storage estimate is an upper-bound approximation; actual table clustering/encoding, updates vs inserts, and retention policies influence final cost.
+
+After completing a backfill, remove temporary `roles/bigquery.admin` from the ingestion service account (e.g. `data-runner@...`). Retain:
+
+- `roles/bigquery.dataEditor` (or dataset-scoped WRITER)
+- `roles/bigquery.jobUser`
+- `roles/bigquery.readSessionUser` (if using Storage API)
+- `roles/secretmanager.secretAccessor`
+
+Example removal:
+
+```sh
+gcloud projects remove-iam-policy-binding "$BQ_PROJECT" \
+  --member=serviceAccount:data-runner@${BQ_PROJECT}.iam.gserviceaccount.com \
+  --role=roles/bigquery.admin
+```
 
 ### Configuration
 
@@ -164,8 +291,8 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## 🤝 Contributing
 
-1.  Fork the repository.
-2.  Create a feature branch.
-3.  Make your changes and add tests.
-4.  Ensure all checks in `ci.yml` pass.
-5.  Submit a pull request.
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes and add tests.
+4. Ensure all checks in `ci.yml` pass.
+5. Submit a pull request.
