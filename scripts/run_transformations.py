@@ -13,6 +13,7 @@ Without --execute it prints the SQL (dry run). Execution order is lexical (filen
 from __future__ import annotations
 import argparse
 import os
+import sys
 from pathlib import Path
 from typing import List
 import re
@@ -35,11 +36,22 @@ def list_sql_files(dir_path: Path) -> List[Path]:
 
 
 def execute_sql(client: bigquery.Client, sql: str, process_date: str):
+    """Execute SQL file using BigQuery's multi-statement support.
+
+    BigQuery Standard SQL supports multiple statements in a single query
+    when use_legacy_sql=False. The key is using the proper job config.
+    """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("proc_date", "DATE", process_date)
-        ]
+        ],
+        use_legacy_sql=False,
+        # This tells BigQuery to handle multiple statements
+        priority=bigquery.QueryPriority.INTERACTIVE,
     )
+
+    # Execute the entire SQL as a multi-statement batch
+    # BigQuery will process DECLARE + statements together
     job = client.query(sql, job_config=job_config)
     job.result()
 

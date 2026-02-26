@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Backfill TSI and WU data from Nov 17, 2025 to current date
-# This catches up from when collection stopped (Nov 16) to today
+# Backfill TSI and/or WU data from Nov 17, 2025 to current date
+# Usage: 
+#   bash backfill_catchup.sh              # Backfill both TSI and WU (default)
+#   bash backfill_catchup.sh --source tsi # Backfill only TSI
+#   bash backfill_catchup.sh --source wu  # Backfill only WU
 
 set -euo pipefail
 
 PROJECT_ID="durham-weather-466502"
 JOB_NAME="weather-data-uploader"
 REGION="us-east1"
+SOURCE="${1:-all}"  # Default to 'all' if not specified, or use first arg
 
 # Cross-platform date command helper
 get_date_unix() {
@@ -47,7 +51,7 @@ START_DATE="2025-11-17"
 END_DATE=$(get_yesterday)
 
 echo "======================================"
-echo "TSI + WU Backfill: $START_DATE to $END_DATE"
+echo "Backfill ($SOURCE): $START_DATE to $END_DATE"
 echo "======================================"
 echo ""
 
@@ -88,7 +92,7 @@ while [ "$cur_ts" -le "$end_ts" ]; do
     gcloud run jobs update "$JOB_NAME" \
         --region "$REGION" \
         --project "$PROJECT_ID" \
-        --args="src/data_collection/daily_data_collector.py","--start=$d","--end=$d" \
+        --args="src/data_collection/daily_data_collector.py","--start=$d","--end=$d","--source=$SOURCE" \
         --quiet >/dev/null 2>&1
     
     if timeout 900 gcloud run jobs execute "$JOB_NAME" \
