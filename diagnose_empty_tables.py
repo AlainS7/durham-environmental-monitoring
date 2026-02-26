@@ -24,7 +24,7 @@ for table_name in ["tsi_raw_materialized", "wu_raw_materialized"]:
     try:
         result = list(client.query(query).result())[0]
         print(f"{table_name:30} {result[0]:>10,} rows | latest: {result[1]}")
-    except Exception as e:
+    except Exception:
         print(f"{table_name:30} ERROR")
 
 # 3. Check transformation output tables

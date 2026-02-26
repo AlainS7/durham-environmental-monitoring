@@ -62,3 +62,9 @@ testpaths = ["tests", "scripts", "."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[dependency-groups]
+dev = [
+    "nbformat>=5.10.4",
+    "ruff>=0.14.0",
+]

@@ -5,7 +5,6 @@ Uses BigQuery Python client to copy tables and create views.
 """
 
 from google.cloud import bigquery
-from google.cloud.bigquery import CopyJob, LoadJobConfig
 import sys
 
 PROJECT = "durham-weather-466502"

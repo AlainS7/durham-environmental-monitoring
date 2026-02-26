@@ -49,14 +49,14 @@ def main():
     total_days = (end_date - start_date).days + 1
 
     print(f"{'=' * 60}")
-    print(f"Backfill Transformations")
+    print("Backfill Transformations")
     print(f"  Range: {start_date} → {end_date} ({total_days} days)")
     print(f"  Project: {args.project}")
     print(f"  Dataset: {args.dataset}")
     if args.steps:
         print(f"  Steps: {args.steps}")
     if args.dry_run:
-        print(f"  Mode: DRY RUN")
+        print("  Mode: DRY RUN")
     print(f"{'=' * 60}\n")
 
     success = 0
@@ -89,25 +89,25 @@ def main():
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if result.returncode != 0:
-                print(f"❌ ERROR")
+                print("❌ ERROR")
                 errors.append((ds, result.stderr[:200]))
                 print(f"    {result.stderr[:200]}")
             else:
-                print(f"✅")
+                print("✅")
                 success += 1
         except subprocess.TimeoutExpired:
-            print(f"⏰ TIMEOUT")
+            print("⏰ TIMEOUT")
             errors.append((ds, "Timeout after 300s"))
         except Exception as e:
             print(f"💥 {e}")
             errors.append((ds, str(e)))
 
     print(f"\n{'=' * 60}")
-    print(f"BACKFILL COMPLETE")
+    print("BACKFILL COMPLETE")
     print(f"  Success: {success}/{total_days}")
     print(f"  Errors:  {len(errors)}/{total_days}")
     if errors:
-        print(f"\nFailed dates:")
+        print("\nFailed dates:")
         for ds, err in errors:
             print(f"  {ds}: {err}")
     print(f"{'=' * 60}")

@@ -13,7 +13,6 @@ Without --execute it prints the SQL (dry run). Execution order is lexical (filen
 from __future__ import annotations
 import argparse
 import os
-import sys
 from pathlib import Path
 from typing import List
 import re

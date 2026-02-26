@@ -17,7 +17,6 @@ Features:
 import os
 import sys
 import warnings
-import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
@@ -113,7 +112,7 @@ try:
 
             if not oura_data.empty:
                 oura_data["day"] = pd.to_datetime(oura_data["day"])
-                print(f"\n✅ Successfully fetched Oura data from API")
+                print("\n✅ Successfully fetched Oura data from API")
                 print(f"   Records: {len(oura_data)} days")
                 print(
                     f"   Date range: {oura_data['day'].min().date()} to {oura_data['day'].max().date()}"
@@ -222,7 +221,7 @@ try:
             )
         else:
             # Try alternative metric names
-            print(f"   ⚠️  No pm2_5_mv_corrected records found, trying pm2_5_aqi...")
+            print("   ⚠️  No pm2_5_mv_corrected records found, trying pm2_5_aqi...")
             query_pm25 = f"""
             SELECT 
                 day_ts as timestamp,
@@ -408,7 +407,7 @@ if not pm25_data.empty:
             )
             output_file = DATA_DIR / "colocation_air_assure_vs_bluesky.html"
             fig.write_html(str(output_file))
-            print(f"\n📊 Visualization saved: colocation_air_assure_vs_bluesky.html")
+            print("\n📊 Visualization saved: colocation_air_assure_vs_bluesky.html")
 
 # ============================================================================
 # 4. COLOCATION ANALYSIS: Blue Sky vs Ambient
@@ -487,7 +486,7 @@ if not pm25_data.empty and len(sensors) > 2:
             )
             output_file = DATA_DIR / "colocation_bluesky_vs_ambient.html"
             fig.write_html(str(output_file))
-            print(f"\n📊 Visualization saved: colocation_bluesky_vs_ambient.html")
+            print("\n📊 Visualization saved: colocation_bluesky_vs_ambient.html")
 
             # Time series difference
             coloc_ba["difference"] = coloc_ba["bluesky_pm25"] - coloc_ba["ambient_pm25"]
@@ -510,7 +509,7 @@ if not pm25_data.empty and len(sensors) > 2:
             )
             output_file2 = DATA_DIR / "colocation_difference_timeseries.html"
             fig2.write_html(str(output_file2))
-            print(f"📊 Time series saved: colocation_difference_timeseries.html")
+            print("📊 Time series saved: colocation_difference_timeseries.html")
 
 # ============================================================================
 # 5. TEMPERATURE vs HEART RATE VARIABILITY
@@ -560,7 +559,7 @@ if (
             temp_hrv["temperature"], temp_hrv["heart_rate_variability"]
         )
 
-        print(f"\n📊 STATISTICAL TESTS:")
+        print("\n📊 STATISTICAL TESTS:")
         print(f"   Pearson  Correlation: r = {pearson_r:7.4f} (p = {pearson_p:.4e})")
         print(f"   Spearman Correlation: ρ = {spearman_r:7.4f} (p = {spearman_p:.4e})")
         print(
@@ -583,7 +582,7 @@ if (
         fig.update_traces(marker=dict(size=8, opacity=0.7))
         output_file = DATA_DIR / "temperature_vs_hrv_scatter.html"
         fig.write_html(str(output_file))
-        print(f"\n📊 Scatter plot saved: temperature_vs_hrv_scatter.html")
+        print("\n📊 Scatter plot saved: temperature_vs_hrv_scatter.html")
 
         # Time series overlay
         fig_ts = make_subplots(specs=[[{"secondary_y": True}]])
@@ -613,7 +612,7 @@ if (
         )
         output_file_ts = DATA_DIR / "temperature_vs_hrv_timeseries.html"
         fig_ts.write_html(str(output_file_ts))
-        print(f"📊 Time series saved: temperature_vs_hrv_timeseries.html")
+        print("📊 Time series saved: temperature_vs_hrv_timeseries.html")
 
 # ============================================================================
 # 6. PM2.5 & TEMPERATURE vs OURA METRICS
@@ -684,10 +683,10 @@ if oura_data is not None and (not pm25_data.empty or not wu_data.empty):
         )
         output_file = DATA_DIR / "correlation_heatmap.html"
         fig_heat.write_html(str(output_file))
-        print(f"\n📊 Heatmap saved: correlation_heatmap.html")
+        print("\n📊 Heatmap saved: correlation_heatmap.html")
 
         # Print key correlations
-        print(f"\n🔍 KEY CORRELATIONS (|r| > 0.1):")
+        print("\n🔍 KEY CORRELATIONS (|r| > 0.1):")
         for env in env_cols:
             if env in corr_data.index:
                 strong = corr_data.loc[env, oura_cols].abs().nlargest(3)
@@ -704,8 +703,8 @@ if oura_data is not None and (not pm25_data.empty or not wu_data.empty):
                         print(
                             f"   {sig} {env} → {metric}: r={corr_val:7.4f} (p={p:.3e})"
                         )
-                    except:
-                        print(f"   {env} → {metric}: r={corr_val:7.4f}")
+                    except Exception as e:
+                        print(f"   {env} → {metric}: r={corr_val:7.4f} (Error: {e})")
 
 # ============================================================================
 # SUMMARY
@@ -713,12 +712,12 @@ if oura_data is not None and (not pm25_data.empty or not wu_data.empty):
 print("\n" + "=" * 80)
 print("✅ ANALYSIS COMPLETE")
 print("=" * 80)
-print(f"\n📁 All outputs saved to: data/analysis_outputs/")
-print(f"   - Colocation analyses (HTML interactive plots)")
-print(f"   - Temperature vs HRV scatter and time series")
-print(f"   - Correlation heatmaps and detailed analysis")
-print(f"\n💡 Next Steps:")
-print(f"   1. Open HTML files in browser for interactive exploration")
-print(f"   2. Review statistical significance of correlations")
-print(f"   3. Investigate causal mechanisms based on significant results")
+print("\n📁 All outputs saved to: data/analysis_outputs/")
+print("   - Colocation analyses (HTML interactive plots)")
+print("   - Temperature vs HRV scatter and time series")
+print("   - Correlation heatmaps and detailed analysis")
+print("\n💡 Next Steps:")
+print("   1. Open HTML files in browser for interactive exploration")
+print("   2. Review statistical significance of correlations")
+print("   3. Investigate causal mechanisms based on significant results")
 print()
