@@ -2,7 +2,7 @@ UV?=uv
 PY?=python
 PKG_SRC=src
 
-.PHONY: help lint test fmt run-collector load-bq run-transformations install create-external materialize e2e verify-outputs quality-check schema-validate
+.PHONY: help lint test fmt run-collector load-bq run-transformations install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
 
 help:
 	@echo "Targets:"
@@ -19,6 +19,9 @@ help:
 	@echo "  verify-outputs         Print BigQuery counts per date for key tables"
 	@echo "  quality-check          Run comprehensive data quality checks"
 	@echo "  schema-validate        Validate TSI and WU schema definitions"
+	@echo "  sync-sharepoint-today  Sync yesterday's parquet files to SharePoint"
+	@echo "  sync-sharepoint-date   Sync specific date to SharePoint (requires DATE=YYYY-MM-DD)"
+	@echo "  sync-sharepoint-backfill  Backfill date range to SharePoint (requires START & END)"
 
 install:
 	$(UV) venv
@@ -75,3 +78,23 @@ quality-check:
 schema-validate:
 	@# Validate schema definitions
 	$(UV) run python -c "from src.utils.schema_validation import TSI_EXPECTED_SCHEMA, WU_EXPECTED_SCHEMA; print(f'✓ Schemas valid: TSI={len(TSI_EXPECTED_SCHEMA)} fields, WU={len(WU_EXPECTED_SCHEMA)} fields')"
+
+sync-sharepoint-today:
+	@# Sync yesterday's data to SharePoint (auto-calculates date)
+	@echo "Syncing yesterday's parquet files to SharePoint..."
+	@DATE=$$(date -u -d 'yesterday' +%Y-%m-%d) && \
+	$(UV) run python scripts/sync_parquet_to_sharepoint.py --date $$DATE --sources TSI WU
+
+sync-sharepoint-date:
+	@# Sync specific date to SharePoint. Usage: make sync-sharepoint-date DATE=2026-02-11
+	@test -n "$(DATE)" || (echo "DATE is required (format: YYYY-MM-DD)" && exit 1)
+	@echo "Syncing parquet files for $(DATE) to SharePoint..."
+	$(UV) run python scripts/sync_parquet_to_sharepoint.py --date $(DATE) --sources $${SOURCES:-TSI WU}
+
+sync-sharepoint-backfill:
+	@# Backfill date range to SharePoint. Usage: make sync-sharepoint-backfill START=2025-07-07 END=2026-02-11
+	@test -n "$(START)" || (echo "START is required (format: YYYY-MM-DD)" && exit 1)
+	@test -n "$(END)" || (echo "END is required (format: YYYY-MM-DD)" && exit 1)
+	@echo "Backfilling parquet files from $(START) to $(END) to SharePoint..."
+	@echo "This may take a while for large date ranges..."
+	$(UV) run python scripts/sync_parquet_to_sharepoint.py --start-date $(START) --end-date $(END) --sources $${SOURCES:-TSI WU}
