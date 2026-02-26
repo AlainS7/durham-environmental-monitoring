@@ -459,3 +459,5 @@ terraform.tfvars
 ANALYSIS_RESULTS.md
 config/generated/
 transformations/sql/07_residence_sensor_assignments.sql
+# Root-level generated HTML files
+/*.html
