@@ -1,0 +1,204 @@
+name: Backfill SharePoint (Historical Data)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Start date for backfill (YYYY-MM-DD)'
+        required: true
+        type: string
+      end_date:
+        description: 'End date for backfill (YYYY-MM-DD)'
+        required: true
+        type: string
+      sources:
+        description: 'Data sources to sync (space-separated, e.g., "TSI WU")'
+        required: false
+        default: 'TSI WU'
+        type: string
+      dry_run:
+        description: 'Preview what would be synced without uploading'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PROJECT_ID: durham-weather-466502
+  GCS_BUCKET: sensor-data-to-bigquery
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    outputs:
+      start_date: ${{ steps.validate.outputs.start_date }}
+      end_date: ${{ steps.validate.outputs.end_date }}
+      date_count: ${{ steps.validate.outputs.date_count }}
+    
+    steps:
+      - name: Validate date range
+        id: validate
+        run: |
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          
+          # Validate date format
+          if ! date -d "$START" "+%Y-%m-%d" > /dev/null 2>&1; then
+            echo "Invalid start date format: $START"
+            exit 1
+          fi
+          
+          if ! date -d "$END" "+%Y-%m-%d" > /dev/null 2>&1; then
+            echo "Invalid end date format: $END"
+            exit 1
+          fi
+          
+          # Calculate number of days
+          START_SEC=$(date -d "$START" +%s)
+          END_SEC=$(date -d "$END" +%s)
+          DIFF_DAYS=$(( (END_SEC - START_SEC) / 86400 + 1 ))
+          
+          if [ $DIFF_DAYS -lt 1 ]; then
+            echo "Start date must be before or equal to end date"
+            exit 1
+          fi
+          
+          echo "start_date=$START" >> $GITHUB_OUTPUT
+          echo "end_date=$END" >> $GITHUB_OUTPUT
+          echo "date_count=$DIFF_DAYS" >> $GITHUB_OUTPUT
+          
+          echo "✓ Valid date range: $START to $END ($DIFF_DAYS days)"
+      
+      - name: Warn on large backfills
+        if: steps.validate.outputs.date_count > 90
+        run: |
+          echo "⚠️  Warning: Backfilling ${{ steps.validate.outputs.date_count }} days"
+          echo "This may take a while and consume significant bandwidth."
+          echo "Consider running in smaller batches if issues occur."
+
+  backfill-sharepoint:
+    name: Backfill Parquet Files to SharePoint
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Write GCP credentials file
+        run: echo "${{ secrets.GCP_SA_KEY_JSON }}" > /tmp/gcp-key.json
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+      
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+      
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src" >> $GITHUB_ENV
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+      
+      - name: Backfill to SharePoint
+        id: backfill
+        env:
+          SHAREPOINT_PAT: ${{ secrets.SHAREPOINT_PAT }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+          SHAREPOINT_FOLDER_PATH: '/Data - Environmental/Google Cloud Sensor Data'
+        run: |
+          set -e
+          
+          START="${{ needs.validate-inputs.outputs.start_date }}"
+          END="${{ needs.validate-inputs.outputs.end_date }}"
+          COUNT="${{ needs.validate-inputs.outputs.date_count }}"
+          
+          echo "=========================================="
+          echo "Backfill Summary"
+          echo "=========================================="
+          echo "Date Range: $START to $END"
+          echo "Total Days: $COUNT"
+          echo "Sources: ${{ github.event.inputs.sources }}"
+          echo "Dry Run: ${{ github.event.inputs.dry_run }}"
+          echo "=========================================="
+          echo ""
+          
+          # Build command
+          CMD="uv run python scripts/sync_parquet_to_sharepoint.py"
+          CMD="$CMD --start-date $START --end-date $END"
+          CMD="$CMD --sources ${{ github.event.inputs.sources }}"
+          
+          # Add dry-run flag if requested
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD="$CMD --dry-run"
+            echo "🔍 DRY RUN MODE - No files will be uploaded"
+            echo ""
+          fi
+          
+          echo "Running: $CMD"
+          echo ""
+          
+          # Run with progress tracking
+          $CMD 2>&1 | tee backfill.log
+          
+          echo ""
+          echo "=========================================="
+          echo "Backfill Complete!"
+          echo "=========================================="
+      
+      - name: Upload backfill log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharepoint-backfill-log-${{ needs.validate-inputs.outputs.start_date }}-to-${{ needs.validate-inputs.outputs.end_date }}
+          path: backfill.log
+          retention-days: 30
+      
+      - name: Upload error logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharepoint-backfill-errors-${{ needs.validate-inputs.outputs.start_date }}-to-${{ needs.validate-inputs.outputs.end_date }}
+          path: |
+            *.log
+            /tmp/*.log
+          retention-days: 30
+      
+      - name: Report backfill status
+        if: always()
+        run: |
+          START="${{ needs.validate-inputs.outputs.start_date }}"
+          END="${{ needs.validate-inputs.outputs.end_date }}"
+          COUNT="${{ needs.validate-inputs.outputs.date_count }}"
+          
+          if [ "${{ steps.backfill.outcome }}" = "success" ]; then
+            if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+              echo "✓ Dry run completed for $COUNT days ($START to $END)"
+              echo "Review the logs to verify what would be synced"
+            else
+              echo "✓ Successfully backfilled $COUNT days ($START to $END) to SharePoint"
+            fi
+          else
+            echo "✗ Backfill failed for date range $START to $END"
+            echo "Check the error logs artifact for details"
+            exit 1
+          fi

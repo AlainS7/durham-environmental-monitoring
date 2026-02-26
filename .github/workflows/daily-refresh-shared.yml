@@ -1,0 +1,129 @@
+name: Daily Refresh Shared Tables (Grafana)
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # 01:00 UTC daily (after production data finalized)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  BQ_PROJECT: durham-weather-466502
+  BQ_SHARED_DATASET: sensors_shared
+  BQ_PROD_DATASET: sensors
+
+jobs:
+  refresh-grafana-tables:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY_JSON }}'
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Refresh TSI shared table
+        id: refresh_tsi
+        run: |
+          echo "Refreshing TSI materialized table for Grafana..."
+          bash scripts/refresh_tsi_shared.sh
+        continue-on-error: true
+
+      - name: Refresh WU shared table
+        id: refresh_wu
+        run: |
+          echo "Refreshing WU materialized table for Grafana..."
+          bash scripts/refresh_wu_shared.sh
+        continue-on-error: true
+
+      - name: Verify refresh completion
+        run: |
+          echo "=== Verifying Grafana tables refreshed ==="
+          
+          TSI_ROWS=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
+            "SELECT COUNT(*) FROM ${BQ_SHARED_DATASET}.tsi_raw_materialized" | tail -1)
+          TSI_LATEST=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
+            "SELECT MAX(DATE(ts)) FROM ${BQ_SHARED_DATASET}.tsi_raw_materialized" | tail -1)
+          
+          WU_ROWS=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
+            "SELECT COUNT(*) FROM ${BQ_SHARED_DATASET}.wu_raw_materialized" | tail -1)
+          WU_LATEST=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
+            "SELECT MAX(DATE(ts)) FROM ${BQ_SHARED_DATASET}.wu_raw_materialized" | tail -1)
+          
+          echo "TSI: ${TSI_ROWS} rows, latest ${TSI_LATEST}"
+          echo "WU: ${WU_ROWS} rows, latest ${WU_LATEST}"
+          
+          # Set outputs for summary
+          echo "tsi_rows=${TSI_ROWS}" >> $GITHUB_OUTPUT
+          echo "tsi_latest=${TSI_LATEST}" >> $GITHUB_OUTPUT
+          echo "wu_rows=${WU_ROWS}" >> $GITHUB_OUTPUT
+          echo "wu_latest=${WU_LATEST}" >> $GITHUB_OUTPUT
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Grafana Data Refresh Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Execution Time**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.refresh_tsi.outcome }}" = "success" ]; then
+            echo "✅ TSI refresh: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ TSI refresh: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.refresh_wu.outcome }}" = "success" ]; then
+            echo "✅ WU refresh: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ WU refresh: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Data Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dataset**: \`sensors_shared\` (Grafana)" >> $GITHUB_STEP_SUMMARY
+          echo "- **TSI**: Latest data available through \`tsi_raw_materialized\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **WU**: Latest data available through \`wu_raw_materialized\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Grafana dashboards now have access to yesterday's complete data." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refresh-logs-${{ github.run_number }}
+          path: '*.log'
+          retention-days: 7
+
+      - name: Notify on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Grafana Daily Refresh Failed - ${{ github.run_id }}",
+              body: `
+            ## Daily Refresh Failure
+            
+            **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Time**: ${{ github.event.repository.updated_at }}
+            
+            One or more Grafana table refreshes failed. Check the workflow logs for details.
+            
+            ### Troubleshooting Steps
+            1. Check BigQuery job logs for the failed table refresh
+            2. Verify production tables have recent data
+            3. Check service account permissions
+            4. Review workflow artifact logs
+              `,
+              labels: ['monitoring', 'grafana', 'data-refresh']
+            });

@@ -1,0 +1,128 @@
+name: Daily SharePoint Sync
+
+on:
+  schedule:
+    # Run at 08:45 UTC daily (15 min after quality checks complete at 08:30)
+    - cron: '45 8 * * *'
+  
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to sync (YYYY-MM-DD), defaults to yesterday'
+        required: false
+        type: string
+      sources:
+        description: 'Data sources to sync (space-separated, e.g., "TSI WU")'
+        required: false
+        default: 'TSI WU'
+      dry_run:
+        description: 'Preview what would be synced without uploading'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PROJECT_ID: durham-weather-466502
+  GCS_BUCKET: sensor-data-to-bigquery
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sync-to-sharepoint:
+    name: Sync Parquet Files to SharePoint
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Write GCP credentials file
+        run: echo "${{ secrets.GCP_SA_KEY_JSON }}" > /tmp/gcp-key.json
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+      
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+      
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src" >> $GITHUB_ENV
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+      
+      - name: Determine date to sync
+        id: date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            # Manual run with specific date
+            DATE="${{ github.event.inputs.date }}"
+          else
+            # Scheduled run - sync yesterday's data
+            DATE=$(date -u -d 'yesterday' +%Y-%m-%d)
+          fi
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "Syncing data for: $DATE"
+      
+      - name: Sync to SharePoint
+        id: sync
+        env:
+          SHAREPOINT_PAT: ${{ secrets.SHAREPOINT_PAT }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+          SHAREPOINT_FOLDER_PATH: '/Data - Environmental/Google Cloud Sensor Data'
+        run: |
+          set -e
+          
+          # Build command
+          CMD="uv run python scripts/sync_parquet_to_sharepoint.py --date ${{ steps.date.outputs.date }}"
+          
+          # Add sources if specified
+          if [ -n "${{ github.event.inputs.sources }}" ]; then
+            CMD="$CMD --sources ${{ github.event.inputs.sources }}"
+          fi
+          
+          # Add dry-run flag if requested
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          
+          echo "Running: $CMD"
+          $CMD
+      
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharepoint-sync-logs-${{ steps.date.outputs.date }}
+          path: |
+            *.log
+            /tmp/*.log
+          retention-days: 7
+      
+      - name: Report sync status
+        if: always()
+        run: |
+          if [ "${{ steps.sync.outcome }}" = "success" ]; then
+            echo "✓ Successfully synced parquet files for ${{ steps.date.outputs.date }} to SharePoint"
+          else
+            echo "✗ Failed to sync parquet files for ${{ steps.date.outputs.date }}"
+            exit 1
+          fi
+3
