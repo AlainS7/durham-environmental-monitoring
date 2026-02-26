@@ -85,6 +85,7 @@
   - Upload logs as artifacts
 
 **Environment Variables:**
+
 ```bash
 PROJECT_ID=durham-weather-466502
 JOB_NAME=weather-data-uploader
@@ -101,12 +102,14 @@ GCS_BUCKET=sensor-data-to-bigquery
 **Container:** Built from [Dockerfile](../Dockerfile) via [cloudbuild-cr-job.yaml](../cloudbuild-cr-job.yaml)
 
 **Runtime Behavior:**
+
 - Accepts `--start` and `--end` date arguments
 - Fetches data from TSI API and Weather Underground API
 - Writes Parquet files to GCS with schema enforcement
 - Loads Parquet → BigQuery external tables → MERGE into production tables
 
 **Key Code:**
+
 - Entry point: `src/daily_data_collector.py`
 - GCS writer: `src/storage/gcs_uploader.py` (FLOAT64 coercion)
 - BigQuery loader: `src/storage/bigquery_loader.py`
@@ -118,22 +121,23 @@ GCS_BUCKET=sensor-data-to-bigquery
 
 #### Production Dataset: `sensors`
 
-| Table | Type | Partitioning | Clustering | Rows | Date Range |
-|-------|------|--------------|------------|------|------------|
-| `tsi_raw_materialized` | Materialized | DATE(ts) | native_sensor_id | 1.3M | 2025-07-07 to 2025-11-16 |
-| `wu_raw_materialized` | Materialized | DATE(ts) | - | 31k | 2025-07-07 to 2025-11-16 |
-| `staging_tsi_YYYYMMDD` | Staging | - | - | Varies | Daily drops |
-| `staging_wu_YYYYMMDD` | Staging | - | - | Varies | Daily drops |
+| Table                  | Type         | Partitioning | Clustering       | Rows   | Date Range               |
+| ---------------------- | ------------ | ------------ | ---------------- | ------ | ------------------------ |
+| `tsi_raw_materialized` | Materialized | DATE(ts)     | native_sensor_id | 1.3M   | 2025-07-07 to 2025-11-16 |
+| `wu_raw_materialized`  | Materialized | DATE(ts)     | -                | 31k    | 2025-07-07 to 2025-11-16 |
+| `staging_tsi_YYYYMMDD` | Staging      | -            | -                | Varies | Daily drops              |
+| `staging_wu_YYYYMMDD`  | Staging      | -            | -                | Varies | Daily drops              |
 
 #### Grafana Dataset: `sensors_shared`
 
-| Object | Type | Definition |
-|--------|------|------------|
-| `tsi_raw_view` | View | `SELECT * FROM sensors.tsi_raw_materialized` |
-| `tsi_raw_materialized` | Materialized | Refreshed daily from `tsi_raw_view` |
-| `wu_raw_view` | View | Enriched WU data with location/sensor_id |
+| Object                 | Type         | Definition                                   |
+| ---------------------- | ------------ | -------------------------------------------- |
+| `tsi_raw_view`         | View         | `SELECT * FROM sensors.tsi_raw_materialized` |
+| `tsi_raw_materialized` | Materialized | Refreshed daily from `tsi_raw_view`          |
+| `wu_raw_view`          | View         | Enriched WU data with location/sensor_id     |
 
 **Why Cross-Dataset Views?**
+
 - Partition pruning preserved (no storage duplication)
 - Grafana isolated from production schema changes
 - Daily refresh ensures Grafana sees latest data
@@ -144,6 +148,7 @@ GCS_BUCKET=sensor-data-to-bigquery
 **Region:** `US` (multi-region)
 
 **Directory Structure:**
+
 ```
 raw/
   tsi/
@@ -156,6 +161,7 @@ raw/
 ```
 
 **Schema Enforcement:** [src/storage/gcs_uploader.py](../src/storage/gcs_uploader.py)
+
 - TSI numeric columns coerced to FLOAT64 before Parquet write
 - WU numeric columns coerced to FLOAT64
 - Prevents INT32 → FLOAT64 schema drift errors in BigQuery
@@ -167,6 +173,7 @@ raw/
 **Location:** [oura-rings/](../oura-rings/) directory
 
 **Files:**
+
 - `oura_collector.py` - Standalone Python collector
 - `cli.py` - CLI interface
 - `oura_bigquery_loader.py` - Manual BigQuery upload
@@ -182,6 +189,7 @@ raw/
 **Gap Identified:** November 17, 2025 → January 21, 2026 (66 days)
 
 **Last Data:**
+
 - TSI: 2025-11-16 (1,319,879 rows)
 - WU: 2025-11-16 (31,422 rows)
 
@@ -194,6 +202,7 @@ raw/
 **Fixed for macOS:** Cross-platform date command compatibility added
 
 **Usage:**
+
 ```bash
 bash scripts/backfill_catchup.sh
 # Prompts: Continue? (y/N)
@@ -204,6 +213,7 @@ bash scripts/backfill_catchup.sh
 **Duration:** ~66 days × 5 seconds/day = ~5.5 minutes (with 3s delay between jobs)
 
 **Post-Backfill:**
+
 ```bash
 # 1. Refresh materialized table
 bash scripts/refresh_tsi_shared.sh
@@ -224,6 +234,7 @@ bq query --nouse_legacy_sql \
 **Schedule:** 06:45 UTC daily
 
 **Workflow:**
+
 1. Execute Cloud Run job for yesterday's data
 2. Optional: Merge backfill if `backfill_merge=true`
 3. Optional: Run data quality checks if `run_checks=true`
@@ -237,6 +248,7 @@ bq query --nouse_legacy_sql \
 **Fixed for macOS:** Date command compatibility added
 
 **Usage:**
+
 ```bash
 bash scripts/daily_collection.sh
 # 1. Collects yesterday's data via Cloud Run
@@ -245,6 +257,7 @@ bash scripts/daily_collection.sh
 ```
 
 **Cloud Scheduler (Optional):**
+
 ```bash
 gcloud scheduler jobs create http daily-tsi-collection \
   --schedule="45 6 * * *" \
@@ -261,12 +274,14 @@ gcloud scheduler jobs create http daily-tsi-collection \
 **Documentation:** [docs/GRAFANA_SETUP.md](GRAFANA_SETUP.md)
 
 **Data Source:**
+
 - Type: BigQuery
 - Project: `durham-weather-466502`
 - Dataset: `sensors_shared`
 - Authentication: Service account JSON key
 
 **Sample Query:**
+
 ```sql
 SELECT
   ts AS time,
@@ -280,6 +295,7 @@ ORDER BY ts
 ```
 
 **Dashboard Features:**
+
 - Time series: PM2.5, PM10, temperature trends
 - Heatmap: Sensor coverage by location
 - Table: Latest readings per sensor
@@ -307,14 +323,14 @@ bash scripts/refresh_tsi_shared.sh
 ```bash
 # Check latest TSI date
 bq query --nouse_legacy_sql \
-  'SELECT MAX(DATE(ts)) as latest_date, COUNT(*) as total_rows 
+  'SELECT MAX(DATE(ts)) as latest_date, COUNT(*) as total_rows
    FROM `durham-weather-466502.sensors.tsi_raw_materialized`'
 
 # Expected: latest_date = 2026-01-21, total_rows ~1.7M
 
 # Check Grafana table
 bq query --nouse_legacy_sql \
-  'SELECT MAX(DATE(ts)) as latest_date, COUNT(*) as total_rows 
+  'SELECT MAX(DATE(ts)) as latest_date, COUNT(*) as total_rows
    FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized`'
 ```
 
@@ -330,11 +346,13 @@ bq query --nouse_legacy_sql \
 ### 4. Monitor Daily Automation
 
 **GitHub Actions:**
+
 - Check workflow runs: https://github.com/AlainS7/durham-environmental-monitoring/actions/workflows/daily-ingest.yml
 - Review logs in "Artifacts" section
 - Issues auto-created on failure (schedule trigger only)
 
 **BigQuery:**
+
 ```sql
 -- Check if today's data arrived
 SELECT
@@ -366,7 +384,7 @@ gcloud run jobs executions list \
   --limit=5
 
 # View logs for failed execution
-gcloud logging read "resource.type=cloud_run_job 
+gcloud logging read "resource.type=cloud_run_job
   AND resource.labels.job_name=weather-data-uploader" \
   --limit=50 \
   --project=durham-weather-466502
@@ -377,12 +395,14 @@ gcloud logging read "resource.type=cloud_run_job
 **Symptom:** "Schema mismatch: INT32 vs FLOAT64"
 
 **Fix:** Already applied in `src/storage/gcs_uploader.py`
+
 - All numeric sensor columns coerced to FLOAT64 before Parquet write
 - Verify `TSI_NUMERIC_COLS` and `WU_NUMERIC_COLS` sets are complete
 
 ### Grafana Not Showing Data
 
 **Check:**
+
 1. BigQuery data source authentication (service account key)
 2. Dataset access: `sensors_shared` must be visible
 3. Query format: Ensure `ts AS time`, `native_sensor_id AS metric`, `value AS value`
@@ -393,6 +413,7 @@ gcloud logging read "resource.type=cloud_run_job
 **Symptom:** "date: illegal option -- d"
 
 **Fix:** Already applied in `scripts/backfill_catchup.sh` and `scripts/daily_collection.sh`
+
 - Detects OS and uses appropriate date command (GNU vs BSD)
 - Test: `bash scripts/backfill_catchup.sh <<< "N"`
 
