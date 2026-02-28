@@ -9,7 +9,7 @@
 │                        GITHUB ACTIONS                           │
 │                  (.github/workflows/daily-ingest.yml)           │
 │                                                                 │
-│  Cron: 06:45 UTC daily                                         │
+│  Cron: Every 6 hours (05 past)                                 │
 │  Trigger: schedule / workflow_dispatch                         │
 └────────────────────────────┬────────────────────────────────────┘
                              │
@@ -53,7 +53,7 @@
 │                                                                 │
 │  Dataset: sensors_shared (Grafana layer)                       │
 │  • tsi_raw_view → sensors.tsi_raw_materialized                │
-│  • tsi_raw_materialized (daily refresh from view)             │
+│  • tsi_raw_materialized (6-hour refresh from view)            │
 │  • wu_raw_view (enriched with location/sensor_id)             │
 └────────────────────────────┬────────────────────────────────────┘
                              │
@@ -70,11 +70,11 @@
 
 ## Key Components
 
-### 1. GitHub Actions (Daily Orchestrator)
+### 1. GitHub Actions (Scheduled Orchestrator)
 
 **File:** [.github/workflows/daily-ingest.yml](.github/workflows/daily-ingest.yml)
 
-- **Schedule:** 06:45 UTC daily (cron)
+- **Schedule:** Every 6 hours (`5 */6 * * *`)
 - **Manual Trigger:** workflow_dispatch with custom date ranges
 - **Actions:**
   - Authenticate to GCP
@@ -225,13 +225,13 @@ bq query --nouse_legacy_sql \
 # 3. Check Grafana dashboard
 ```
 
-## Daily Automation
+## Automation Cadence
 
 ### Current Setup
 
 **Method:** GitHub Actions workflow [daily-ingest.yml](.github/workflows/daily-ingest.yml)
 
-**Schedule:** 06:45 UTC daily
+**Schedule:** Every 6 hours (`5 */6 * * *`)
 
 **Workflow:**
 
@@ -256,14 +256,17 @@ bash scripts/daily_collection.sh
 # 3. Validates data freshness
 ```
 
-**Cloud Scheduler (Optional):**
+**Cloud Scheduler (Optional direct trigger):**
 
 ```bash
-gcloud scheduler jobs create http daily-tsi-collection \
-  --schedule="45 6 * * *" \
-  --uri="https://github.com/AlainS7/durham-environmental-monitoring/actions/workflows/daily-ingest.yml/dispatches" \
+gcloud scheduler jobs create http daily-data-collection-trigger \
+  --schedule="0 */6 * * *" \
+  --uri="https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run" \
   --http-method=POST \
-  --oidc-service-account-email=<service-account>@durham-weather-466502.iam.gserviceaccount.com \
+  --message-body='{}' \
+  --headers="Content-Type=application/json" \
+  --oauth-service-account-email=github-actions-deployer@durham-weather-466502.iam.gserviceaccount.com \
+  --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
   --location=us-east1
 ```
 

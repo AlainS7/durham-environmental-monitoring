@@ -43,15 +43,17 @@ jobs:
           service_account: ${{ secrets.GCP_VERIFIER_SA }}
           token_format: access_token
 
-      - name: Merge yesterday partitions (auto-detect staging)
+      - name: Merge yesterday partitions (per-source staging tables)
         run: |
           YESTERDAY=$(date -u -d 'yesterday' +%F)
           echo "Merging date $YESTERDAY"
-          python scripts/merge_sensor_readings.py \
+          python scripts/merge_backfill_range.py \
             --project "$BQ_PROJECT" \
             --dataset "$BQ_DATASET" \
-            --date "$YESTERDAY" \
-            --auto-detect-staging \
+            --start "$YESTERDAY" \
+            --end "$YESTERDAY" \
+            --per-source-dated \
+            --sources tsi,wu \
             --update-only-if-changed
 
       - name: Upload merge logs (always)

@@ -112,14 +112,14 @@ def delete_partition(client: bigquery.Client, dataset: str, table: str, d: dt.da
     job.result()
 
 
-def insert_partition_from_external(client: bigquery.Client, dataset: str, table: str, external_table: str, d: dt.date) -> None:
+def insert_partition_from_external(client: bigquery.Client, dataset: str, table: str, external_table: str, d: dt.date) -> int:
     target_table_ref = f"{client.project}.{dataset}.{table}"
     try:
         target_table = client.get_table(target_table_ref)
         target_cols = [f.name for f in target_table.schema]
     except NotFound:
         print(f"[materialize] Target table {target_table_ref} not found. Cannot insert.")
-        return
+        return 0
 
     external_table_ref = f"{client.project}.{dataset}.{external_table}"
     external_table_obj = client.get_table(external_table_ref)
@@ -161,6 +161,7 @@ def insert_partition_from_external(client: bigquery.Client, dataset: str, table:
         ]
     ))
     job.result()
+    return int(job.num_dml_affected_rows or 0)
 
 
 def _table_exists(client: bigquery.Client, project: str, dataset: str, table: str) -> bool:
@@ -213,7 +214,7 @@ def insert_partition_from_gcs(
     table: str,
     stage_table: str,
     d: dt.date,
-) -> None:
+) -> int:
     target_table_ref = f"{client.project}.{dataset}.{table}"
     try:
         target_table = client.get_table(target_table_ref)
@@ -222,7 +223,7 @@ def insert_partition_from_gcs(
         # If the target table doesn't exist, we can't proceed with a targeted insert.
         # The calling function should have already created it.
         print(f"[materialize] Target table {target_table_ref} not found. Cannot insert.")
-        return
+        return 0
 
     stage_table_obj = client.get_table(stage_table)
     stage_cols = {f.name for f in stage_table_obj.schema}
@@ -260,6 +261,7 @@ def insert_partition_from_gcs(
         query_parameters=[bigquery.ScalarQueryParameter("d", "DATE", d.isoformat())]
     ))
     job.result()
+    return int(job.num_dml_affected_rows or 0)
 
 
 def main() -> None:
@@ -295,8 +297,11 @@ def main() -> None:
                     try:
                         # Ensure target exists using external schema
                         ensure_materialized_table(client, args.dataset, mat, ext, cluster_by=["native_sensor_id"])
-                        insert_partition_from_external(client, args.dataset, mat, ext, d)
-                        continue
+                        inserted = insert_partition_from_external(client, args.dataset, mat, ext, d)
+                        if inserted > 0:
+                            print(f"[materialize] External path inserted {inserted} rows for {src} {d}")
+                            continue
+                        print(f"[materialize] External path inserted 0 rows for {src} {d}; falling back to GCS stage.")
                     except Exception as e:
                         print(f"[materialize] External path failed for {src} {d}: {e}. Falling back to GCS stage.")
                 # Fallback to GCS direct load
@@ -309,7 +314,8 @@ def main() -> None:
                     continue
                 # Ensure target exists using stage schema
                 ensure_materialized_table(client, args.dataset, mat, stage.split(".")[-1], cluster_by=["native_sensor_id"])  # source table within same dataset
-                insert_partition_from_gcs(client, args.dataset, mat, stage, d)
+                inserted = insert_partition_from_gcs(client, args.dataset, mat, stage, d)
+                print(f"[materialize] GCS fallback inserted {inserted} rows for {src} {d}")
 
     if not args.execute:
         print("\n".join(actions))

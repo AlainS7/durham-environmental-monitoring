@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide sets up automated daily data collection for TSI and WU sensors, ensuring Grafana always shows fresh data.
+This guide sets up automated scheduled data collection for TSI and WU sensors, with a recommended 6-hour cadence for fresher Grafana monitoring.
 
 ---
 
@@ -42,41 +42,38 @@ Expected output: `latest_date` should be yesterday or today.
 
 ---
 
-## Daily Automation Setup
+## Automation Setup (Recommended: Every 6 Hours)
 
-### Option A: Cloud Scheduler (Recommended for Production)
+### Option A: Cloud Scheduler (Production)
 
-#### 1. Create Cloud Scheduler Job
+#### 1. Create or Update Cloud Scheduler Job (Cloud Run Jobs API)
 
 ```bash
-gcloud scheduler jobs create http tsi-wu-daily-collection \
+gcloud scheduler jobs create http daily-data-collection-trigger \
   --project=durham-weather-466502 \
   --location=us-east1 \
-  --schedule="0 2 * * *" \
+  --schedule="0 */6 * * *" \
   --time-zone="America/New_York" \
-  --uri="https://YOUR-CLOUD-RUN-URL/collect" \
+  --uri="https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run" \
   --http-method=POST \
-  --message-body='{"start":"yesterday","end":"yesterday"}' \
-  --oidc-service-account-email=SCHEDULER_SA@durham-weather-466502.iam.gserviceaccount.com \
+  --message-body='{}' \
+  --headers="Content-Type=application/json" \
+  --oauth-service-account-email=github-actions-deployer@durham-weather-466502.iam.gserviceaccount.com \
+  --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
   --attempt-deadline=1800s
 ```
 
-**Note**: Replace `YOUR-CLOUD-RUN-URL` with your actual Cloud Run service URL.
+If the job already exists, use `gcloud scheduler jobs update http ...` with the same flags.
 
-#### 2. Set Up TSI Refresh (after collection)
+#### 2. Refresh shared Grafana tables via GitHub Actions
 
 ```bash
-gcloud scheduler jobs create http tsi-refresh-daily \
-  --project=durham-weather-466502 \
-  --location=us-east1 \
-  --schedule="0 3 * * *" \
-  --time-zone="America/New_York" \
-  --uri="https://YOUR-CLOUD-RUN-URL/refresh" \
-  --http-method=POST \
-  --oidc-service-account-email=SCHEDULER_SA@durham-weather-466502.iam.gserviceaccount.com
+Workflow: `.github/workflows/daily-refresh-shared.yml`
+- Recommended schedule: every 6 hours (staggered after ingestion).
+- Current default in repo: `45 */6 * * *`.
 ```
 
-**Schedule**: Runs at 3 AM (1 hour after collection).
+**Rollback to daily mode**: set cron back to `45 6 * * *` (ingest) and `0 1 * * *` (shared refresh).
 
 ---
 
@@ -85,13 +82,13 @@ gcloud scheduler jobs create http tsi-refresh-daily \
 Add to crontab (`crontab -e`):
 
 ```cron
-# Daily data collection at 2 AM ET
-0 2 * * * cd /Users/Projects/Developer/work/github.com/AlainS7/durham-environmental-monitoring && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
+# Every 6 hours
+0 */6 * * * cd /Users/Projects/Developer/work/github.com/AlainS7/durham-environmental-monitoring && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
 ```
 
 ---
 
-### Option C: Manual Daily Run
+### Option C: Manual Run
 
 Run this command each day:
 
@@ -113,7 +110,7 @@ gcloud run jobs execute weather-data-uploader \
 
 ## Verification & Monitoring
 
-### Check Daily Updates
+### Check Update Freshness
 
 ```bash
 # Run this each morning to verify yesterday's data loaded
@@ -186,7 +183,7 @@ gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=we
 
 - **Partition pruning**: Always filter on `ts` column
 - **Clustering**: Queries filtering on `native_sensor_id` are faster/cheaper
-- **Materialized table**: Refreshing daily costs ~$0.01/day (1.3M rows × $5/TB)
+- **Materialized table**: Refreshing every 6 hours is still low-cost (~$0.42/month observed scale)
 - **View queries**: Free if under 1TB scanned/month
 
 ### Cloud Run Job Costs
@@ -200,6 +197,6 @@ gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=we
 
 1. Run backfill: `bash scripts/backfill_catchup.sh`
 2. Verify Grafana queries work (see [GRAFANA_SETUP.md](GRAFANA_SETUP.md))
-3. Set up Cloud Scheduler or cron for daily automation
+3. Set up Cloud Scheduler or cron for 6-hour automation
 4. Add data freshness monitoring panel to Grafana
 5. Optional: Set up alerts via Grafana or Cloud Monitoring

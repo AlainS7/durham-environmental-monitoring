@@ -2,7 +2,7 @@ name: Daily Refresh Shared Tables (Grafana)
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # 01:00 UTC daily (after production data finalized)
+    - cron: '45 */6 * * *'  # every 6 hours, staggered after ingestion
   workflow_dispatch:
 
 permissions:
