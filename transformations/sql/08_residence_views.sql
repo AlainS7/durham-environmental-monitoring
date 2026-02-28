@@ -97,5 +97,4 @@ SELECT
   start_ts,
   end_ts,
   CASE WHEN end_ts IS NULL THEN 'Active' ELSE 'Inactive' END AS status
-FROM `${PROJECT}.${DATASET}.residence_sensor_assignments`
-ORDER BY residence_id, sensor_role, start_ts;
+FROM `${PROJECT}.${DATASET}.residence_sensor_assignments`;

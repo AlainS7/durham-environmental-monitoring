@@ -3,7 +3,7 @@
 -- Supports temporal assignments (sensors can move between residences).
 --
 -- Public template: sensor_name values are safe to commit.
--- Keep native_sensor_id as 'dummy_sensor_id' in this file.
+-- Keep native_sensor_id placeholders as dummy_sensor_id* in this file.
 -- Generate the gitignored production SQL with:
 --   make generate-sensor-assignments PROJECT=<gcp-project> RAW_DATASET=<dataset>
 -- Preferred input for generation is a private template stored in
@@ -41,5 +41,5 @@ INSERT INTO `${PROJECT}.${DATASET}.residence_sensor_assignments`
   (residence_id, native_sensor_id, sensor_name, sensor_role, start_ts, end_ts, updated_at)
 VALUES
   -- Public-safe sample rows only. Keep real residence/sensor mappings out of git.
-  ('RESIDENCE_A', 'dummy_sensor_id', 'SENSOR_A_IN',  'Indoor',  TIMESTAMP('2025-01-01 00:00:00'), NULL, CURRENT_TIMESTAMP()),
-  ('RESIDENCE_A', 'dummy_sensor_id', 'SENSOR_A_OUT', 'Outdoor', TIMESTAMP('2025-01-01 00:00:00'), NULL, CURRENT_TIMESTAMP());
+  ('RESIDENCE_A', 'dummy_sensor_id_in',  'SENSOR_A_IN',  'Indoor',  TIMESTAMP('2025-01-01 00:00:00'), NULL, CURRENT_TIMESTAMP()),
+  ('RESIDENCE_A', 'dummy_sensor_id_out', 'SENSOR_A_OUT', 'Outdoor', TIMESTAMP('2025-01-01 00:00:00'), NULL, CURRENT_TIMESTAMP());

@@ -1,16 +1,64 @@
 #!/usr/bin/env bash
 # Backfill TSI and/or WU data from Nov 17, 2025 to current date
-# Usage: 
+# Usage:
 #   bash backfill_catchup.sh              # Backfill both TSI and WU (default)
 #   bash backfill_catchup.sh --source tsi # Backfill only TSI
 #   bash backfill_catchup.sh --source wu  # Backfill only WU
+#   bash backfill_catchup.sh tsi          # Backward-compatible positional source
 
 set -euo pipefail
 
 PROJECT_ID="${GCP_PROJECT_ID:-durham-weather-466502}"
 JOB_NAME="weather-data-uploader"
 REGION="us-east1"
-SOURCE="${1:-all}"  # Default to 'all' if not specified, or use first arg
+SOURCE="all"
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $(basename "$0")                    # Backfill both TSI and WU (default)
+  $(basename "$0") --source tsi       # Backfill only TSI
+  $(basename "$0") --source wu        # Backfill only WU
+  $(basename "$0") [all|tsi|wu]       # Backward-compatible positional source
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --source)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --source requires a value (all|tsi|wu)" >&2
+                usage
+                exit 1
+            fi
+            SOURCE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        all|tsi|wu)
+            SOURCE="$1"
+            shift
+            ;;
+        *)
+            echo "Error: Unknown argument: $1" >&2
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+SOURCE="$(printf '%s' "$SOURCE" | tr '[:upper:]' '[:lower:]')"
+case "$SOURCE" in
+    all|tsi|wu) ;;
+    *)
+        echo "Error: Invalid source '$SOURCE' (expected all|tsi|wu)" >&2
+        usage
+        exit 1
+        ;;
+esac
 
 # Cross-platform date command helper
 get_date_unix() {

@@ -28,7 +28,7 @@ GROUP BY sensor_name
 """
 
 ASSIGNMENT_LINE_RE = re.compile(
-    r"^\s*\(\s*'[^']+'\s*,\s*'dummy_sensor_id'\s*,\s*'(?P<sensor_name>[^']+)'\s*,"
+    r"^\s*\(\s*'[^']+'\s*,\s*'(?P<dummy_id>dummy_sensor_id[^']*)'\s*,\s*'(?P<sensor_name>[^']+)'\s*,"
 )
 
 
@@ -70,13 +70,14 @@ def substitute_template(
             continue
 
         sensor_name = match.group("sensor_name")
+        dummy_id = match.group("dummy_id")
         native_sensor_id = mapping.get(sensor_name)
         if native_sensor_id is None:
             missing.add(sensor_name)
             output_lines.append(line)
             continue
 
-        output_lines.append(line.replace("'dummy_sensor_id'", f"'{native_sensor_id}'", 1))
+        output_lines.append(line.replace(f"'{dummy_id}'", f"'{native_sensor_id}'", 1))
         replaced += 1
 
     return "".join(output_lines), missing, replaced
