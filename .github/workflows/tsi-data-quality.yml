@@ -110,18 +110,6 @@ jobs:
       
       - name: Create issue on quality failure
         if: failure() && github.event_name == 'schedule'
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "🚨 TSI Data Quality Check Failed for ${{ steps.date.outputs.range }}"
-          content-filepath: .github/issue_templates/tsi-quality-failure.md
-          labels: |
-            data-quality
-            tsi
-            automated-alert
-            priority-high
-      
-      - name: Create simple issue on quality failure (fallback)
-        if: failure() && github.event_name == 'schedule'
         uses: actions/github-script@v7
         with:
           script: |

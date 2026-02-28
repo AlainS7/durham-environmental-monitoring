@@ -47,8 +47,20 @@ jobs:
         id: freshness
         run: |
           set +e
-          python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET" --table sensor_readings --max-lag-days 1 > freshness.log 2>&1
-          EXIT=$?
+          EXIT=0
+          : > freshness.log
+          for TABLE in sensor_readings sensor_readings_tsi_raw sensor_readings_wu_raw; do
+            echo "=== Checking ${BQ_DATASET}.${TABLE} ===" | tee -a freshness.log
+            python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET" --table "$TABLE" --max-lag-days 1 >> freshness.log 2>&1
+            TABLE_EXIT=$?
+            if [ "$TABLE_EXIT" -ne 0 ]; then
+              EXIT=1
+              echo "Result: FAILED (exit $TABLE_EXIT)" | tee -a freshness.log
+            else
+              echo "Result: OK" | tee -a freshness.log
+            fi
+            echo "" >> freshness.log
+          done
           echo "exit_code=$EXIT" >> $GITHUB_OUTPUT
           cat freshness.log || true
           exit $EXIT
