@@ -2,7 +2,7 @@ UV?=uv
 PY?=python
 PKG_SRC=src
 
-.PHONY: help lint test fmt run-collector load-bq run-transformations install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
+.PHONY: help lint test fmt run-collector load-bq run-transformations generate-sensor-assignments install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
 
 help:
 	@echo "Targets:"
@@ -13,6 +13,7 @@ help:
 	@echo "  run-collector          Execute data collection (env controls)"
 	@echo "  load-bq                Load a date partition to BigQuery"
 	@echo "  run-transformations    Execute transformation SQL files"
+	@echo "  generate-sensor-assignments  Generate gitignored residence assignment SQL with real sensor IDs"
 	@echo "  create-external        Create or replace BQ external tables over GCS raw Parquet"
 	@echo "  materialize            Materialize daily partitions from externals into native tables"
 	@echo "  e2e                    End-to-end: collect -> materialize -> transformations"
@@ -48,6 +49,12 @@ load-bq:
 run-transformations:
 	@# Required vars: DATE=YYYY-MM-DD DATASET=sensors PROJECT overrides BQ_PROJECT if set
 	$(UV) run python scripts/run_transformations.py --date $(DATE) --dataset $(DATASET) --project $${PROJECT:-$$BQ_PROJECT} --execute
+
+generate-sensor-assignments:
+	@# Generates transformations/sql/07_residence_sensor_assignments.sql (gitignored)
+	@test -n "$${PROJECT:-$$BQ_PROJECT}" || (echo "PROJECT or BQ_PROJECT is required" && exit 1)
+	@test -n "$${RAW_DATASET:-$$BQ_DATASET}" || (echo "RAW_DATASET or BQ_DATASET is required" && exit 1)
+	$(UV) run python scripts/generate_residence_assignments.py --project $${PROJECT:-$$BQ_PROJECT} --raw-dataset $${RAW_DATASET:-$$BQ_DATASET} --execute
 
 create-external:
 	@# Uses env: BQ_PROJECT/BQ_DATASET/GCS_BUCKET/GCS_PREFIX
@@ -88,6 +95,7 @@ sync-sharepoint-today:
 sync-sharepoint-date:
 	@# Sync specific date to SharePoint. Usage: make sync-sharepoint-date DATE=2026-02-11
 	@test -n "$(DATE)" || (echo "DATE is required (format: YYYY-MM-DD)" && exit 1)
+	@echo "$(DATE)" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$$' || (echo "Invalid DATE format. Use YYYY-MM-DD." && exit 1)
 	@echo "Syncing parquet files for $(DATE) to SharePoint..."
 	$(UV) run python scripts/sync_parquet_to_sharepoint.py --date $(DATE) --sources $${SOURCES:-TSI WU}
 

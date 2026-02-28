@@ -78,26 +78,13 @@ while [ "$cur_ts" -le "$end_ts" ]; do
     
     echo "[$count/$days] Executing job for $d..."
     
-    # Use environment variables for INGEST_DATE which the Python script reads:
-    # daily_data_collector.py has this logic:
-    #   ingest_env = os.getenv('INGEST_DATE')
-    #   if ingest_env and args.days == 0:  # environment-provided explicit date
-    #       start = datetime.strptime(ingest_env, '%Y-%m-%d')
-    #       end = start  # single day
-    # 
-    # We prefer --start/--end args which are explicit, but environment is fallback.
-    # Since gcloud run jobs execute doesn't support passing args, we update the job once
-    # per date. This is slower but reliable.
-    
-    gcloud run jobs update "$JOB_NAME" \
-        --region "$REGION" \
-        --project "$PROJECT_ID" \
-        --args="src/data_collection/daily_data_collector.py","--start=$d","--end=$d","--source=$SOURCE" \
-        --quiet >/dev/null 2>&1
+    # Pass per-day arguments directly to execution to avoid mutating job
+    # definition on every loop iteration.
     
     if timeout 900 gcloud run jobs execute "$JOB_NAME" \
         --region "$REGION" \
         --project "$PROJECT_ID" \
+        --args="src/data_collection/daily_data_collector.py,--start=$d,--end=$d,--source=$SOURCE" \
         --wait 2>&1 | tee /tmp/backfill_${d}.log; then
         echo "  ✓ Success: $d"
     else
@@ -111,15 +98,6 @@ while [ "$cur_ts" -le "$end_ts" ]; do
         sleep 2
     fi
 done
-
-# Restore job to default args (no --start/--end, relies on INGEST_DATE env var)
-echo ""
-echo "Restoring job default configuration..."
-gcloud run jobs update "$JOB_NAME" \
-    --region "$REGION" \
-    --project "$PROJECT_ID" \
-    --args="src/data_collection/daily_data_collector.py" \
-    --quiet >/dev/null 2>&1
 
 echo ""
 echo "======================================"

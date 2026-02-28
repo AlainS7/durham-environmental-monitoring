@@ -2,7 +2,11 @@
 -- Tracks which sensors are deployed at which residence over time.
 -- Supports temporal assignments (sensors can move between residences).
 --
--- Source: pair_sensor_dict.py (manually maintained by research team)
+-- Public template: sensor_name values are safe to commit.
+-- Keep native_sensor_id as 'dummy_sensor_id' in this file.
+-- Generate the gitignored production SQL with:
+--   make generate-sensor-assignments PROJECT=<gcp-project> RAW_DATASET=<dataset>
+-- Generator source: scripts/generate_residence_assignments.py
 
 DECLARE proc_date DATE DEFAULT @proc_date;
 
@@ -23,6 +27,8 @@ CLUSTER BY residence_id, native_sensor_id;
 -- ============================================================================
 -- Seed / refresh assignment data
 -- ============================================================================
+-- WARNING: Do not commit real native_sensor_id values in this template.
+-- Use the generator script to create the gitignored production SQL file.
 
 -- Idempotent: clear and reload
 DELETE FROM `${PROJECT}.${DATASET}.residence_sensor_assignments` WHERE TRUE;

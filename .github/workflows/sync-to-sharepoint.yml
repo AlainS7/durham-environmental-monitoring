@@ -125,4 +125,3 @@ jobs:
             echo "✗ Failed to sync parquet files for ${{ steps.date.outputs.date }}"
             exit 1
           fi
-3

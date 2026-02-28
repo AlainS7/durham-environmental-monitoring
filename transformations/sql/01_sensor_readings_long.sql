@@ -305,6 +305,9 @@ WITH
   -- ─── Multivariate PM2.5 correction (pre-UNPIVOT) ─────────────────────
   -- Uses regression model with PM2.5 + Temperature + Humidity co-variates.
   -- Different coefficients for indoor (AA) vs outdoor (BS) sensors.
+  -- Coefficients come from the initial indoor/outdoor multivariate PM2.5
+  -- calibration fit introduced in PR #153 (Feb 2026).
+  -- Keep these constants aligned with the latest documented calibration fit.
   -- AA: pm2_5_mv = 30.2038 + 0.7833*PM2.5 - 0.2791*RH - 0.1221*T
   -- BS: pm2_5_mv =  2.6875 + 0.6923*PM2.5 + 0.1156*T  - 0.0238*RH
   tsi_multivar_pm25 AS (

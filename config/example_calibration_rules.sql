@@ -3,6 +3,10 @@
 -- 
 -- Formula: pm2_5_calibrated = (pm2_5_raw × slope) + intercept
 -- 
+-- NOTE:
+-- - This file intentionally uses example values.
+-- - Replace the project ID and all dummy sensor IDs before production use.
+-- 
 -- INSTRUCTIONS:
 -- 1. Replace the sensor IDs with your actual sensor IDs
 -- 2. Replace slope/intercept with values from your calibration testing
@@ -11,26 +15,83 @@
 -- 5. Run this in BigQuery console
 
 -- DEFAULT calibration (no adjustment - must exist!)
-INSERT INTO `durham-weather-466502.sensors.calibration_config`
-(native_sensor_id, metric_name, slope, intercept, effective_date, end_date, description, created_at)
-VALUES ('DEFAULT', 'pm2_5', 1.0, 0.0, DATE('2025-01-01'), NULL, 'No calibration (default)', CURRENT_TIMESTAMP())
-ON CONFLICT DO NOTHING;
+MERGE `durham-weather-466502.sensors.calibration_config` T
+USING (
+  SELECT
+    'DEFAULT' AS native_sensor_id,
+    'pm2_5' AS metric_name,
+    1.0 AS slope,
+    0.0 AS intercept,
+    DATE('2025-01-01') AS effective_date,
+    CAST(NULL AS DATE) AS end_date,
+    'No calibration (default)' AS description
+) S
+ON T.native_sensor_id = S.native_sensor_id
+  AND T.metric_name = S.metric_name
+  AND T.slope = S.slope
+  AND T.intercept = S.intercept
+  AND T.effective_date = S.effective_date
+  AND ((T.end_date IS NULL AND S.end_date IS NULL) OR T.end_date = S.end_date)
+  AND T.description = S.description
+WHEN NOT MATCHED THEN
+  INSERT (native_sensor_id, metric_name, slope, intercept, effective_date, end_date, description, created_at)
+  VALUES (S.native_sensor_id, S.metric_name, S.slope, S.intercept, S.effective_date, S.end_date, S.description, CURRENT_TIMESTAMP());
 
 -- EXAMPLE: Sensor that came online Nov 17 and needs humidity bias correction
-INSERT INTO `durham-weather-466502.sensors.calibration_config`
-(native_sensor_id, metric_name, slope, intercept, effective_date, end_date, description, created_at)
-VALUES 
-  ('dummy_sensor_id', 'pm2_5', 0.95, 0.2, DATE('2025-11-17'), NULL, 'Humidity bias correction (95% of raw + 0.2 offset)', CURRENT_TIMESTAMP()),
-  
-  -- EXAMPLE: Another sensor with different calibration
-  ('dummy_sensor_id', 'pm2_5', 0.88, 1.0, DATE('2025-11-17'), NULL, 'Significant drift correction (88% of raw + 1.0 offset)', CURRENT_TIMESTAMP()),
-  
-  -- EXAMPLE: Sensor with temporary calibration (end date specified)
-  ('dummy_sensor_id', 'pm2_5', 0.92, 0.5, DATE('2025-11-17'), DATE('2025-12-31'), 'Temporary humidity correction (expired Dec 31)', CURRENT_TIMESTAMP()),
-  
-  -- EXAMPLE: Another metric (not just PM2.5)
-  ('dummy_sensor_id', 'no2_ppb', 1.05, -0.1, DATE('2025-11-17'), NULL, 'NOx sensor gain adjustment', CURRENT_TIMESTAMP())
-ON CONFLICT DO NOTHING;
+MERGE `durham-weather-466502.sensors.calibration_config` T
+USING (
+  SELECT * FROM UNNEST([
+    STRUCT(
+      'dummy_sensor_id' AS native_sensor_id,
+      'pm2_5' AS metric_name,
+      0.95 AS slope,
+      0.2 AS intercept,
+      DATE('2025-11-17') AS effective_date,
+      CAST(NULL AS DATE) AS end_date,
+      'Humidity bias correction (95% of raw + 0.2 offset)' AS description
+    ),
+    -- EXAMPLE: Another sensor with different calibration
+    STRUCT(
+      'dummy_sensor_id' AS native_sensor_id,
+      'pm2_5' AS metric_name,
+      0.88 AS slope,
+      1.0 AS intercept,
+      DATE('2025-11-17') AS effective_date,
+      CAST(NULL AS DATE) AS end_date,
+      'Significant drift correction (88% of raw + 1.0 offset)' AS description
+    ),
+    -- EXAMPLE: Sensor with temporary calibration (end date specified)
+    STRUCT(
+      'dummy_sensor_id' AS native_sensor_id,
+      'pm2_5' AS metric_name,
+      0.92 AS slope,
+      0.5 AS intercept,
+      DATE('2025-11-17') AS effective_date,
+      DATE('2025-12-31') AS end_date,
+      'Temporary humidity correction (expired Dec 31)' AS description
+    ),
+    -- EXAMPLE: Another metric (not just PM2.5)
+    STRUCT(
+      'dummy_sensor_id' AS native_sensor_id,
+      'no2_ppb' AS metric_name,
+      1.05 AS slope,
+      -0.1 AS intercept,
+      DATE('2025-11-17') AS effective_date,
+      CAST(NULL AS DATE) AS end_date,
+      'NOx sensor gain adjustment' AS description
+    )
+  ])
+) S
+ON T.native_sensor_id = S.native_sensor_id
+  AND T.metric_name = S.metric_name
+  AND T.slope = S.slope
+  AND T.intercept = S.intercept
+  AND T.effective_date = S.effective_date
+  AND ((T.end_date IS NULL AND S.end_date IS NULL) OR T.end_date = S.end_date)
+  AND T.description = S.description
+WHEN NOT MATCHED THEN
+  INSERT (native_sensor_id, metric_name, slope, intercept, effective_date, end_date, description, created_at)
+  VALUES (S.native_sensor_id, S.metric_name, S.slope, S.intercept, S.effective_date, S.end_date, S.description, CURRENT_TIMESTAMP());
 
 -- ==============================================================================
 -- TEMPLATE FOR YOUR SENSORS - Copy and modify:
@@ -91,4 +152,3 @@ ON CONFLICT DO NOTHING;
 --
 -- This will re-process all historical data with the new calibration rules.
 -- Takes approximately 40 minutes for 200 days of data.
-

@@ -1,6 +1,6 @@
--- TSI cross-dataset view + materialized table.
+-- TSI cross-dataset view.
 -- Strategy: view points to production table sensors.tsi_raw_materialized (no data duplication).
--- Materialized table in sensors_shared is refreshed daily for direct Grafana access.
+-- Materialized table refresh is handled in bigquery/tsi_pipeline.sql.
 
 CREATE SCHEMA IF NOT EXISTS `durham-weather-466502.sensors_shared`;
 
@@ -15,10 +15,3 @@ SELECT
 	temperature, humidity, tpsize, co2_ppm, co_ppm, baro_inhg,
 	o3_ppb, no2_ppb, so2_ppb, ch2o_ppb, voc_mgm3, latitude_f, longitude_f
 FROM `durham-weather-466502.sensors.tsi_raw_materialized`;
-
--- Materialized table in sensors_shared (refreshed daily, matches your staging cadence)
--- Grafana queries this directly for optimal performance
-CREATE OR REPLACE TABLE `durham-weather-466502.sensors_shared.tsi_raw_materialized`
-PARTITION BY DATE(ts)
-CLUSTER BY native_sensor_id AS
-SELECT * FROM `durham-weather-466502.sensors_shared.tsi_raw_view`;
