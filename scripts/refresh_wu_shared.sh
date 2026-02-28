@@ -11,7 +11,7 @@ DATASET_PROD="${BQ_PROD_DATASET:-sensors}"
 
 echo "Refreshing WU materialized view in ${PROJECT_ID}.${DATASET_SHARED}..."
 
-bq query \
+if bq query \
   --project_id="$PROJECT_ID" \
   --nouse_legacy_sql \
   --quiet \
@@ -21,9 +21,7 @@ PARTITION BY DATE(ts)
 AS
 SELECT * FROM \`${PROJECT_ID}.${DATASET_PROD}.wu_raw_materialized\`
 EOF
-
-result=$?
-if [ $result -eq 0 ]; then
+then
   echo "✓ WU shared materialized table refreshed successfully"
   echo "Completed at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
   exit 0

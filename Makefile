@@ -89,7 +89,7 @@ schema-validate:
 sync-sharepoint-today:
 	@# Sync yesterday's data to SharePoint (auto-calculates date)
 	@echo "Syncing yesterday's parquet files to SharePoint..."
-	@DATE=$$(date -u -d 'yesterday' +%Y-%m-%d) && \
+	@DATE=$$(python3 -c "from datetime import datetime, timedelta, timezone; print((datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%d'))") && \
 	$(UV) run python scripts/sync_parquet_to_sharepoint.py --date $$DATE --sources TSI WU
 
 sync-sharepoint-date:

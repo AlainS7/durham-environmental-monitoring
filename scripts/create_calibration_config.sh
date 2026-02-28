@@ -7,8 +7,8 @@ DATASET="${BQ_DATASET:-sensors}"
 
 echo "Creating calibration_config table in ${DATASET}..."
 
-bq query --project_id="${PROJECT_ID}" --nouse_legacy_sql --display_name="Create calibration_config" << 'EOF'
-CREATE OR REPLACE TABLE `${PROJECT_ID}.${DATASET}.calibration_config`
+bq query --project_id="${PROJECT_ID}" --nouse_legacy_sql --display_name="Create calibration_config" <<EOF
+CREATE OR REPLACE TABLE \`${PROJECT_ID}.${DATASET}.calibration_config\`
 (
   native_sensor_id STRING,
   metric_name STRING,
@@ -23,7 +23,7 @@ PARTITION BY effective_date
 CLUSTER BY native_sensor_id, metric_name;
 
 -- Insert example calibration rules
-INSERT INTO `${PROJECT_ID}.${DATASET}.calibration_config`
+INSERT INTO \`${PROJECT_ID}.${DATASET}.calibration_config\`
 (native_sensor_id, metric_name, slope, intercept, effective_date, end_date, description, created_at)
 VALUES
   -- DEFAULT rules (slope=1.0, intercept=0.0 = no calibration)

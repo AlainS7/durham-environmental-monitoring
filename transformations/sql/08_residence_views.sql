@@ -41,8 +41,8 @@ SELECT
 FROM `${PROJECT}.${DATASET}.sensor_readings_daily` d
 INNER JOIN `${PROJECT}.${DATASET}.residence_sensor_assignments` r
   ON d.native_sensor_id = r.native_sensor_id
-  AND d.day_ts >= r.start_ts
-  AND (r.end_ts IS NULL OR d.day_ts < r.end_ts);
+  AND TIMESTAMP(d.day_ts) >= r.start_ts
+  AND (r.end_ts IS NULL OR TIMESTAMP(d.day_ts) < r.end_ts);
 
 -- ============================================================================
 -- VIEW 3: Indoor vs Outdoor PM2.5 comparison per residence (Grafana favorite)

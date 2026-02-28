@@ -51,8 +51,6 @@ def execute_sql(client: bigquery.Client, sql: str, process_date: str):
             bigquery.ScalarQueryParameter("proc_date", "DATE", process_date)
         ],
         use_legacy_sql=False,
-        # This tells BigQuery to handle multiple statements
-        priority=bigquery.QueryPriority.INTERACTIVE,
     )
 
     # Execute the entire SQL as a multi-statement batch
