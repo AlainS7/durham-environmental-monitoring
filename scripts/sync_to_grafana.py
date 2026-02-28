@@ -20,6 +20,8 @@ TABLES = [
     "sensor_readings_daily",
     "sensor_id_map",
     "residence_sensor_assignments",
+    "calibration_config",  # required by 01_sensor_readings_long.sql
+    "wu_calibration_config",  # required by 01_sensor_readings_long.sql (WU harmonization)
 ]
 
 print("=" * 50)
