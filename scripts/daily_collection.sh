@@ -52,7 +52,7 @@ TSI_MAX=$(bq --project_id="$PROJECT_ID" query --nouse_legacy_sql --format=csv --
     "SELECT MAX(DATE(ts)) FROM \`$PROJECT_ID.sensors_shared.tsi_raw_materialized\`" | tail -1)
 
 WU_MAX=$(bq --project_id="$PROJECT_ID" query --nouse_legacy_sql --format=csv --use_legacy_sql=false \
-    "SELECT MAX(DATE(ts)) FROM \`$PROJECT_ID.sensors_shared.wu_raw_view\`" | tail -1)
+    "SELECT MAX(DATE(ts)) FROM \`$PROJECT_ID.sensors_shared.wu_raw_materialized\`" | tail -1)
 
 echo "  TSI latest date: $TSI_MAX"
 echo "  WU latest date: $WU_MAX"

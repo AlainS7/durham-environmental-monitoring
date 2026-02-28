@@ -44,7 +44,6 @@ for table_name in TABLES:
     dst = f"{PROJECT}.{GRAFANA_DS}.{table_name}"
 
     try:
-        source_table = client.get_table(src)
         dest_table_id = dst
         job_config = bigquery.CopyJobConfig()
         job_config.write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE

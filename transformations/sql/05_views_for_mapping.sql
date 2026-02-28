@@ -58,7 +58,9 @@ SELECT
   COALESCE(loc.latitude, lc.latitude) AS latitude,
   COALESCE(loc.longitude, lc.longitude) AS longitude,
   COALESCE(loc.geog, lc.geog) AS geog,
-  COALESCE(loc.status, lc.status) AS status
+  COALESCE(loc.status, lc.status) AS status,
+  COALESCE(loc.effective_date, lc.effective_date) AS effective_date,
+  COALESCE(loc.end_date, lc.end_date) AS end_date
 FROM `${PROJECT}.${DATASET}.sensor_readings_daily` d
 LEFT JOIN `${PROJECT}.${DATASET}.sensor_id_map` m
   ON d.native_sensor_id = m.native_sensor_id
@@ -84,7 +86,9 @@ SELECT
   COALESCE(loc.latitude, lc.latitude) AS latitude,
   COALESCE(loc.longitude, lc.longitude) AS longitude,
   COALESCE(loc.geog, lc.geog) AS geog,
-  COALESCE(loc.status, lc.status) AS status
+  COALESCE(loc.status, lc.status) AS status,
+  COALESCE(loc.effective_date, lc.effective_date) AS effective_date,
+  COALESCE(loc.end_date, lc.end_date) AS end_date
 FROM `${PROJECT}.${DATASET}.sensor_readings_long` f
 LEFT JOIN `${PROJECT}.${DATASET}.sensor_id_map` m
   ON f.native_sensor_id = m.native_sensor_id

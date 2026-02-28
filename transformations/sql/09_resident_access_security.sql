@@ -8,8 +8,6 @@
 --   resident-r1-grafana@durham-weather-466502.iam.gserviceaccount.com
 --   resident-r2-grafana@durham-weather-466502.iam.gserviceaccount.com
 
-DECLARE proc_date DATE DEFAULT @proc_date;
-
 CREATE TABLE IF NOT EXISTS `${PROJECT}.${DATASET}.resident_user_access` (
   principal_email STRING NOT NULL,
   residence_id STRING NOT NULL,
