@@ -1,8 +1,9 @@
 #!/bin/bash
+set -euo pipefail
 # Batch run transformations for a date range
 
-PROJECT="durham-weather-466502"
-DATASET="sensors"
+PROJECT="${GCP_PROJECT_ID:-durham-weather-466502}"
+DATASET="${BQ_DATASET:-sensors}"
 SQL_DIR="transformations/sql"
 START_DATE="2025-07-04"
 END_DATE="2025-10-02"

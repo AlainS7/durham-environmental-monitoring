@@ -31,15 +31,30 @@ def render(sql: str, project: str, dataset: str) -> str:
 
 
 def list_sql_files(dir_path: Path) -> List[Path]:
-    return sorted([p for p in dir_path.glob("*.sql") if p.is_file()])
+    return sorted(
+        [
+            p
+            for p in dir_path.glob("*.sql")
+            if p.is_file() and not p.name.endswith(".template.sql")
+        ]
+    )
 
 
 def execute_sql(client: bigquery.Client, sql: str, process_date: str):
+    """Execute SQL file using BigQuery's multi-statement support.
+
+    BigQuery Standard SQL supports multiple statements in a single query
+    when use_legacy_sql=False. The key is using the proper job config.
+    """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("proc_date", "DATE", process_date)
-        ]
+        ],
+        use_legacy_sql=False,
     )
+
+    # Execute the entire SQL as a multi-statement batch
+    # BigQuery will process DECLARE + statements together
     job = client.query(sql, job_config=job_config)
     job.result()
 

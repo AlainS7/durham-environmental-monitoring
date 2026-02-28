@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  GCP_PROJECT_ID: durham-weather-466502
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   BQ_DATASET: sensors
 
 jobs:

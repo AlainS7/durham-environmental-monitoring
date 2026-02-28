@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT_ID=${PROJECT_ID:-durham-weather-466502}
 DATASET="sensors"
-BUCKET="sensor-data-to-bigquery"
+BUCKET="${GCS_BUCKET:-sensor-data-to-bigquery}"
 
 log() { echo "[sanity] $*"; }
 warn() { echo "[sanity][warn] $*"; }

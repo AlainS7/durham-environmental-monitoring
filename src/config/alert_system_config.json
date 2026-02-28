@@ -24,7 +24,7 @@
   },
   "notification_channels": {
     "email": {
-      "enabled": true,
+      "enabled": false,
       "smtp_server": "smtp.gmail.com",
       "smtp_port": 587,
       "sender_email": "",

@@ -37,6 +37,17 @@ For a comprehensive view of the entire system, including data flow, components, 
 
 ---
 
+## Prerequisites
+
+Before setup, ensure you have:
+
+- Python 3.9+
+- [`uv`](https://docs.astral.sh/uv/)
+- Google Cloud SDK (`gcloud`)
+- Access to a GCP project with BigQuery and Cloud Storage permissions
+
+---
+
 ## 🚀 Quick Start
 
 This project uses `uv` for fast and efficient dependency management.
@@ -56,15 +67,25 @@ This project uses `uv` for fast and efficient dependency management.
     uv pip install -e ".[dev]"
     ```
 
-3.  **Configure Credentials**:
+3.  **Create local environment file**:
 
+    ```sh
+    cp .env.example .env
+    ```
+
+    Update `.env` with your own cloud resources and API credentials.
+
+4.  **Configure Credentials**:
     - Authenticate with GCP for application-default credentials:
+
       ```sh
       gcloud auth application-default login
       ```
+
+    - GCP project IDs are not secrets; keep placeholders in committed files and use real values only in your local `.env`/secrets manager.
     - Ensure your GCP user has the necessary permissions or impersonate a service account.
 
-4.  **Run Local Operations**:
+5.  **Run Local Operations**:
 
     ```sh
     # Lint the codebase
@@ -130,6 +151,13 @@ The project relies heavily on GitHub Actions for automation and verification.
 ├── tests/                  # Unit and integration tests
 └── transformations/        # SQL-based data transformations (dbt)
 ```
+
+Additional standalone sub-projects in this repository:
+
+- `hot_durham_project/` — map application with its own setup and runtime.
+- `oura-rings/` — Oura import/export utilities with separate credential requirements.
+
+These are optional and independent from the core ingestion/transformation pipeline.
 
 ---
 

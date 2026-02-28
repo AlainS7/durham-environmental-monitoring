@@ -32,9 +32,6 @@ def mock_clients(mocker):
     mocker.patch('src.data_collection.clients.tsi_client.TSIClient.__aenter__', return_value=tsi_client)
     return wu_client, tsi_client
 
-@pytest.fixture
-    # DB logic removed for BigQuery-only mode
-
 @pytest.mark.asyncio
 async def test_run_collection_process_success(mock_clients):
     """Test successful execution of the data collection process."""

@@ -13,7 +13,7 @@ on:
         required: false
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
 
 permissions:
@@ -68,7 +68,7 @@ jobs:
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
           BQ_DATASET: ${{ env.DATASET_ID }}
-          GCS_BUCKET: sensor-data-to-bigquery
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
           GCS_PREFIX: raw
           PROJECT_ID: ${{ env.PROJECT_ID }}
           DISABLE_BQ_STAGING: '1'

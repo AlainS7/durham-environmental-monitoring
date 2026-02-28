@@ -29,9 +29,11 @@ dependencies = [
     "pyarrow>=16.1.0",
     "PyYAML>=6.0.3",
     # Explicit protobuf range to satisfy both google-cloud-* (<7) and dbt-adapters (>=6,<7)
-    "protobuf>=6.0.0,<7.0.0",
+    "protobuf==6.33.5",
     "db-dtypes>=1.2.0",
     "google-cloud-bigquery-storage>=2.25.0",
+    "pyasn1==0.6.2",
+    "urllib3==2.6.3",
 ]
 
 [project.optional-dependencies]
@@ -62,3 +64,9 @@ testpaths = ["tests", "scripts", "."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[dependency-groups]
+dev = [
+    "nbformat>=5.10.4",
+    "ruff>=0.14.0",
+]

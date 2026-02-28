@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
 
 jobs:
@@ -74,9 +74,20 @@ jobs:
       - name: Run transformations
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
+          RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID: ${{ secrets.RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID }}
+          RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION: ${{ vars.RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION }}
         run: |
           PROC_DATE=$(date -u -d 'yesterday' +%Y-%m-%d)
           echo "Processing date: $PROC_DATE"
+          if [ ! -f transformations/sql/07_residence_sensor_assignments.sql ]; then
+            test -n "$RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID" || { echo "Missing required secret: RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID"; exit 1; }
+            uv run python scripts/generate_residence_assignments.py \
+              --project "$BQ_PROJECT" \
+              --raw-dataset ${{ env.DATASET_ID }} \
+              --template-secret-id "$RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID" \
+              --template-secret-version "${RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION:-latest}" \
+              --execute
+          fi
           uv run python scripts/run_transformations.py --project "$BQ_PROJECT" --dataset ${{ env.DATASET_ID }} --date "$PROC_DATE" --execute
 
       - name: Teams notify failure

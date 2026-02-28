@@ -57,7 +57,11 @@ class EnhancedAnomalyDetector(AnomalyDetectionSystem):
 
     def load_alert_configuration(self) -> Dict:
         """Load or create alert system configuration."""
-        config_file = self.base_dir / "config" / "alert_system_config.json"
+        config_candidates = [
+            self.base_dir / "src" / "config" / "alert_system_config.json",
+            self.base_dir / "config" / "alert_system_config.json",
+        ]
+        config_file = next((path for path in config_candidates if path.exists()), config_candidates[0])
         
         default_config = {
             "alert_thresholds": {
@@ -85,7 +89,7 @@ class EnhancedAnomalyDetector(AnomalyDetectionSystem):
             },
             "notification_channels": {
                 "email": {
-                    "enabled": True,
+                    "enabled": False,
                     "smtp_server": "smtp.gmail.com",
                     "smtp_port": 587,
                     "sender_email": "",

@@ -27,7 +27,13 @@ Workflows updated to call this script on failure:
 
 ## Source Freshness
 
-A data freshness check is performed by the `data-freshness.yml` GitHub Actions workflow. It has a 26h warn / 36h error window.
+A data freshness check is performed by the `data-freshness.yml` GitHub Actions workflow. It now verifies freshness for `sensor_readings` plus source-specific raw tables (`sensor_readings_tsi_raw`, `sensor_readings_wu_raw`) to surface TSI/WU lag independently.
+
+## ML / Public API Alerting
+
+- `src/ml/enhanced_anomaly_detection.py` handles runtime alert generation for PM2.5, temperature, humidity, and data completeness.
+- `src/config/alert_system_config.json` is the default alert config for ML/API alerts (email notifications disabled by default unless explicitly configured).
+- `src/alerts/alert_manager.py` remains a legacy SMTP-oriented helper; current API-facing alert flow is centered on `EnhancedAnomalyDetector`.
 
 ## Adding Cloud Monitoring Alerts (Outline)
 
@@ -91,6 +97,9 @@ Include:
 - Cost anomaly detection (scan bytes vs 7-day moving average > 3σ)
 - Adaptive Cards with buttons linking directly to logs
 - Multi-env separation (dev vs prod channels)
+- Workflow heartbeat/missed-schedule alerting
+- Source-specific freshness SLA alerts (TSI vs WU)
+- Trend-based row-count drift detection (rolling baseline)
 
 ---
-Last updated: 2025-10-06
+Last updated: 2026-02-28

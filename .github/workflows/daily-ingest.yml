@@ -2,7 +2,7 @@ name: Daily Ingestion (Cloud Run Job)
 
 on:
   schedule:
-    - cron: '45 6 * * *' # 06:45 UTC daily: ingest -> embedded merge -> checks
+    - cron: '5 */6 * * *' # every 6 hours: ingest -> embedded merge -> checks
   workflow_dispatch:
     inputs:
       job_name:
@@ -34,9 +34,13 @@ on:
         description: 'Set to true to run staging presence & freshness checks after merge'
         required: false
         default: 'true'
+      update_job_env:
+        description: 'Set to true to update Cloud Run job env vars before execution'
+        required: false
+        default: 'false'
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
 
 permissions:
   contents: read
@@ -125,7 +129,8 @@ jobs:
               --project "$PROJECT_ID"
 
       - name: Ensure Cloud Run job environment (secrets & config)
-        # Always run to guarantee required env vars present on template even if image not rebuilt
+        if: ${{ github.event.inputs.update_job_env == 'true' || github.event.inputs.redeploy_image == 'true' }}
+        # Optional: refresh required env vars on the Cloud Run Job template
         env:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
@@ -144,7 +149,7 @@ jobs:
           gcloud run jobs update "$JOB_NAME" \
             --region "$REGION" \
             --project "$PROJECT_ID" \
-            --set-env-vars "TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=sensor-data-to-bigquery,GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
+            --set-env-vars "TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=${{ vars.GCS_BUCKET }},GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
               echo "Failed to update job env vars" >&2; exit 2; }
           echo "Cloud Run job environment updated."
 
@@ -159,13 +164,40 @@ jobs:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
           BQ_DATASET: sensors
           # GCS location for raw parquet (enables fallback staging synthesis)
-          GCS_BUCKET: sensor-data-to-bigquery
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
           GCS_PREFIX: raw/
           # Secret Manager IDs (the app will fetch JSON secrets at runtime)
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
         run: |
           bash scripts/run_cr_job.sh
+
+      - name: Materialize raw partitions for ingested dates
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+          GCS_PREFIX: raw/
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          SINGLE="${{ github.event.inputs.date }}"
+          if [ -n "$SINGLE" ]; then
+            START="$SINGLE"; END="$SINGLE"; fi
+          if [ -z "$START" ] || [ -z "$END" ]; then
+            TODAY=$(date -u +%F)
+            START="$TODAY"; END="$TODAY"
+          fi
+          echo "Materializing raw partitions $START -> $END"
+          python scripts/materialize_partitions.py \
+            --project "$BQ_PROJECT" \
+            --dataset sensors \
+            --start "$START" \
+            --end "$END" \
+            --sources all \
+            --bucket "$GCS_BUCKET" \
+            --prefix "${GCS_PREFIX%/}" \
+            --execute
 
       - name: Debug - list staging tables for supplied dates
         if: ${{ github.event.inputs.date != '' || github.event.inputs.start_date != '' }}
@@ -204,7 +236,9 @@ jobs:
           if [ -n "$SINGLE" ]; then
             START="$SINGLE"; END="$SINGLE"; fi
           if [ -z "$START" ] || [ -z "$END" ]; then
-            echo "No start/end (and no single date) provided; skipping backfill merge"; exit 0; fi
+            TODAY=$(date -u +%F)
+            START="$TODAY"; END="$TODAY"
+          fi
           echo "Running per-source dated merge backfill $START -> $END"
           python scripts/merge_backfill_range.py \
             --project "$BQ_PROJECT" \
@@ -225,10 +259,10 @@ jobs:
           END="${{ github.event.inputs.end_date }}"
           SINGLE="${{ github.event.inputs.date }}"
           if [ -n "$SINGLE" ]; then START="$SINGLE"; END="$SINGLE"; fi
-          # If no explicit dates provided (scheduled run), check yesterday
+          # If no explicit dates provided (scheduled run), check current UTC day
           if [ -z "$START" ] || [ -z "$END" ]; then
-            YESTERDAY=$(date -u -d 'yesterday' +%F)
-            START="$YESTERDAY"; END="$YESTERDAY"
+            TODAY=$(date -u +%F)
+            START="$TODAY"; END="$TODAY"
           fi
           echo "Running staging presence checks for range $START -> $END"
           CUR="$START"
@@ -256,6 +290,15 @@ jobs:
             echo "Freshness check failed" >&2
             exit 1
           fi
+
+      - name: Prepare failure summary
+        if: failure() && github.event_name == 'schedule'
+        run: |
+          {
+            echo "Daily ingestion monitoring failure"
+            echo "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "Timestamp (UTC): $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } > ingestion_summary.log
 
       - name: Create issue on monitoring failure
         if: failure() && github.event_name == 'schedule'
