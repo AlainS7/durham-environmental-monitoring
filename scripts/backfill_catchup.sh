@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-PROJECT_ID="durham-weather-466502"
+PROJECT_ID="${GCP_PROJECT_ID:-durham-weather-466502}"
 JOB_NAME="weather-data-uploader"
 REGION="us-east1"
 SOURCE="${1:-all}"  # Default to 'all' if not specified, or use first arg

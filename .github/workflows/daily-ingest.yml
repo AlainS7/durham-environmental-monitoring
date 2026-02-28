@@ -36,7 +36,7 @@ on:
         default: 'true'
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
 
 permissions:
   contents: read
@@ -144,7 +144,7 @@ jobs:
           gcloud run jobs update "$JOB_NAME" \
             --region "$REGION" \
             --project "$PROJECT_ID" \
-            --set-env-vars "TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=sensor-data-to-bigquery,GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
+            --set-env-vars "TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=${{ vars.GCS_BUCKET }},GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
               echo "Failed to update job env vars" >&2; exit 2; }
           echo "Cloud Run job environment updated."
 
@@ -159,7 +159,7 @@ jobs:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
           BQ_DATASET: sensors
           # GCS location for raw parquet (enables fallback staging synthesis)
-          GCS_BUCKET: sensor-data-to-bigquery
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
           GCS_PREFIX: raw/
           # Secret Manager IDs (the app will fetch JSON secrets at runtime)
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}

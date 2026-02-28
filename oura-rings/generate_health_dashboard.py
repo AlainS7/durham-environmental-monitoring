@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -192,13 +193,14 @@ def fetch_env_data(start_date: str, end_date: str) -> pd.DataFrame:
     try:
         from google.cloud import bigquery  # type: ignore
 
-        client = bigquery.Client(project="durham-weather-466502")
+        project = os.environ.get("GCP_PROJECT_ID", "durham-weather-466502")
+        client = bigquery.Client(project=project)
         query = f"""
         SELECT
           DATE(day_ts)  AS day,
           residence_id,
           ROUND(AVG(avg_value), 1) AS indoor_temp_f
-        FROM `durham-weather-466502.sensors_shared.residence_readings_daily`
+        FROM `{project}.sensors_shared.residence_readings_daily`
         WHERE sensor_role = 'Indoor'
           AND metric_name = 'temperature'
           AND day_ts BETWEEN '{start_date}' AND '{end_date}'

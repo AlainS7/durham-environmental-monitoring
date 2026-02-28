@@ -18,7 +18,7 @@ on:
         default: 1
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
   PYTHON_VERSION: '3.11'
 

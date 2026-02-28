@@ -3,9 +3,9 @@
 # Run daily (e.g., after your daily staging job) to sync with sensors.tsi_raw_materialized
 # Matches your current daily staging + weekly promotion workflow
 
-set -e
+set -euo pipefail
 
-PROJECT_ID="durham-weather-466502"
+PROJECT_ID="${GCP_PROJECT_ID:-durham-weather-466502}"
 LOCATION="US"
 
 echo "[$(date)] Starting TSI materialized table refresh..."

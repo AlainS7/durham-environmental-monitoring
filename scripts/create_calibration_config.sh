@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Create the sensor calibration configuration table in BigQuery
 
 PROJECT_ID="${BQ_PROJECT:-durham-weather-466502}"

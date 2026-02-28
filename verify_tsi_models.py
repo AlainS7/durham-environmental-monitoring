@@ -2,13 +2,14 @@
 """Verify TSI sensor model variations and field coverage."""
 
 
+import os
+
 from google.cloud import bigquery
 
+PROJECT = os.environ.get("GCP_PROJECT_ID", "durham-weather-466502")
+client = bigquery.Client(project=PROJECT)
 
-
-client = bigquery.Client(project='durham-weather-466502')
-
-query = """
+query = f"""
 SELECT 
   native_sensor_id,
   model,
@@ -22,7 +23,7 @@ SELECT
   COUNTIF(no2_ppb IS NOT NULL) as has_no2,
   ROUND(COUNTIF(pm2_5 IS NOT NULL) / COUNT(*) * 100, 1) as pm25_coverage_pct,
   ROUND(COUNTIF(co2_ppm IS NOT NULL) / COUNT(*) * 100, 1) as co2_coverage_pct
-FROM `durham-weather-466502.sensors.tsi_raw_materialized`
+FROM `{PROJECT}.sensors.tsi_raw_materialized`
 WHERE DATE(ts) >= '2025-07-04'
 GROUP BY native_sensor_id, model
 ORDER BY pm25_coverage_pct DESC, total_records DESC
@@ -39,7 +40,7 @@ for row in results:
     print()
 
 print('\n=== Summary by Model ===\n')
-query2 = """
+query2 = f"""
 SELECT 
   CAST(model AS STRING) as model,
   COUNT(DISTINCT native_sensor_id) as sensor_count,
@@ -48,7 +49,7 @@ SELECT
   ROUND(COUNTIF(co2_ppm IS NOT NULL) / COUNT(*) * 100, 1) as co2_pct,
   ROUND(COUNTIF(voc_mgm3 IS NOT NULL) / COUNT(*) * 100, 1) as voc_pct,
   ROUND(COUNTIF(o3_ppb IS NOT NULL) / COUNT(*) * 100, 1) as o3_pct
-FROM `durham-weather-466502.sensors.tsi_raw_materialized`
+FROM `{PROJECT}.sensors.tsi_raw_materialized`
 WHERE DATE(ts) >= '2025-07-04'
 GROUP BY model
 ORDER BY pm25_pct DESC

@@ -10,7 +10,7 @@ permissions:
   id-token: write
 
 env:
-  BQ_PROJECT: durham-weather-466502
+  BQ_PROJECT: ${{ vars.GCP_PROJECT_ID }}
   BQ_DATASET: sensors
 
 jobs:

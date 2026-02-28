@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Diagnose why transformation tables are empty."""
 
+import os
+
 from google.cloud import bigquery
 
-client = bigquery.Client(project="durham-weather-466502")
+PROJECT = os.environ.get("GCP_PROJECT_ID", "durham-weather-466502")
+client = bigquery.Client(project=PROJECT)
 
 # 1. Check raw data
 print("=" * 70)
 print("1. RAW DATA SOURCE")
 print("=" * 70)
 
-query = "SELECT COUNT(*), MIN(CAST(sample_date AS DATE)), MAX(CAST(sample_date AS DATE)) FROM `durham-weather-466502.sensors.sensor_readings`"
+query = f"SELECT COUNT(*), MIN(CAST(sample_date AS DATE)), MAX(CAST(sample_date AS DATE)) FROM `{PROJECT}.sensors.sensor_readings`"
 result = list(client.query(query).result())[0]
 print(f"sensor_readings: {result[0]:,} rows | {result[1]} to {result[2]}")
 
@@ -20,7 +23,7 @@ print("2. MATERIALIZED SOURCE TABLES")
 print("=" * 70)
 
 for table_name in ["tsi_raw_materialized", "wu_raw_materialized"]:
-    query = f"SELECT COUNT(*), MAX(CAST(sample_date AS DATE)) FROM `durham-weather-466502.sensors.{table_name}`"
+    query = f"SELECT COUNT(*), MAX(CAST(sample_date AS DATE)) FROM `{PROJECT}.sensors.{table_name}`"
     try:
         result = list(client.query(query).result())[0]
         print(f"{table_name:30} {result[0]:>10,} rows | latest: {result[1]}")
@@ -38,7 +41,7 @@ for table_name in [
     "sensor_readings_hourly",
     "sensor_readings_daily_enriched",
 ]:
-    query = f"SELECT COUNT(*) FROM `durham-weather-466502.sensors.{table_name}`"
+    query = f"SELECT COUNT(*) FROM `{PROJECT}.sensors.{table_name}`"
     try:
         result = list(client.query(query).result())[0][0]
         status = "✅" if result > 0 else "❌"
@@ -52,7 +55,7 @@ print("4. ATTEMPTING SINGLE TRANSFORMATION")
 print("=" * 70)
 
 # Get the latest date from raw data
-query = "SELECT MAX(CAST(sample_date AS DATE)) FROM `durham-weather-466502.sensors.wu_raw_materialized`"
+query = f"SELECT MAX(CAST(sample_date AS DATE)) FROM `{PROJECT}.sensors.wu_raw_materialized`"
 latest_date = list(client.query(query).result())[0][0]
 print(f"Latest data date available: {latest_date}")
 
@@ -61,7 +64,7 @@ query_test = f"""
 SELECT 
   COUNT(*) as test_count,
   DATE(TIMESTAMP_MILLIS(CAST(sample_timestamp AS INT64))) as date_col
-FROM `durham-weather-466502.sensors.tsi_raw_materialized`
+FROM `{PROJECT}.sensors.tsi_raw_materialized`
 WHERE DATE(TIMESTAMP_MILLIS(CAST(sample_timestamp AS INT64))) = DATE '{latest_date}'
 GROUP BY date_col
 """

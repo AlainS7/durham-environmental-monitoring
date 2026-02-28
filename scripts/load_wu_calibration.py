@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Load WU (Weather Underground) sensor calibration coefficients to BigQuery."""
 
+import os
+
 import pandas as pd
 from google.cloud import bigquery
+
+PROJECT = os.environ.get("GCP_PROJECT_ID", "durham-weather-466502")
 
 # WU calibration data
 wu_calibration = {
@@ -122,7 +126,7 @@ wu_calibration = {
 
 df = pd.DataFrame(wu_calibration)
 
-client = bigquery.Client(project="durham-weather-466502")
+client = bigquery.Client(project=PROJECT)
 
 # Create table if not exists
 schema = [
@@ -135,7 +139,7 @@ schema = [
     bigquery.SchemaField("b_rh", "FLOAT64", mode="NULLABLE"),
 ]
 
-table_id = "durham-weather-466502.sensors.wu_calibration_config"
+table_id = f"{PROJECT}.sensors.wu_calibration_config"
 
 # Truncate and load
 job_config = bigquery.LoadJobConfig(schema=schema, write_disposition="WRITE_TRUNCATE")

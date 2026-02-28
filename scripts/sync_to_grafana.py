@@ -4,10 +4,12 @@
 Uses BigQuery Python client to copy tables and create views.
 """
 
+import os
+
 from google.cloud import bigquery
 import sys
 
-PROJECT = "durham-weather-466502"
+PROJECT = os.environ.get("GCP_PROJECT_ID", "durham-weather-466502")
 PROD_DS = "sensors"
 GRAFANA_DS = "sensors_shared"
 
