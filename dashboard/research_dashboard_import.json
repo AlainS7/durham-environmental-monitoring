@@ -1,0 +1,323 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_BIGQUERY",
+      "label": "BigQuery",
+      "description": "BigQuery data source pointing to durham-weather-466502",
+      "type": "datasource",
+      "pluginId": "grafana-bigquery-datasource",
+      "pluginName": "BigQuery"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "grafana-bigquery-datasource",
+      "name": "BigQuery",
+      "version": "2.0.0"
+    }
+  ],
+  "title": "Durham Research Dashboard (Public-safe)",
+  "uid": "durham-research-master-v1",
+  "description": "Public-safe research dashboard with aggregated trends and freshness monitoring.",
+  "tags": [
+    "durham",
+    "environment",
+    "research",
+    "public-safe"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "15m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Pipeline Freshness (Days Behind)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "WITH latest AS ( SELECT 'TSI Raw' AS source, MAX(DATE(ts)) AS latest_date FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized` UNION ALL SELECT 'WU Raw' AS source, MAX(DATE(ts)) AS latest_date FROM `durham-weather-466502.sensors_shared.wu_raw_materialized` UNION ALL SELECT 'Residence Daily' AS source, MAX(DATE(day_ts)) AS latest_date FROM `durham-weather-466502.sensors_shared.residence_readings_daily` ) SELECT source, CAST(latest_date AS STRING) AS latest_date, DATE_DIFF(CURRENT_DATE(), latest_date, DAY) AS days_behind FROM latest ORDER BY source"
+        }
+      ],
+      "options": {
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "WU Temperature (Network Avg)",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, 'WU Avg Temp' AS metric, ROUND(AVG(temperature),2) AS value FROM `durham-weather-466502.sensors_shared.wu_raw_view` WHERE $__timeFilter(ts) AND temperature IS NOT NULL GROUP BY ts ORDER BY time ASC"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "WU Humidity (Network Avg)",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, 'WU Avg Humidity' AS metric, ROUND(AVG(humidity),2) AS value FROM `durham-weather-466502.sensors_shared.wu_raw_view` WHERE $__timeFilter(ts) AND humidity IS NOT NULL GROUP BY ts ORDER BY time ASC"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "TSI PM2.5 MV-Corrected (Network Avg)",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, 'TSI Avg PM2.5 MV' AS metric, ROUND(AVG(pm2_5_mv_corrected),3) AS value FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized` WHERE $__timeFilter(ts) AND pm2_5_mv_corrected IS NOT NULL GROUP BY ts ORDER BY time ASC"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "TSI CO2 (Network Avg)",
+      "gridPos": {
+        "x": 12,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, 'TSI Avg CO2' AS metric, ROUND(AVG(co2_ppm),1) AS value FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized` WHERE $__timeFilter(ts) AND co2_ppm IS NOT NULL GROUP BY ts ORDER BY time ASC"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "TSI O3 (Network Avg)",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT ts AS time, 'TSI Avg O3' AS metric, ROUND(AVG(o3_ppb_harmonized),2) AS value FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized` WHERE $__timeFilter(ts) AND o3_ppb_harmonized IS NOT NULL GROUP BY ts ORDER BY time ASC"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Indoor vs Outdoor PM2.5 (All Residences Avg Ratio)",
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 0,
+          "rawSql": "SELECT day_ts AS time, 'I/O Ratio Avg' AS metric, ROUND(AVG(indoor_outdoor_ratio),3) AS value FROM `durham-weather-466502.sensors_shared.residence_indoor_outdoor_pm25` WHERE metric_name='pm2_5_mv_corrected' AND $__timeFilter(day_ts) GROUP BY day_ts ORDER BY time ASC"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Daily Sample Volume by Source",
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 7
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": 1,
+          "rawSql": "SELECT DATE(day_ts) AS day_date, CASE WHEN native_sensor_id LIKE 'KNC%' THEN 'WU' ELSE 'TSI' END AS source, SUM(samples) AS sample_count FROM `durham-weather-466502.sensors_shared.sensor_readings_daily` WHERE $__timeFilter(day_ts) GROUP BY day_date, source ORDER BY day_date DESC, source"
+        }
+      ],
+      "options": {
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

@@ -17,7 +17,7 @@ TSI — one building, last 7 days
 ```sql
 SELECT day_ts, metric_name, avg_value
 FROM `durham-weather-466502.sensors_shared.sensor_readings_daily`
-WHERE residence_id='R1' AND network='TSI' AND day_ts >= CURRENT_DATE()-7
+WHERE residence_id='<RESIDENCE_ID>' AND network='TSI' AND day_ts >= CURRENT_DATE()-7
 ORDER BY day_ts DESC
 ```
 

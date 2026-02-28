@@ -16,6 +16,11 @@ A modern, responsive weather dashboard for monitoring indoor and outdoor environ
 - **Dark Mode**: Toggle between light and dark themes
 - **Responsive Design**: Works on desktop, tablet, and mobile
 
+## Grafana import JSONs (canonical)
+
+- `research_dashboard_import.json` — comprehensive research/operations dashboard
+- `home_env_dashboard_import.json` — resident-limited dashboard (expects secure view)
+
 ## Sensor Data
 
 ### Outdoor Sensor (Weather Underground)

@@ -1,5 +1,20 @@
 # Grafana Data Source Configuration & Test Queries
 
+## Canonical dashboard import files
+
+- **Research team (full analysis):**
+  `dashboard/research_dashboard_import.json`
+- **Residents (limited view):**
+  `dashboard/home_env_dashboard_import.json`
+
+Notes:
+
+- Only commit/import the two canonical files above in this public repo.
+- Avoid committing raw Grafana export dumps that include editor metadata.
+- The resident import expects
+  `durham-weather-466502.sensors_shared.residence_readings_daily_secure`
+  (created by `transformations/sql/09_resident_access_security.sql`).
+
 ## BigQuery Data Source Setup
 
 ### Connection Details
@@ -8,6 +23,12 @@
 - **Project ID**: `durham-weather-466502`
 - **Processing Location**: `US`
 - **Authentication**: Default Service Account (if running on GCP) or Service Account Key JSON
+- **Dashboard refresh**: Set default refresh to `15m` for balanced freshness/cost
+
+### Freshness SLO Targets
+
+- Raw/shared tables (`tsi_raw_materialized`, `wu_raw_materialized`): `days_behind <= 1`
+- Residence aggregate views (`residence_readings_daily`): `days_behind <= 2`
 
 ### Enable BigQuery API
 
@@ -91,7 +112,7 @@ ORDER BY last_seen DESC
 
 ---
 
-### 4. Daily Data Freshness Check
+### 4. Data Freshness Check
 
 ```sql
 SELECT
@@ -104,7 +125,13 @@ SELECT
   'WU' AS source,
   MAX(DATE(ts)) AS latest_date,
   DATE_DIFF(CURRENT_DATE(), MAX(DATE(ts)), DAY) AS days_behind
-FROM `durham-weather-466502.sensors_shared.wu_raw_view`
+FROM `durham-weather-466502.sensors_shared.wu_raw_materialized`
+UNION ALL
+SELECT
+  'Residence Daily' AS source,
+  MAX(DATE(day_ts)) AS latest_date,
+  DATE_DIFF(CURRENT_DATE(), MAX(DATE(day_ts)), DAY) AS days_behind
+FROM `durham-weather-466502.sensors_shared.residence_readings_daily`
 ```
 
 ---
@@ -149,7 +176,7 @@ ORDER BY time
 
 ---
 
-## Daily Update Verification
+## Cadence Verification (6-hour target)
 
 ### Check if data is updating daily:
 

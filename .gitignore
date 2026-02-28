@@ -242,4 +242,8 @@ ANALYSIS_RESULTS.md
 /data/analysis_outputs/*.html
 dashboard/grafana*
 dashboard/resident*
+dashboard/*_source_*.json
+dashboard/*_resource_*.json
+dashboard/*dashboard-export*.json
 docs/GRAFANA_RESIDENT_ENVIRONMENT_QUERIES.sql
+transformations/sql/07_residence_sensor_assignments.private.template.sql
