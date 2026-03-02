@@ -99,13 +99,3 @@ jobs:
           START=${{ steps.daterange.outputs.start }}
           END=${{ steps.daterange.outputs.end }}
           make verify-outputs START="$START" END="$END" DATASET="$BQ_DATASET" PROJECT="$BQ_PROJECT"
-
-      - name: Teams notify failure
-        if: failure() && env.TEAMS_WEBHOOK_URL != ''
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: |
-          python scripts/notify_teams.py \
-            --webhook "$TEAMS_WEBHOOK_URL" \
-            --title "Nightly E2E FAILED" \
-            --text "Range: ${{ steps.daterange.outputs.start }} → ${{ steps.daterange.outputs.end }}\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"

@@ -99,3 +99,13 @@ jobs:
               repo: context.repo.repo,
               body: '⚠️ Data quality check failed. Please review the logs in the workflow artifacts.'
             })
+
+      - name: Teams notify failure
+        if: failure() && env.TEAMS_WEBHOOK_URL != ''
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          python3 scripts/notify_teams.py \
+            --webhook "$TEAMS_WEBHOOK_URL" \
+            --title "Data Quality Check FAILED" \
+            --text "Source: ${{ github.event.inputs.source || 'both' }}\nDays: ${{ github.event.inputs.days || '1' }}\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"

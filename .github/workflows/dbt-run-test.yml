@@ -76,12 +76,3 @@ jobs:
           path: |
             transformations/dbt/target/*.json
             transformations/dbt/target/run_results.json
-      - name: Teams notify failure
-        if: failure() && env.TEAMS_WEBHOOK_URL != ''
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: |
-          python scripts/notify_teams.py \
-            --webhook "$TEAMS_WEBHOOK_URL" \
-            --title "dbt workflow FAILED" \
-            --text "Repo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"

@@ -73,6 +73,16 @@ jobs:
           content-filepath: freshness.log
           labels: monitoring, freshness
 
+      - name: Teams notify failure
+        if: failure() && env.TEAMS_WEBHOOK_URL != ''
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          python3 scripts/notify_teams.py \
+            --webhook "$TEAMS_WEBHOOK_URL" \
+            --title "Data Freshness FAILED" \
+            --text "Dataset: ${{ env.BQ_DATASET }}\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"
+
       - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4

@@ -308,6 +308,16 @@ jobs:
           content-filepath: ingestion_summary.log
           labels: monitoring, ingestion
 
+      - name: Teams notify failure
+        if: failure() && env.TEAMS_WEBHOOK_URL != '' && github.event_name == 'schedule'
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          python3 scripts/notify_teams.py \
+            --webhook "$TEAMS_WEBHOOK_URL" \
+            --title "Daily Ingestion FAILED" \
+            --text "Repo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"
+
       - name: Upload execution log (always)
         if: always()
         run: |

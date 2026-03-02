@@ -161,7 +161,7 @@ jobs:
               `,
               labels: ['data-quality', 'tsi', 'automated-alert', 'priority-high']
             })
-      
+
       - name: Report success
         if: success()
         run: |

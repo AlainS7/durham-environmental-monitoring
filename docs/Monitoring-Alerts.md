@@ -7,8 +7,8 @@ This document outlines the layered approach for surfacing failures and data fres
 | Layer | Purpose | Tooling | Destination |
 |-------|---------|---------|-------------|
 | Runtime Infra | Cloud Run job / Scheduler failures | Cloud Monitoring Alerts | Teams Webhook (+ optional email) |
-| Data Pipeline | Transformation script failures | GitHub Actions | Teams Webhook |
-| Ingestion Quality | Row/metric threshold regressions | Existing Python scripts + CI | Teams (via workflow failure) |
+| Data Pipeline | Transformation script failures | GitHub Actions | Teams Webhook (critical workflows only) |
+| Ingestion Quality | Row/metric threshold regressions | Existing Python scripts + CI | Teams for primary quality workflow; issue/artifact triage for secondary checks |
 | Historical Trend | Cost & volume anomalies | (Future) BigQuery scheduled queries -> custom metric | Teams / Dashboard |
 
 ## Teams Webhook
@@ -16,14 +16,32 @@ This document outlines the layered approach for surfacing failures and data fres
 Secrets:
 
 - `TEAMS_WEBHOOK_URL`: Incoming webhook URL configured in the desired Teams channel.
+- If this secret is unset/empty, workflow failure notifications are skipped by design.
+
+Quick validation:
+
+```bash
+python3 scripts/notify_teams.py \
+  --webhook "$TEAMS_WEBHOOK_URL" \
+  --title "Monitoring Webhook Test" \
+  --text "Teams notifications are configured."
+```
 
 Scripts:
 
 - `scripts/notify_teams.py` – posts a MessageCard with fallback plain text.
 
-Workflows updated to call this script on failure:
+Workflows with Teams failure notifications (low-noise policy):
 
 - `.github/workflows/transformations-execute.yml`
+- `.github/workflows/data-quality-check.yml`
+- `.github/workflows/data-freshness.yml`
+- `.github/workflows/daily-ingest.yml` (scheduled runs)
+- `.github/workflows/sync-to-sharepoint.yml`
+
+All other workflows intentionally do not send Teams alerts to keep notifications low-noise and action-focused.
+
+Issue-based alerts remain enabled for selected scheduled workflows where persistent triage history is helpful.
 
 ## Source Freshness
 
