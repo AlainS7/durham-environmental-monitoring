@@ -1,0 +1,35 @@
+{
+  "include": {
+    "raw_parquet": {
+      "sources": ["TSI", "WU"],
+      "path_pattern": "raw/source={SOURCE}/agg=raw/dt={YYYY-MM-DD}/*.parquet"
+    },
+    "health_artifacts": {
+      "freshness": ["reports/freshness/**/*.json", "reports/freshness/**/*.csv"],
+      "quality": ["reports/quality/**/*.json", "reports/quality/**/*.csv"],
+      "manifests": ["config/metrics_manifest.json", "transformations/**/manifest*.json"]
+    },
+    "curated_research_pack": {
+      "sharepoint_target": "_research_pack/{YYYY-MM-DD}/",
+      "active_exports": [
+        "daily_source_summary.csv",
+        "hourly_pm25_temp_humidity_summary.csv",
+        "metadata.json"
+      ],
+      "future_optional_exports": [
+        "reports/curated/daily/**/*.parquet",
+        "reports/curated/daily/**/*.csv",
+        "reports/curated/hourly/**/*.parquet",
+        "reports/curated/hourly/**/*.csv"
+      ]
+    }
+  },
+  "exclude": {
+    "explicit_exclusions": [
+      "staging/**",
+      "**/internal/**",
+      "raw/**/full_table_dumps/**",
+      "**/*_full_table*.parquet"
+    ]
+  }
+}
