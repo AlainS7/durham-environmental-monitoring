@@ -74,7 +74,7 @@ jobs:
           labels: monitoring, freshness
 
       - name: Teams notify failure
-        if: failure() && env.TEAMS_WEBHOOK_URL != ''
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true' && env.TEAMS_WEBHOOK_URL != ''
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |

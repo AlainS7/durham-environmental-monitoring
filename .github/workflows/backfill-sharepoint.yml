@@ -34,6 +34,7 @@ permissions:
 jobs:
   validate-inputs:
     name: Validate Inputs
+    if: ${{ vars.ENABLE_SHAREPOINT_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       start_date: ${{ steps.validate.outputs.start_date }}
@@ -83,6 +84,7 @@ jobs:
 
   backfill-sharepoint:
     name: Backfill Parquet Files to SharePoint
+    if: ${{ vars.ENABLE_SHAREPOINT_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
     needs: validate-inputs
 

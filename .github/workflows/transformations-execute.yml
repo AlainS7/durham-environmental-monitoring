@@ -91,7 +91,7 @@ jobs:
           uv run python scripts/run_transformations.py --project "$BQ_PROJECT" --dataset ${{ env.DATASET_ID }} --date "$PROC_DATE" --execute
 
       - name: Teams notify failure
-        if: failure()
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true'
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |

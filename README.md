@@ -137,6 +137,19 @@ The project relies heavily on GitHub Actions for automation and verification.
 
 ---
 
+## Workflow Toggles (Temporary)
+
+To avoid permission-related failures while SharePoint/Teams access is being provisioned, the related workflow paths are gated by repository variables.
+
+- `ENABLE_SHAREPOINT_WORKFLOWS`: set to `true` to allow SharePoint sync/backfill jobs to run.
+- `ENABLE_TEAMS_NOTIFICATIONS`: set to `true` to allow Teams failure notifications to be sent.
+
+If these variables are unset (or not `true`), SharePoint jobs and Teams notifications remain disabled.
+
+Repository settings path: `Settings -> Secrets and variables -> Actions -> Variables`.
+
+---
+
 ## 📁 Project Structure
 
 ```text

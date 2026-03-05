@@ -1,10 +1,6 @@
 name: Daily SharePoint Sync
 
 on:
-  schedule:
-    # Run at 08:45 UTC daily (15 min after quality checks complete at 08:30)
-    - cron: '45 8 * * *'
-
   workflow_dispatch:
     inputs:
       date:
@@ -33,6 +29,7 @@ permissions:
 jobs:
   sync-to-sharepoint:
     name: Sync Parquet Files to SharePoint
+    if: ${{ vars.ENABLE_SHAREPOINT_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -213,7 +210,7 @@ jobs:
           fi
 
       - name: Teams notify failure
-        if: failure() && env.TEAMS_WEBHOOK_URL != ''
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true' && env.TEAMS_WEBHOOK_URL != ''
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |

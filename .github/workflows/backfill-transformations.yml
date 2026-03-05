@@ -110,7 +110,7 @@ jobs:
           uv run python scripts/sync_to_grafana.py
 
       - name: Notify Teams on failure
-        if: failure()
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true'
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
