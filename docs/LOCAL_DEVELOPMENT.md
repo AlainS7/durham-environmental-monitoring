@@ -43,10 +43,10 @@ You will need to populate the `.env` file with the necessary credentials and con
 
 ```
 # GCP Configuration
-PROJECT_ID="your-gcp-project-id"
+GCP_PROJECT_ID="your-gcp-project-id"
+BQ_PROJECT="your-gcp-project-id"
 GCS_BUCKET="your-gcs-bucket-name"
 GCS_PREFIX="sensor_readings"
-BQ_PROJECT="your-gcp-project-id"
 BQ_DATASET="sensors"
 BQ_LOCATION="US"
 
@@ -54,14 +54,9 @@ BQ_LOCATION="US"
 TSI_CLIENT_ID="your-tsi-client-id"
 TSI_CLIENT_SECRET="your-tsi-client-secret"
 WU_API_KEY="your-wu-api-key"
-
-<!--- Deprecated: Local PostgreSQL/Cloud SQL setup is no longer required. All data operations use BigQuery. -->
-DB_USER="your-db-user"
-DB_PASSWORD="your-db-password"
-DB_HOST="localhost"
-DB_PORT="5432"
-DB_NAME="durham_weather"
 ```
+
+`GCP_PROJECT_ID` / `BQ_PROJECT` are identifiers (not secrets), but API keys and tokens must stay in local `.env` files or your secret manager.
 
 ## 3. Running the Application
 
@@ -83,23 +78,15 @@ To run the data transformations locally, use the `make run-transformations` comm
 make run-transformations DATE=2025-10-06 DATASET=sensors
 ```
 
-## 4. Local Database Setup (Deprecated)
-
-**This section is deprecated.**
-
-The project has migrated to a BigQuery-only pipeline. Local PostgreSQL or Cloud SQL setup is no longer required for development or testing. All data ingestion, transformation, and analytics are performed directly in BigQuery.
-
-If you have legacy scripts or workflows referencing a local database, please update them to use BigQuery. See the main README and scripts for current usage patterns.
-
-## 5. GCP Authentication
+## 4. GCP Authentication
 
 To access BigQuery and Cloud Storage locally, you need to authenticate with GCP.
 
-### 5.1. Install the gcloud CLI
+### 4.1. Install the gcloud CLI
 
 Follow the instructions [here](https://cloud.google.com/sdk/docs/install) to install the gcloud CLI.
 
-### 5.2. Authenticate
+### 4.2. Authenticate
 
 Run the following command to authenticate with your GCP account:
 
@@ -109,7 +96,7 @@ gcloud auth application-default login
 
 This will open a browser window to complete the authentication process.
 
-## 6. Testing and Linting
+## 5. Testing and Linting
 
 To run tests and linting, use the following commands:
 

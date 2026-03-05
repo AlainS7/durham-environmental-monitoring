@@ -9,7 +9,7 @@
       "version": "lts"
     }
   },
-"postCreateCommand": "sudo apt update && sudo apt upgrade -y && bash .devcontainer/post-create.sh && npm install -g @google/gemini-cli",
+  "postCreateCommand": "sudo apt update && sudo apt upgrade -y && bash .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,7 +17,6 @@
         "ms-python.vscode-pylance",
         "charliermarsh.ruff",
         "ms-azuretools.vscode-docker",
-  // "ms-azuretools.vscode-postgresql", // Deprecated: No longer needed
         "VisualStudioExptTeam.vscodeintellicode",
         "eamodio.gitlens",
         "github.copilot-chat",

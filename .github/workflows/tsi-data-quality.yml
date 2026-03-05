@@ -18,7 +18,7 @@ on:
         default: 1
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
   PYTHON_VERSION: '3.11'
 
@@ -110,18 +110,6 @@ jobs:
       
       - name: Create issue on quality failure
         if: failure() && github.event_name == 'schedule'
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "🚨 TSI Data Quality Check Failed for ${{ steps.date.outputs.range }}"
-          content-filepath: .github/issue_templates/tsi-quality-failure.md
-          labels: |
-            data-quality
-            tsi
-            automated-alert
-            priority-high
-      
-      - name: Create simple issue on quality failure (fallback)
-        if: failure() && github.event_name == 'schedule'
         uses: actions/github-script@v7
         with:
           script: |
@@ -173,7 +161,7 @@ jobs:
               `,
               labels: ['data-quality', 'tsi', 'automated-alert', 'priority-high']
             })
-      
+
       - name: Report success
         if: success()
         run: |

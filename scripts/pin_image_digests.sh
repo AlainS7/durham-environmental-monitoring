@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-#!/usr/bin/env bash
-set -euo pipefail
-
 # Fetch digests for ingestion, refresh, metrics images and output terraform apply command.
 # Usage:
 #   ./scripts/pin_image_digests.sh <PROJECT_ID> [REGION] [REPO] [TAG]

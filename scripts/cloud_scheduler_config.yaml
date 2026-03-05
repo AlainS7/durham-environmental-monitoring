@@ -111,7 +111,7 @@ spec:
     
     # Authentication
     oidcToken:
-      serviceAccountEmail: "scheduler@durham-weather-466502.iam.gserviceaccount.com"
+      serviceAccountEmail: "scheduler@${GCP_PROJECT_ID}.iam.gserviceaccount.com"  # Replace ${GCP_PROJECT_ID} with your project
       audience: "https://YOUR-CLOUD-RUN-SERVICE-URL"
   
   # Retry configuration

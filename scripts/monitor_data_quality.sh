@@ -11,7 +11,7 @@
 # Alternative: Deploy to Cloud Scheduler for production
 #   See cloud_scheduler_config.yaml for Google Cloud setup
 
-set -e  # Exit on error
+set -euo pipefail  # Exit on error
 
 # Configuration
 PROJECT_ROOT="/workspaces/durham-environmental-monitoring"

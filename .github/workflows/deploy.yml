@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: "durham-weather-466502"
+  PROJECT_ID: "${{ vars.GCP_PROJECT_ID }}"
   GAR_LOCATION: "us-east1"
   GAR_REPOSITORY: "weather-data-images"
   JOB_NAME: "weather-data-uploader"
@@ -52,7 +52,7 @@ jobs:
         project_id: ${{ env.PROJECT_ID }}
         # Replace the WORKLOAD_IDENTITY_PROVIDER value with the provider
         # resource name you create with the gcloud commands (projects/NUM/locations/global/workloadIdentityPools/POOL/providers/PROVIDER)
-        workload_identity_provider: 'projects/441117079833/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
         service_account: 'github-actions-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
 
     - name: Set active project

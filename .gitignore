@@ -1,17 +1,12 @@
-# IntelliJ project files
-.idea/
-*.iml
-
-# Python bytecode
+# Python bytecode and packaging
 __pycache__/
 *.py[cod]
-*.pyc
 *.pyo
 *.pyd
 .Python
 build/
-develop-eggs/
 dist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -19,16 +14,6 @@ lib/
 lib64/
 parts/
 sdist/
-
-# Cleanup and temporary files
-cleanup_summary.json
-*_cleanup_*/
-temp_cleanup/
-*.log
-
-# Migration verification files (keep archived versions)
-automation_verification_results.json
-final_migration_verification.json
 var/
 wheels/
 *.egg-info/
@@ -36,399 +21,185 @@ wheels/
 *.egg
 
 # Virtual environments
-venv/
 .venv/
+venv/
 env/
 ENV/
 
-# Credentials / Secrets
+# Python tooling caches and test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.cache/
+
+# IDE/editor and OS files
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
 google_creds.json
 tsi_creds.json
 wu_api_key.json
 onedrive_creds.json
 creds/*.json
 hot_durham_wu_map/backend/wu_api_key.json
-# Oura tokens and outputs (kept outside repo)
 pat_r*.env
-**/Oura Ring/
-**/Secure Files/
-
-# Terraform local state (never commit)
-.terraform/
-infra/terraform/.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-*.tfvars.json
-!terraform.tfvars.example
-!infra/terraform/terraform.tfvars.example
-crash.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
-# Cloud Run job exports / snapshots with deployment metadata
-job_export.yaml
-job_full.yaml
-job.json
-
-
-# Changing metrics and analysis
-/metrics-current/
-*.pem
-*.key
-*.crt
-.env
-
-
-data/historical_test_sensors
-data/test_sensors
-
-# Raw data files (too large for Git)
-raw_pulls/
-
-# Large data files and databases
-*.db
-*.sqlite
-*.sqlite3
-data/master_data/*.db
-data/master_data/*.csv
-data/historical_test_sensors/
-data/historical_test_sensors_expanded/
-data/daily_sheets_metadata/
-data/master_data_metadata/
-
-# ML Models and pickled files
-*.pkl
-*.joblib
-
-# dbt artifacts (generated files)
-transformations/dbt/target/
-transformations/dbt/logs/
-transformations/dbt/dbt_packages/
-transformations/dbt/.user.yml
-target/
-logs/
-dbt_project.yml
-
-# Transformation logs
-/tmp/*.log
-*.model
-src/models/ml/*.pkl
-models/ml/*.pkl
-
-# Log files
-*.log
-logs/*.log
-data/*.log
-
-# Temporary and cache files
-temp/
-*.tmp
-*.cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# API keys and usage databases
-src/data/api_keys.db
-src/data/api_usage.db
-data/api_keys.db
-data/api_usage.db
-
-# Large processed files
-processed/
-reports/output/
-sensor_visualizations/*.png
-sensor_visualizations/*.jpg
-
-# Backup files
-backup/feature2_deployment/
-backup/configurations/
-
-# IDE and system files
-.DS_Store
-.idea/
-*.iml
-.vscode/
-
-# Archive and removed files (already processed)
-archive/removed_files/
-
-# Large test data
-test_data/large_datasets/
-
-# Production reports (can be large)
-reports/*.pdf
-reports/*.html
-data/raw_pulls/
-*.csv
-*.xlsx
-*.xls
-
-# Processed data files (generated content)
-processed/
-data/processed/
-reports/
-backup/
-
-# Allow Looker Studio JSON templates
-!reports/looker/
-!reports/looker/*.json
-
-# Log files
-*.log
-logs/
-data_management.log
-automation_log_*.json
-
-# Temporary files
-temp/
-data/temp/
-tmp/
-.tmp/
-*.tmp
-
-# Auto-generated config files with timestamps
-config/*_[0-9]*_[0-9]*.json
-config/pull_schedule_*.json
-
-# Development and test artifacts
-*.sqlite
-*.sqlite3
-.pytest_cache/
-htmlcov/
-.coverage.*
-coverage.xml
-*.cover
-.hypothesis/
-
-# macOS specific files
-.DS_Store
-.AppleDouble
-.LSOverride
-._*
-Icon
-*.app
-
-# Editor specific files
-*.swp
-*.swo
-*~
-.vscode/settings.json
-.idea/workspace.xml
-.idea/tasks.xml
-
-# Archive directories (may contain old/deprecated code)
-archive/deprecated_scripts/
-archive/*_partial_*.log
-
-# Backup verification logs (contains system info)
-backup/verification_logs/
-src/backup/verification_logs/
-
-# Any files containing sensitive API data (but not documentation)
 *api_key*
 *creds*
 *credentials*
 *token*
 *secret*
-# Exception: Allow documentation files about secrets
 !*SECRETS*.md
 !*SECRET*.md
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+auth.json
+oauth*.json
+config.ini
+settings.ini
+*.conf
 
-# Terraform local state and artifacts
-# Do NOT commit Terraform state; it may contain sensitive metadata
+# Terraform state and local overrides
 .terraform/
 infra/terraform/.terraform/
+.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
-infra/terraform/terraform.tfstate
-infra/terraform/terraform.tfstate.backup
-crash.log
 *.tfvars
 *.tfvars.json
+*.auto.tfvars
+terraform.tfvars
 !terraform.tfvars.example
 !infra/terraform/terraform.tfvars.example
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-*.pem
-*.key
-*.p12
-*.pfx
+*.tfplan
+crash.log
+crash.*.log
 
-# Environment and configuration files that might contain secrets
-.env*
-config.ini
-settings.ini
-*.conf
-auth.json
-oauth*.json
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# IDE and editor files that might contain sensitive info
-.vscode/settings.json
-.idea/workspace.xml
-.idea/dataSources.xml
-.idea/httpRequests/
-
-# Large data files that shouldn't be in Git
-*.csv
-*.xlsx
-*.xls
-*.parquet
-reports/*.html
-reports/*.pdf
-
-# Runtime and process files
+# Runtime/process/temp files
 *.pid
 *.seed
 *.pid.lock
+*.tmp
+tmp/
+.tmp/
+temp/
+temp_cleanup/
+data/temp/
 
-# Output files
-*.zip
-*.tar.gz
-*.pdf
-*.png
-*.jpg
-*.jpeg
-*.gif
-
-# Node modules
-node_modules/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# Streamlit cache
-.streamlit/
-
-# MacOS
-.DS_Store
-.AppleDouble
-.LSOverride
-Icon?
-._*
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# Linux
-*~
-
-# IDE files
-.vscode/
-*.swp
-*.swo
-
-# Ignore Java archives and BFG tool
-*.jar
-bfg.jar
-
-# System files
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-*.cover
-
-# Debug and testing files
-debug_*.py
-test_*_debug.py
-*_test_*.py
-smart_*_detection.py
-identify_*_in_*.py
-
-# Redundant documentation files
-*_SUMMARY.md
-DEPLOYMENT_READY_*.md
-ENHANCED_*_SUMMARY.md
-FINAL_ENHANCEMENT_*.md
-ISSUE_RESOLUTION_*.md
-*_EXCLUSION_COMPLETE.md
-
-# macOS system files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-
-# Enhanced features and infrastructure
-*.db
-*.sqlite
-*.sqlite3
-
-# Log files and monitoring
+# Logs
+*.log
+logs/
+logs/*.log
 logs/test_results_*.json
 logs/production/*.log
 logs/monitoring_*.json
 logs/*_output.log
 logs/*_pid.txt
+automation_log_*.json
+data_management.log
+/tmp/*.log
 
-# Backup files
-*_backup.txt
-*_backup_*.txt
-requirements_backup*.txt
+# Databases and model artifacts
+*.db
+*.sqlite
+*.sqlite3
+*.pkl
+*.joblib
+*.model
+src/models/ml/*.pkl
+models/ml/*.pkl
+src/data/api_keys.db
+src/data/api_usage.db
+data/api_keys.db
+data/api_usage.db
 
-# Environment and deployment
-.env
-.env.local
-.env.production
-.env.development
-
-# Cache and temporary files
-.cache/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Data analysis notebooks (optional - uncomment if you don't want to track)
-# *.ipynb
-# .ipynb_checkpoints/
-
-# Development and testing artifacts
+# Generated / large data artifacts
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.zip
+*.tar.gz
+processed/
+data/processed/
+data/master_data/*.db
+data/master_data/*.csv
+data/master_data_metadata/
+data/daily_sheets_metadata/
+data/historical_test_sensors/
+data/historical_test_sensors_expanded/
+data/test_sensors
+raw_pulls/
+data/raw_pulls/
+reports/
+backup/
+backup/verification_logs/
+src/backup/verification_logs/
+archive/removed_files/
+archive/deprecated_scripts/
+archive/*_partial_*.log
+test_data/large_datasets/
 test_data/temp_*
-setup_test_*
-install_packages.py
-fix_current_env.sh
+reports/output/
+sensor_visualizations/*.png
+sensor_visualizations/*.jpg
 
+# Keep required report templates/docs tracked
+!reports/looker/
+!reports/looker/*.json
+!reports/looker/sql_query_reference.sql
 
-cloud-sql-proxy
+# dbt artifacts
+transformations/dbt/target/
+transformations/dbt/logs/
+transformations/dbt/dbt_packages/
+transformations/dbt/.user.yml
+target/
 
-# Separated Hot Durham Project
-#hot_durham_project/
-
-# Cloud Run / deployment exported descriptors (sensitive env references) – do not commit
+# Generated deployment/config artifacts
+cleanup_summary.json
+*_cleanup_*/
+automation_verification_results.json
+final_migration_verification.json
 job_export.yaml
+job_full.yaml
 job_updated.yaml
 job.json
 *.cloudrun.export.yaml
@@ -436,22 +207,43 @@ job.json
 cloudrun_job_*.yaml
 env.list
 env.yaml
-env.list
+config/*_[0-9]*_[0-9]*.json
+config/pull_schedule_*.json
+config/generated/
+cloud-sql-proxy
+dbt_project.yml
+transformations/sql/07_residence_sensor_assignments.sql
 
-# Terraform local state & variable files (do not commit secrets)
-*.tfstate
-*.tfstate.*
-crash.log
-crash.*.log
-.terraform/
-.terraform.lock.hcl
-terraform.tfvars
-*.auto.tfvars
-!terraform.tfvars.example
-# Plan files
-*.tfplan
-
-.github/instructions/
-
-
-!reports/looker/sql_query_reference.sql
+# Misc project artifacts
+.node_repl_history
+node_modules/
+.ipynb_checkpoints/
+.streamlit/
+*.jar
+bfg.jar
+debug_*.py
+test_*_debug.py
+*_test_*.py
+smart_*_detection.py
+identify_*_in_*.py
+*_SUMMARY.md
+DEPLOYMENT_READY_*.md
+ENHANCED_*_SUMMARY.md
+FINAL_ENHANCEMENT_*.md
+ISSUE_RESOLUTION_*.md
+*_EXCLUSION_COMPLETE.md
+install_packages.py
+fix_current_env.sh
+requirements_backup*.txt
+*_backup.txt
+*_backup_*.txt
+ANALYSIS_RESULTS.md
+/*.html
+/data/analysis_outputs/*.html
+dashboard/grafana*
+dashboard/resident*
+dashboard/*_source_*.json
+dashboard/*_resource_*.json
+dashboard/*dashboard-export*.json
+docs/GRAFANA_RESIDENT_ENVIRONMENT_QUERIES.sql
+transformations/sql/07_residence_sensor_assignments.private.template.sql

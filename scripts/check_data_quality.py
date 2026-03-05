@@ -16,12 +16,13 @@ import argparse
 import logging
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import List, Tuple
 
 from google.cloud import bigquery
 
 # Add project root to path
-sys.path.insert(0, '/workspaces/durham-environmental-monitoring')
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.utils.schema_validation import (
     TSI_EXPECTED_SCHEMA,

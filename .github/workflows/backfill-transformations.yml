@@ -1,0 +1,124 @@
+name: Backfill Transformation Tables
+
+# Manual trigger only — fill in dates or leave blank for the full history.
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Start date YYYY-MM-DD (leave blank = 2025-07-07, first day of raw data)"
+        required: false
+        default: ""
+      end_date:
+        description: "End date YYYY-MM-DD (leave blank = yesterday)"
+        required: false
+        default: ""
+      days:
+        description: "OR: last N days (ignored if start_date is set)"
+        required: false
+        default: ""
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  DATASET_ID: sensors
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    # Backfill can take 1-2 hours for the full history; default is 6h per job.
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+
+      - name: Auth to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Generate residence assignments (if not already in repo)
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID: ${{ secrets.RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID }}
+          RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION: ${{ vars.RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION }}
+        run: |
+          if [ ! -f transformations/sql/07_residence_sensor_assignments.sql ]; then
+            test -n "$RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID" || {
+              echo "Missing RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID secret"
+              exit 1
+            }
+            uv run python scripts/generate_residence_assignments.py \
+              --project "$BQ_PROJECT" \
+              --raw-dataset ${{ env.DATASET_ID }} \
+              --template-secret-id "$RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID" \
+              --template-secret-version "${RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION:-latest}" \
+              --execute
+          fi
+
+      - name: Build backfill date args
+        id: date_args
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.start_date }}" ]; then
+            ARGS="--start ${{ inputs.start_date }}"
+            if [ -n "${{ inputs.end_date }}" ]; then
+              ARGS="$ARGS --end ${{ inputs.end_date }}"
+            fi
+          elif [ -n "${{ inputs.days }}" ]; then
+            ARGS="--days ${{ inputs.days }}"
+            if [ -n "${{ inputs.end_date }}" ]; then
+              ARGS="$ARGS --end ${{ inputs.end_date }}"
+            fi
+          fi
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+          echo "Backfill args: $ARGS"
+
+      - name: Run backfill
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          uv run python scripts/backfill_transformations.py \
+            --project "$BQ_PROJECT" \
+            --dataset ${{ env.DATASET_ID }} \
+            ${{ steps.date_args.outputs.args }} \
+            --execute
+
+      # After the transformation tables are populated, sync everything to
+      # sensors_shared so Grafana immediately sees the new data.
+      - name: Sync to Grafana dataset (sensors_shared)
+        env:
+          GCP_PROJECT_ID: ${{ env.PROJECT_ID }}
+        run: |
+          uv run python scripts/sync_to_grafana.py
+
+      - name: Notify Teams on failure
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true'
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          if [ -n "$TEAMS_WEBHOOK_URL" ]; then
+            python scripts/notify_teams.py \
+              --webhook "$TEAMS_WEBHOOK_URL" \
+              --title "Backfill Transformations FAILED" \
+              --text "Start: ${{ inputs.start_date || '2025-07-07 (default)' }}\nEnd: ${{ inputs.end_date || 'yesterday (default)' }}\nRepo: $GITHUB_REPOSITORY\nRun: $GITHUB_RUN_ID"
+          else
+            echo "TEAMS_WEBHOOK_URL not configured, skipping notification"
+          fi

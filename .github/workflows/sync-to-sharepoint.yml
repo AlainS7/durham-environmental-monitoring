@@ -1,0 +1,220 @@
+name: Daily SharePoint Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to sync (YYYY-MM-DD), defaults to yesterday'
+        required: false
+        type: string
+      sources:
+        description: 'Data sources to sync (space-separated, e.g., "TSI WU")'
+        required: false
+        default: 'TSI WU'
+      dry_run:
+        description: 'Preview what would be synced without uploading'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sync-to-sharepoint:
+    name: Sync Parquet Files to SharePoint
+    if: ${{ vars.ENABLE_SHAREPOINT_WORKFLOWS == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Preflight required configuration
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_VERIFIER_SA: ${{ secrets.GCP_VERIFIER_SA }}
+          SHAREPOINT_ACCESS_TOKEN: ${{ secrets.SHAREPOINT_ACCESS_TOKEN }}
+          SHAREPOINT_PAT: ${{ secrets.SHAREPOINT_PAT }}
+          SHAREPOINT_TENANT_ID: ${{ secrets.SHAREPOINT_TENANT_ID }}
+          SHAREPOINT_CLIENT_ID: ${{ secrets.SHAREPOINT_CLIENT_ID }}
+          SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+        run: |
+          set -e
+          required=(
+            GCP_PROJECT_ID
+            GCS_BUCKET
+            GCP_WORKLOAD_IDENTITY_PROVIDER
+            GCP_VERIFIER_SA
+            SHAREPOINT_SITE_ID
+            SHAREPOINT_DRIVE_ID
+          )
+
+          missing=()
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required workflow configuration: ${missing[*]}"
+            exit 1
+          fi
+
+          direct_token="${SHAREPOINT_ACCESS_TOKEN:-${SHAREPOINT_PAT:-}}"
+          has_client_creds=true
+          for key in SHAREPOINT_TENANT_ID SHAREPOINT_CLIENT_ID SHAREPOINT_CLIENT_SECRET; do
+            if [ -z "${!key}" ]; then
+              has_client_creds=false
+              break
+            fi
+          done
+
+          if [ -z "$direct_token" ] && [ "$has_client_creds" != "true" ]; then
+            echo "Configure SharePoint auth using either:"
+            echo "  1) SHAREPOINT_TENANT_ID + SHAREPOINT_CLIENT_ID + SHAREPOINT_CLIENT_SECRET (recommended), or"
+            echo "  2) SHAREPOINT_ACCESS_TOKEN (or legacy SHAREPOINT_PAT)."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src" >> $GITHUB_ENV
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Determine date to sync
+        id: date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            # Manual run with specific date
+            DATE="${{ github.event.inputs.date }}"
+          else
+            # Scheduled run - sync yesterday's data
+            DATE=$(date -u -d 'yesterday' +%Y-%m-%d)
+          fi
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "Syncing data for: $DATE"
+
+      - name: Sync to SharePoint
+        id: sync
+        env:
+          SHAREPOINT_ACCESS_TOKEN: ${{ secrets.SHAREPOINT_ACCESS_TOKEN }}
+          SHAREPOINT_PAT: ${{ secrets.SHAREPOINT_PAT }}
+          SHAREPOINT_TENANT_ID: ${{ secrets.SHAREPOINT_TENANT_ID }}
+          SHAREPOINT_CLIENT_ID: ${{ secrets.SHAREPOINT_CLIENT_ID }}
+          SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+          SHAREPOINT_FOLDER_PATH: '/Data - Environmental/Google Cloud Sensor Data'
+        run: |
+          set -e
+
+          # Build command
+          CMD="uv run python scripts/sync_parquet_to_sharepoint.py --date ${{ steps.date.outputs.date }}"
+
+          # Add sources if specified
+          if [ -n "${{ github.event.inputs.sources }}" ]; then
+            CMD="$CMD --sources ${{ github.event.inputs.sources }}"
+          fi
+
+          # Add dry-run flag if requested
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+
+          echo "Running: $CMD"
+          $CMD
+
+      - name: Export curated research pack
+        if: success()
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+        run: |
+          OUT_DIR=/tmp/curated_research_pack
+          DATE="${{ steps.date.outputs.date }}"
+          mkdir -p "$OUT_DIR"
+          uv run python scripts/export_curated_research_pack.py \
+            --project "$BQ_PROJECT" \
+            --dataset sensors \
+            --date "$DATE" \
+            --output-dir "$OUT_DIR"
+
+      - name: Upload curated research pack to SharePoint
+        if: success()
+        env:
+          SHAREPOINT_ACCESS_TOKEN: ${{ secrets.SHAREPOINT_ACCESS_TOKEN }}
+          SHAREPOINT_PAT: ${{ secrets.SHAREPOINT_PAT }}
+          SHAREPOINT_TENANT_ID: ${{ secrets.SHAREPOINT_TENANT_ID }}
+          SHAREPOINT_CLIENT_ID: ${{ secrets.SHAREPOINT_CLIENT_ID }}
+          SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_DRIVE_ID }}
+          SHAREPOINT_FOLDER_PATH: '/Data - Environmental/Google Cloud Sensor Data'
+        run: |
+          OUT_DIR=/tmp/curated_research_pack
+          DATE="${{ steps.date.outputs.date }}"
+          CMD="uv run python scripts/upload_research_pack_to_sharepoint.py --input-dir $OUT_DIR --date $DATE"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          echo "Running: $CMD"
+          $CMD
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharepoint-sync-logs-${{ steps.date.outputs.date }}
+          path: |
+            *.log
+            /tmp/*.log
+          retention-days: 7
+
+      - name: Report sync status
+        if: always()
+        run: |
+          if [ "${{ steps.sync.outcome }}" = "success" ]; then
+            echo "✓ Successfully synced parquet files for ${{ steps.date.outputs.date }} to SharePoint"
+          else
+            echo "✗ Failed to sync parquet files for ${{ steps.date.outputs.date }}"
+            exit 1
+          fi
+
+      - name: Teams notify failure
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true' && env.TEAMS_WEBHOOK_URL != ''
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          python3 scripts/notify_teams.py \
+            --webhook "$TEAMS_WEBHOOK_URL" \
+            --title "SharePoint Sync FAILED" \
+            --text "Date: ${{ steps.date.outputs.date }}\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"

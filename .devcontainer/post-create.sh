@@ -36,10 +36,6 @@ fi
 uv pip install ruff
 
 
-echo "[INFO] Cloud SQL/PostgreSQL setup is deprecated. This project is now BigQuery-only."
-echo "[INFO] You can remove any local Cloud SQL Auth Proxy or PostgreSQL setup."
-
-
 echo "Post-create setup complete."
 
 # Ensure PYTHONPATH is set for all shells in Codespace

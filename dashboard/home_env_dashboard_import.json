@@ -1,0 +1,784 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_BIGQUERY",
+      "label": "BigQuery",
+      "description": "BigQuery data source pointing to durham-weather-466502",
+      "type": "datasource",
+      "pluginId": "grafana-bigquery-datasource",
+      "pluginName": "BigQuery"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "grafana-bigquery-datasource",
+      "name": "BigQuery",
+      "version": "2.0.0"
+    }
+  ],
+  "title": "Durham Resident Dashboard (Limited)",
+  "uid": "durham-resident-limited-v1",
+  "description": "Resident-facing dashboard scoped to residence-isolated secure view data.",
+  "tags": [
+    "durham",
+    "environment",
+    "sensors",
+    "residents",
+    "air-quality",
+    "colocation"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "15m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "metric_name",
+        "type": "query",
+        "label": "Metric",
+        "current": {
+          "text": "pm2_5_mv_corrected",
+          "value": "pm2_5_mv_corrected"
+        },
+        "datasource": {
+          "type": "grafana-bigquery-datasource",
+          "uid": "${DS_BIGQUERY}"
+        },
+        "definition": "WITH allowed AS (SELECT 'temperature' AS metric_name UNION ALL SELECT 'humidity' AS metric_name UNION ALL SELECT 'pm2_5_mv_corrected' AS metric_name UNION ALL SELECT 'co2_ppm' AS metric_name UNION ALL SELECT 'voc_mgm3' AS metric_name) SELECT metric_name FROM allowed ORDER BY metric_name",
+        "query": "WITH allowed AS (SELECT 'temperature' AS metric_name UNION ALL SELECT 'humidity' AS metric_name UNION ALL SELECT 'pm2_5_mv_corrected' AS metric_name UNION ALL SELECT 'co2_ppm' AS metric_name UNION ALL SELECT 'voc_mgm3' AS metric_name) SELECT metric_name FROM allowed ORDER BY metric_name",
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 14,
+      "type": "row",
+      "title": "Individual Sensors per Network \u2014 your residence",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Air Assure (AA) Sensors \u2014 your residence",
+      "description": "One line per AA sensor at selected residence.",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "AASensors",
+          "rawSql": "SELECT day_ts AS time, sensor_name AS metric, ROUND(avg_value,3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AA-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Bluesky (BS) Sensors \u2014 your residence",
+      "description": "One line per BS sensor at selected residence.",
+      "gridPos": {
+        "x": 8,
+        "y": 21,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "BSSensors",
+          "rawSql": "SELECT day_ts AS time, sensor_name AS metric, ROUND(avg_value,3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'BS-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Ambient (AM) Sensors \u2014 your residence",
+      "description": "One line per AM sensor at selected residence.",
+      "gridPos": {
+        "x": 16,
+        "y": 21,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "AMSensors",
+          "rawSql": "SELECT day_ts AS time, sensor_name AS metric, ROUND(avg_value,3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AM-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "Colocation Network Comparison \u2014 AA vs BS vs Ambient (your residence)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "AA vs BS vs AM \u2014 Daily Averages (your residence / $metric_name)",
+      "description": "Sensors at same residence should track closely. Divergence = network disagreement.",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 16,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Air Assure (AA)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#1f77b4"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bluesky (BS)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#ff7f0e"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ambient (AM)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2ca02c"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "NetworkAvgAA",
+          "rawSql": "SELECT day_ts AS time, 'Air Assure (AA)' AS metric, ROUND(AVG(avg_value),3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AA-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts ORDER BY time ASC",
+          "format": 0
+        },
+        {
+          "refId": "NetworkAvgBS",
+          "rawSql": "SELECT day_ts AS time, 'Bluesky (BS)' AS metric, ROUND(AVG(avg_value),3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'BS-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts ORDER BY time ASC",
+          "format": 0
+        },
+        {
+          "refId": "NetworkAvgAM",
+          "rawSql": "SELECT day_ts AS time, 'Ambient (AM)' AS metric, ROUND(AVG(avg_value),3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AM-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": "table",
+      "title": "Network Agreement Stats (your residence / $metric_name)",
+      "description": "Daily AA, BS, AM averages and AA\u2212BS / BS\u2212AM deltas. Red = large disagreement.",
+      "gridPos": {
+        "x": 16,
+        "y": 30,
+        "w": 8,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "aa_bs_delta"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "AA\u2212BS \u0394"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 15
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bs_am_delta"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "BS\u2212AM \u0394"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 5
+                    },
+                    {
+                      "color": "red",
+                      "value": 15
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "ColocStats",
+          "rawSql": "WITH aa AS (SELECT day_ts, ROUND(AVG(avg_value),3) AS aa_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AA-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts), bs AS (SELECT day_ts, ROUND(AVG(avg_value),3) AS bs_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'BS-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts), am AS (SELECT day_ts, ROUND(AVG(avg_value),3) AS am_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AM-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts) SELECT COALESCE(aa.day_ts,bs.day_ts,am.day_ts) AS time, aa.aa_val AS air_assure, bs.bs_val AS bluesky, am.am_val AS ambient, ROUND(aa.aa_val - bs.bs_val, 3) AS aa_bs_delta, ROUND(bs.bs_val - am.am_val, 3) AS bs_am_delta FROM aa FULL OUTER JOIN bs ON aa.day_ts=bs.day_ts FULL OUTER JOIN am ON COALESCE(aa.day_ts,bs.day_ts)=am.day_ts ORDER BY time DESC",
+          "format": 1
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "time",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "AA \u2212 BS Delta over Time (your residence / $metric_name)",
+      "description": "Positive = AA reads higher. Near zero = networks agree. Large swings flag drift.",
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d62728"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "AABSDelta",
+          "rawSql": "WITH aa AS (SELECT day_ts, AVG(avg_value) AS aa_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AA-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts), bs AS (SELECT day_ts, AVG(avg_value) AS bs_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'BS-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts) SELECT aa.day_ts AS time, 'AA - BS' AS metric, ROUND(aa.aa_val - bs.bs_val, 3) AS value FROM aa JOIN bs ON aa.day_ts=bs.day_ts ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "BS \u2212 AM Delta over Time (your residence / $metric_name)",
+      "description": "Positive = Bluesky reads higher than Ambient. Consistent offset suggests calibration difference.",
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#9467bd"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "BSAMDelta",
+          "rawSql": "WITH bs AS (SELECT day_ts, AVG(avg_value) AS bs_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'BS-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts), am AS (SELECT day_ts, AVG(avg_value) AS am_val FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_name LIKE 'AM-%' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts) SELECT bs.day_ts AS time, 'BS - AM' AS metric, ROUND(bs.bs_val - am.am_val, 3) AS value FROM bs JOIN am ON bs.day_ts=am.day_ts ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": "row",
+      "title": "Resident Daily Summary \u2014 your residence",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Current State \u2014 your residence (Indoor)",
+      "description": "Latest daily readings for key metrics at selected residence.",
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 24,
+        "h": 5
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "refId": "CurrentState",
+          "rawSql": "SELECT metric_name, ROUND(AVG(avg_value),2) AS current_value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_role='Indoor' AND metric_name IN ('temperature','humidity','pm2_5_mv_corrected','co2_ppm','voc_mgm3','o3_ppb_harmonized','no2_ppb_harmonized') AND day_ts=(SELECT MAX(day_ts) FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_role='Indoor') GROUP BY metric_name ORDER BY metric_name",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Daily Metrics Over Time \u2014 your residence",
+      "description": "Key indoor metrics for selected residence.",
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "ResidentMetrics",
+          "rawSql": "SELECT day_ts AS time, metric_name AS metric, ROUND(avg_value,2) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_role='Indoor' AND metric_name IN ('temperature','humidity','pm2_5_mv_corrected','co2_ppm','voc_mgm3') AND $__timeFilter(day_ts) ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Within-Residence Daily Range ($metric_name)",
+      "description": "Daily max \u2212 min per residence. High = large intra-day variability or sensor spread.",
+      "gridPos": {
+        "x": 0,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "VariabilityPerResidence",
+          "rawSql": "SELECT day_ts AS time, 'Home' AS metric, ROUND(MAX(max_value)-MIN(min_value),3) AS value FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` WHERE sensor_role='Indoor' AND metric_name='$metric_name' AND $__timeFilter(day_ts) GROUP BY day_ts ORDER BY time ASC",
+          "format": 0
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": "table",
+      "title": "Pipeline Freshness (Days Behind)",
+      "description": "Quick lag check for raw and residence-ready datasets.",
+      "gridPos": {
+        "x": 0,
+        "y": 89,
+        "w": 24,
+        "h": 5
+      },
+      "datasource": {
+        "type": "grafana-bigquery-datasource",
+        "uid": "${DS_BIGQUERY}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "days_behind"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "d"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "Freshness",
+          "rawSql": "WITH latest AS ( SELECT 'TSI Raw' AS source, MAX(DATE(ts)) AS latest_date FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized` UNION ALL SELECT 'WU Raw' AS source, MAX(DATE(ts)) AS latest_date FROM `durham-weather-466502.sensors_shared.wu_raw_materialized` UNION ALL SELECT 'Residence Daily' AS source, MAX(DATE(day_ts)) AS latest_date FROM `durham-weather-466502.sensors_shared.residence_readings_daily_secure` ) SELECT source, CAST(latest_date AS STRING) AS latest_date, DATE_DIFF(CURRENT_DATE(), latest_date, DAY) AS days_behind FROM latest ORDER BY source",
+          "format": 1
+        }
+      ],
+      "options": {
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

@@ -22,7 +22,7 @@ on:
         required: false
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
 
 jobs:
   run-job:
@@ -38,7 +38,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
-          workload_identity_provider: 'projects/441117079833/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: 'github-actions-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
 
       - name: Set up gcloud

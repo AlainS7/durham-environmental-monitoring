@@ -6,7 +6,7 @@ on:
       project_id:
         description: 'GCP Project ID'
         required: false
-        default: 'durham-weather-466502'
+        default: ''
       dataset_id:
         description: 'BigQuery Dataset ID'
         required: false
@@ -42,7 +42,7 @@ jobs:
 
       - name: Seed identity rows
         run: |
-          PROJECT_ID="${{ github.event.inputs.project_id }}"
+          PROJECT_ID="${{ github.event.inputs.project_id || vars.GCP_PROJECT_ID }}"
           DATASET_ID="${{ github.event.inputs.dataset_id }}"
           echo "Seeding identity mapping into ${PROJECT_ID}.${DATASET_ID}.sensor_id_map"
           python scripts/seed_sensor_id_map.py --project "$PROJECT_ID" --dataset "$DATASET_ID" --execute

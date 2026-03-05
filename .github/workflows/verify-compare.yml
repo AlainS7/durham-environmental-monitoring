@@ -20,7 +20,7 @@ permissions:
   id-token: write # for Workload Identity Federation (OIDC) to GCP
 
 env:
-  PROJECT_ID: durham-weather-466502
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
 
 jobs:
@@ -77,7 +77,7 @@ jobs:
             --dataset "$BQ_DATASET" \
             --start "$START" --end "$END" \
             --compare \
-            --gcs-bucket sensor-data-to-bigquery \
+            --gcs-bucket ${{ vars.GCS_BUCKET }} \
             --gcs-prefix raw)
 
           # By default, skip external + GCS checks to avoid expected IAM 403s

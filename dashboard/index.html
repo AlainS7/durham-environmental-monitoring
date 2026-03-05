@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Durham Weather Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Login/Register Modal -->
+    <div id="auth-modal" class="modal">
+      <div class="modal-content auth-container">
+        <div class="auth-header">
+          <div class="logo">
+            <i class="fas fa-cloud-sun"></i>
+            <span>Durham Weather</span>
+          </div>
+          <p class="tagline">Monitor your environment in real-time</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form active">
+          <h2>Sign In</h2>
+          <div id="auth-mode" class="auth-mode text-muted" style="font-size:0.85rem; margin-top:0.5rem; text-align:center;"></div>
+          <div class="form-group">
+            <label for="login-email">
+              <i class="fas fa-envelope"></i>
+              Email
+            </label>
+            <input
+              type="email"
+              id="login-email"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="login-password">
+              <i class="fas fa-lock"></i>
+              Password
+            </label>
+            <input
+              type="password"
+              id="login-password"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-sign-in-alt"></i>
+              Sign In
+            </button>
+            <button type="button" id="use-demo" class="btn btn-outline" hidden>
+              <i class="fas fa-user-check"></i>
+              Use Demo Account
+            </button>
+          </div>
+          <p class="auth-switch">
+            Don't have an account?
+            <a href="#" id="show-register">Create one</a>
+          </p>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="auth-form">
+          <h2>Create Account</h2>
+          <div class="form-group">
+            <label for="register-name">
+              <i class="fas fa-user"></i>
+              Full Name
+            </label>
+            <input
+              type="text"
+              id="register-name"
+              placeholder="Enter your name"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-email">
+              <i class="fas fa-envelope"></i>
+              Email
+            </label>
+            <input
+              type="email"
+              id="register-email"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-password">
+              <i class="fas fa-lock"></i>
+              Password
+            </label>
+            <input
+              type="password"
+              id="register-password"
+              placeholder="Create a password (min. 8 characters)"
+              minlength="8"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-confirm">
+              <i class="fas fa-lock"></i>
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              id="register-confirm"
+              placeholder="Confirm your password"
+              required
+            />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-user-plus"></i>
+              Create Account
+            </button>
+          </div>
+          <p class="auth-switch">
+            Already have an account?
+            <a href="#" id="show-login">Sign in</a>
+          </p>
+        </form>
+
+        <div id="auth-error" class="error-message"></div>
+      </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="dashboard hidden">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <i class="fas fa-cloud-sun"></i>
+            <span>Durham Weather</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item active" data-section="overview">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Overview</span>
+          </a>
+          <a href="#" class="nav-item" data-section="outdoor">
+            <i class="fas fa-sun"></i>
+            <span>Outdoor Sensor</span>
+          </a>
+          <a href="#" class="nav-item" data-section="indoor">
+            <i class="fas fa-home"></i>
+            <span>Indoor Sensor</span>
+          </a>
+          <a href="#" class="nav-item" data-section="history">
+            <i class="fas fa-history"></i>
+            <span>History</span>
+          </a>
+          <a href="#" class="nav-item" data-section="settings">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-info">
+            <div class="user-avatar">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="user-details">
+              <span id="user-name" class="user-name">User</span>
+              <span id="user-email" class="user-email">user@example.com</span>
+            </div>
+          </div>
+          <button id="logout-btn" class="btn btn-outline logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <!-- Header -->
+        <header class="content-header">
+          <div class="header-left">
+            <button id="sidebar-toggle" class="sidebar-toggle">
+              <i class="fas fa-bars"></i>
+            </button>
+            <h1 id="section-title">Dashboard Overview</h1>
+          </div>
+          <div class="header-right">
+            <div class="datetime">
+              <span id="current-date" class="date"></span>
+              <span id="current-time" class="time"></span>
+            </div>
+            <button id="refresh-btn" class="btn btn-icon" title="Refresh Data">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Dashboard Sections -->
+        <div class="content-body">
+          <!-- Overview Section -->
+          <section id="overview-section" class="dashboard-section active">
+            <div class="quick-stats">
+              <div class="stat-card temperature outdoor">
+                <div class="stat-icon">
+                  <i class="fas fa-thermometer-half"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Outdoor Temperature</span>
+                  <span class="stat-value" id="outdoor-temp">--°C</span>
+                  <span class="stat-trend" id="outdoor-temp-trend">
+                    <i class="fas fa-arrow-up"></i> +2°C
+                  </span>
+                </div>
+              </div>
+              <div class="stat-card temperature indoor">
+                <div class="stat-icon">
+                  <i class="fas fa-home"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Indoor Temperature</span>
+                  <span class="stat-value" id="indoor-temp">--°C</span>
+                  <span class="stat-trend" id="indoor-temp-trend">
+                    <i class="fas fa-arrow-down"></i> -1°C
+                  </span>
+                </div>
+              </div>
+              <div class="stat-card humidity">
+                <div class="stat-icon">
+                  <i class="fas fa-tint"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Humidity</span>
+                  <span class="stat-value" id="outdoor-humidity">--%</span>
+                  <span class="stat-sublabel">Outdoor</span>
+                </div>
+              </div>
+              <div class="stat-card air-quality">
+                <div class="stat-icon">
+                  <i class="fas fa-wind"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Air Quality (PM2.5)</span>
+                  <span class="stat-value" id="air-quality">-- µg/m³</span>
+                  <span class="stat-badge good" id="aqi-badge">Good</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="dashboard-grid">
+              <!-- Temperature Comparison Chart -->
+              <div class="card chart-card large">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-chart-line"></i>
+                    Temperature Comparison (24h)
+                  </h3>
+                  <div class="card-actions">
+                    <select id="chart-period" class="select-small">
+                      <option value="24h">Last 24 Hours</option>
+                      <option value="7d">Last 7 Days</option>
+                      <option value="30d">Last 30 Days</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <canvas id="temp-comparison-chart"></canvas>
+                </div>
+              </div>
+
+              <!-- Indoor Environment Card -->
+              <div class="card environment-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-home"></i>
+                    Indoor Environment
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <div class="env-metrics">
+                    <div class="env-metric">
+                      <i class="fas fa-thermometer-half"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="indoor-temp-detail"
+                          >--°C</span
+                        >
+                        <span class="metric-label">Temperature</span>
+                      </div>
+                    </div>
+                    <div class="env-metric">
+                      <i class="fas fa-tint"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="indoor-humidity"
+                          >--%</span
+                        >
+                        <span class="metric-label">Humidity</span>
+                      </div>
+                    </div>
+                    <div class="env-metric">
+                      <i class="fas fa-smog"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="indoor-co2">-- ppm</span>
+                        <span class="metric-label">CO2</span>
+                      </div>
+                    </div>
+                    <div class="env-metric">
+                      <i class="fas fa-compress-arrows-alt"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="indoor-pressure"
+                          >-- inHg</span
+                        >
+                        <span class="metric-label">Pressure</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Outdoor Environment Card -->
+              <div class="card environment-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-sun"></i>
+                    Outdoor Environment
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <div class="env-metrics">
+                    <div class="env-metric">
+                      <i class="fas fa-thermometer-half"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="outdoor-temp-detail"
+                          >--°C</span
+                        >
+                        <span class="metric-label">Temperature</span>
+                      </div>
+                    </div>
+                    <div class="env-metric">
+                      <i class="fas fa-tint"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="outdoor-humidity-detail"
+                          >--%</span
+                        >
+                        <span class="metric-label">Humidity</span>
+                      </div>
+                    </div>
+                    <div class="env-metric">
+                      <i class="fas fa-wind"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="outdoor-wind"
+                          >-- km/h</span
+                        >
+                        <span class="metric-label">Wind Speed</span>
+                      </div>
+                    </div>
+                    <div class="env-metric">
+                      <i class="fas fa-cloud-rain"></i>
+                      <div class="metric-info">
+                        <span class="metric-value" id="outdoor-precip"
+                          >-- mm</span
+                        >
+                        <span class="metric-label">Precipitation</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Air Quality Chart -->
+              <div class="card chart-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-lungs"></i>
+                    Air Quality Index (PM2.5)
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <canvas id="aqi-chart"></canvas>
+                </div>
+              </div>
+
+              <!-- Humidity Chart -->
+              <div class="card chart-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-tint"></i>
+                    Humidity Levels
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <canvas id="humidity-chart"></canvas>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Outdoor Sensor Section -->
+          <section id="outdoor-section" class="dashboard-section">
+            <div class="sensor-header">
+              <div class="sensor-info">
+                <h2>
+                  <i class="fas fa-broadcast-tower"></i>
+                  Outdoor Sensor
+                </h2>
+                <p class="sensor-id">
+                  Sensor ID: <span id="outdoor-sensor-id">--</span>
+                </p>
+                <p class="sensor-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <span id="outdoor-location">Location not set</span>
+                </p>
+              </div>
+              <div class="sensor-status">
+                <span class="status-badge online" id="outdoor-status">
+                  <i class="fas fa-circle"></i>
+                  Online
+                </span>
+                <span class="last-update">
+                  Last update: <span id="outdoor-last-update">--</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="metrics-grid outdoor-metrics">
+              <!-- Weather Metrics -->
+              <div class="metric-card">
+                <div class="metric-icon temperature-icon">
+                  <i class="fas fa-thermometer-half"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Temperature</span>
+                  <span class="metric-value" id="outdoor-temp-full">-- °C</span>
+                  <span class="metric-range"
+                    >High: <span id="outdoor-temp-high">--</span>° / Low:
+                    <span id="outdoor-temp-low">--</span>°</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon humidity-icon">
+                  <i class="fas fa-tint"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Humidity</span>
+                  <span class="metric-value" id="outdoor-humidity-full"
+                    >-- %</span
+                  >
+                  <span class="metric-range"
+                    >High: <span id="outdoor-hum-high">--</span>% / Low:
+                    <span id="outdoor-hum-low">--</span>%</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon wind-icon">
+                  <i class="fas fa-wind"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Wind Speed</span>
+                  <span class="metric-value" id="outdoor-wind-full"
+                    >-- km/h</span
+                  >
+                  <span class="metric-range"
+                    >Gust: <span id="outdoor-gust">--</span> km/h</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon rain-icon">
+                  <i class="fas fa-cloud-rain"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Precipitation</span>
+                  <span class="metric-value" id="outdoor-precip-full"
+                    >-- mm</span
+                  >
+                  <span class="metric-range"
+                    >Rate: <span id="outdoor-precip-rate">--</span> mm/hr</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon pressure-icon">
+                  <i class="fas fa-compress-arrows-alt"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Pressure</span>
+                  <span class="metric-value" id="outdoor-pressure-full"
+                    >-- hPa</span
+                  >
+                  <span class="metric-range" id="outdoor-pressure-trend"
+                    >Stable</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon uv-icon">
+                  <i class="fas fa-sun"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">UV Index</span>
+                  <span class="metric-value" id="outdoor-uv">--</span>
+                  <span class="metric-range" id="outdoor-uv-level">--</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon solar-icon">
+                  <i class="fas fa-solar-panel"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Solar Radiation</span>
+                  <span class="metric-value" id="outdoor-solar">-- W/m²</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon dewpoint-icon">
+                  <i class="fas fa-droplet"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Dew Point</span>
+                  <span class="metric-value" id="outdoor-dewpoint">-- °C</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="charts-row">
+              <div class="card chart-card">
+                <div class="card-header">
+                  <h3>Temperature History</h3>
+                </div>
+                <div class="card-body">
+                  <canvas id="outdoor-temp-chart"></canvas>
+                </div>
+              </div>
+              <div class="card chart-card">
+                <div class="card-header">
+                  <h3>Wind & Precipitation</h3>
+                </div>
+                <div class="card-body">
+                  <canvas id="outdoor-wind-precip-chart"></canvas>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Indoor Sensor Section -->
+          <section id="indoor-section" class="dashboard-section">
+            <div class="sensor-header">
+              <div class="sensor-info">
+                <h2>
+                  <i class="fas fa-microchip"></i>
+                  Indoor Sensor (TSI)
+                </h2>
+                <p class="sensor-id">
+                  Sensor ID: <span id="indoor-sensor-id">--</span>
+                </p>
+                <p class="sensor-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <span id="indoor-location">Location not set</span>
+                </p>
+              </div>
+              <div class="sensor-status">
+                <span class="status-badge online" id="indoor-status">
+                  <i class="fas fa-circle"></i>
+                  Online
+                </span>
+                <span class="last-update">
+                  Last update: <span id="indoor-last-update">--</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="metrics-grid indoor-metrics">
+              <!-- Indoor Air Quality Metrics -->
+              <div class="metric-card">
+                <div class="metric-icon temperature-icon">
+                  <i class="fas fa-thermometer-half"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Temperature</span>
+                  <span class="metric-value" id="indoor-temp-full">-- °C</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon humidity-icon">
+                  <i class="fas fa-tint"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Humidity</span>
+                  <span class="metric-value" id="indoor-humidity-full"
+                    >-- %</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card highlight">
+                <div class="metric-icon pm-icon">
+                  <i class="fas fa-smog"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">PM2.5</span>
+                  <span class="metric-value" id="indoor-pm25">-- µg/m³</span>
+                  <span class="metric-badge good" id="indoor-pm25-badge"
+                    >Good</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon pm-icon">
+                  <i class="fas fa-smog"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">PM10</span>
+                  <span class="metric-value" id="indoor-pm10">-- µg/m³</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon pm-icon">
+                  <i class="fas fa-circle-notch"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">PM1.0</span>
+                  <span class="metric-value" id="indoor-pm1">-- µg/m³</span>
+                </div>
+              </div>
+
+              <div class="metric-card highlight">
+                <div class="metric-icon co2-icon">
+                  <i class="fas fa-cloud"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">CO2</span>
+                  <span class="metric-value" id="indoor-co2-full">-- ppm</span>
+                  <span class="metric-badge good" id="indoor-co2-badge"
+                    >Good</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon voc-icon">
+                  <i class="fas fa-flask"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">VOCs</span>
+                  <span class="metric-value" id="indoor-voc">-- mg/m³</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon pressure-icon">
+                  <i class="fas fa-compress-arrows-alt"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Pressure</span>
+                  <span class="metric-value" id="indoor-pressure-full"
+                    >-- inHg</span
+                  >
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon ozone-icon">
+                  <i class="fas fa-atom"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Ozone (O3)</span>
+                  <span class="metric-value" id="indoor-o3">-- ppb</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon no2-icon">
+                  <i class="fas fa-biohazard"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">NO2</span>
+                  <span class="metric-value" id="indoor-no2">-- ppb</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon formaldehyde-icon">
+                  <i class="fas fa-vial"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Formaldehyde</span>
+                  <span class="metric-value" id="indoor-ch2o">-- ppb</span>
+                </div>
+              </div>
+
+              <div class="metric-card">
+                <div class="metric-icon particle-icon">
+                  <i class="fas fa-circle"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-name">Typical Particle Size</span>
+                  <span class="metric-value" id="indoor-tpsize">-- µm</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="charts-row">
+              <div class="card chart-card">
+                <div class="card-header">
+                  <h3>PM2.5 History</h3>
+                </div>
+                <div class="card-body">
+                  <canvas id="indoor-pm25-chart"></canvas>
+                </div>
+              </div>
+              <div class="card chart-card">
+                <div class="card-header">
+                  <h3>CO2 History</h3>
+                </div>
+                <div class="card-body">
+                  <canvas id="indoor-co2-chart"></canvas>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- History Section -->
+          <section id="history-section" class="dashboard-section">
+            <div class="history-controls">
+              <div class="date-range-picker">
+                <label>
+                  <i class="fas fa-calendar"></i>
+                  From:
+                </label>
+                <input type="date" id="history-start-date" />
+                <label>To:</label>
+                <input type="date" id="history-end-date" />
+                <button id="apply-date-range" class="btn btn-primary">
+                  <i class="fas fa-search"></i>
+                  Apply
+                </button>
+              </div>
+              <div class="export-controls">
+                <button id="export-csv" class="btn btn-outline">
+                  <i class="fas fa-download"></i>
+                  Export CSV
+                </button>
+              </div>
+            </div>
+
+            <div class="card chart-card full-width">
+              <div class="card-header">
+                <h3>
+                  <i class="fas fa-chart-area"></i>
+                  Historical Data
+                </h3>
+                <div class="chart-filters">
+                  <label>
+                    <input type="checkbox" id="show-outdoor" checked />
+                    Outdoor
+                  </label>
+                  <label>
+                    <input type="checkbox" id="show-indoor" checked />
+                    Indoor
+                  </label>
+                  <select id="history-metric">
+                    <option value="temperature">Temperature</option>
+                    <option value="humidity">Humidity</option>
+                    <option value="pm25">PM2.5</option>
+                    <option value="pressure">Pressure</option>
+                  </select>
+                </div>
+              </div>
+              <div class="card-body">
+                <canvas id="history-chart"></canvas>
+              </div>
+            </div>
+
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Sensor</th>
+                    <th>Temperature</th>
+                    <th>Humidity</th>
+                    <th>PM2.5</th>
+                    <th>Pressure</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Settings Section -->
+          <section id="settings-section" class="dashboard-section">
+            <div class="settings-grid">
+              <div class="card settings-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-broadcast-tower"></i>
+                    Sensor Configuration
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="outdoor-sensor-select">
+                      Outdoor Sensor (Weather Underground)
+                    </label>
+                    <input
+                      type="text"
+                      id="outdoor-sensor-select"
+                      placeholder="Enter WU Station ID"
+                    />
+                    <small class="form-help"
+                      >Your Weather Underground Station ID</small
+                    >
+                  </div>
+                  <div class="form-group">
+                    <label for="indoor-sensor-select">
+                      Indoor Sensor (TSI)
+                    </label>
+                    <input
+                      type="text"
+                      id="indoor-sensor-select"
+                      placeholder="Enter TSI Device ID"
+                    />
+                    <small class="form-help"
+                      >Your TSI device native sensor ID</small
+                    >
+                  </div>
+                  <button id="save-sensors" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Save Sensor Configuration
+                  </button>
+                </div>
+              </div>
+
+              <div class="card settings-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-cog"></i>
+                    Display Preferences
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="temp-unit">Temperature Unit</label>
+                    <select id="temp-unit">
+                      <option value="celsius">Celsius (°C)</option>
+                      <option value="fahrenheit">Fahrenheit (°F)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="pressure-unit">Pressure Unit</label>
+                    <select id="pressure-unit">
+                      <option value="hpa">Hectopascals (hPa)</option>
+                      <option value="inhg">Inches of Mercury (inHg)</option>
+                      <option value="mbar">Millibars (mbar)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="refresh-interval">Auto Refresh Interval</label>
+                    <select id="refresh-interval">
+                      <option value="60">1 minute</option>
+                      <option value="300" selected>5 minutes</option>
+                      <option value="600">10 minutes</option>
+                      <option value="0">Disabled</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="dark-mode-toggle" />
+                      <span>Dark Mode</span>
+                    </label>
+                  </div>
+                  <button id="save-preferences" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Save Preferences
+                  </button>
+                </div>
+              </div>
+
+              <div class="card settings-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-bell"></i>
+                    Alerts & Notifications
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="alert-pm25" />
+                      <span>PM2.5 exceeds safe levels</span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="alert-co2" />
+                      <span>CO2 exceeds 1000 ppm</span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="alert-temp" />
+                      <span>Temperature outside comfort range</span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="alert-offline" />
+                      <span>Sensor goes offline</span>
+                    </label>
+                  </div>
+                  <button id="save-alerts" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Save Alert Settings
+                  </button>
+                </div>
+              </div>
+
+              <div class="card settings-card">
+                <div class="card-header">
+                  <h3>
+                    <i class="fas fa-user"></i>
+                    Account Settings
+                  </h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="account-name">Display Name</label>
+                    <input
+                      type="text"
+                      id="account-name"
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="account-email">Email</label>
+                    <input
+                      type="email"
+                      id="account-email"
+                      placeholder="Your email"
+                      disabled
+                    />
+                  </div>
+                  <button id="save-account" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Update Account
+                  </button>
+                  <hr />
+                  <button id="change-password" class="btn btn-outline">
+                    <i class="fas fa-key"></i>
+                    Change Password
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="spinner"></div>
+      <span>Loading...</span>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
