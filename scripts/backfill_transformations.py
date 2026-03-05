@@ -38,7 +38,7 @@ import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 # Only import bigquery when actually executing so dry-runs work without creds.
 try:
@@ -301,7 +301,7 @@ def main() -> None:
     total_chunks = len(chunks)
 
     print("=" * 60)
-    print(f"  Backfill: sensor transformation tables")
+    print("  Backfill: sensor transformation tables")
     print(f"  Project : {args.project}")
     print(f"  Dataset : {args.dataset}")
     print(f"  Range   : {start} → {end} ({total_days} days)")
@@ -358,7 +358,7 @@ def main() -> None:
             if chunk_num < total_chunks:
                 next_start = chunks[chunk_num][0]  # first date of next chunk
                 print(f"  💾 Data committed through {chunk_end}.")
-                print(f"     Resume command if interrupted:")
+                print("     Resume command if interrupted:")
                 print(
                     f"     python3 scripts/backfill_transformations.py --start {next_start} --execute"
                 )
@@ -376,7 +376,7 @@ def main() -> None:
             for d, script, exc in all_failures:
                 print(f"    {d}  [{script}]  {str(exc)[:80]}")
             earliest_failure = min(d for d, _, _ in all_failures)
-            print(f"\n  To retry all failures:")
+            print("\n  To retry all failures:")
             print(
                 f"  python3 scripts/backfill_transformations.py --start {earliest_failure} --execute"
             )
