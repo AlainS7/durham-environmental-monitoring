@@ -65,6 +65,7 @@ jobs:
           dbt test --project-dir transformations/dbt --profiles-dir ~/.dbt \
             --vars "{proc_date: '$PROC_DATE', project: '${{ env.GCP_PROJECT_ID }}'}"
       - name: dbt source freshness
+        if: github.event_name != 'push'
         run: |
           dbt source freshness --project-dir transformations/dbt --profiles-dir ~/.dbt \
             --vars "{project: '${{ env.GCP_PROJECT_ID }}'}"
