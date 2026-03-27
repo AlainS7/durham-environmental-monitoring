@@ -29,6 +29,45 @@ from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 
 
+WU_STAGE_SCHEMA = [
+    bigquery.SchemaField("obsTimeUtc", "TIMESTAMP"),
+    bigquery.SchemaField("obsTimeLocal", "TIMESTAMP"),
+    bigquery.SchemaField("neighborhood", "STRING"),
+    bigquery.SchemaField("softwareType", "STRING"),
+    bigquery.SchemaField("country", "STRING"),
+    bigquery.SchemaField("solarRadiation", "FLOAT"),
+    bigquery.SchemaField("lon", "FLOAT"),
+    bigquery.SchemaField("realtimeFrequency", "STRING"),
+    bigquery.SchemaField("epoch", "INTEGER"),
+    bigquery.SchemaField("lat", "FLOAT"),
+    bigquery.SchemaField("uv", "FLOAT"),
+    bigquery.SchemaField("winddir", "INTEGER"),
+    bigquery.SchemaField("humidityAvg", "FLOAT"),
+    bigquery.SchemaField("qc_status", "FLOAT"),
+    bigquery.SchemaField("metric", "RECORD", fields=[
+        bigquery.SchemaField("tempHigh", "FLOAT"),
+        bigquery.SchemaField("tempLow", "FLOAT"),
+        bigquery.SchemaField("windspeedAvg", "FLOAT"),
+        bigquery.SchemaField("windspeedHigh", "FLOAT"),
+        bigquery.SchemaField("windgustAvg", "FLOAT"),
+        bigquery.SchemaField("windgustHigh", "FLOAT"),
+        bigquery.SchemaField("dewptAvg", "FLOAT"),
+        bigquery.SchemaField("windchillAvg", "FLOAT"),
+        bigquery.SchemaField("heatindexAvg", "FLOAT"),
+        bigquery.SchemaField("precipRate", "FLOAT"),
+        bigquery.SchemaField("precipTotal", "FLOAT"),
+        bigquery.SchemaField("precipFinal", "FLOAT"),
+        bigquery.SchemaField("precipAccum", "FLOAT"),
+        bigquery.SchemaField("pressureMin", "FLOAT"),
+        bigquery.SchemaField("pressureMax", "FLOAT"),
+        bigquery.SchemaField("tempAvg", "FLOAT"),
+        bigquery.SchemaField("humidityHigh", "FLOAT"),
+        bigquery.SchemaField("humidityLow", "FLOAT"),
+    ]),
+    bigquery.SchemaField("stationID", "STRING"),
+]
+
+
 def daterange(start: dt.date, end: dt.date) -> Iterable[dt.date]:
     cur = start
     while cur <= end:
@@ -153,6 +192,37 @@ def _typed_column_expr(
     return f"SAFE_CAST(`{col}` AS {cast_type}) AS `{col}`"
 
 
+def _create_stage_table_from_uri(
+    client: bigquery.Client,
+    fq_stage: str,
+    uri: str,
+) -> bool:
+    """Load parquet from URI into stage table. Returns True on success."""
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.PARQUET,
+        autodetect=True,
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+    )
+    load_job = client.load_table_from_uri(uri, fq_stage, job_config=job_config)
+    load_job.result()
+    return True
+
+
+def _create_wu_stage_with_explicit_schema(
+    client: bigquery.Client,
+    fq_stage: str,
+    uri: str,
+) -> bool:
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.PARQUET,
+        schema=WU_STAGE_SCHEMA,
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+    )
+    load_job = client.load_table_from_uri(uri, fq_stage, job_config=job_config)
+    load_job.result()
+    return True
+
+
 def insert_partition_from_external(client: bigquery.Client, dataset: str, table: str, external_table: str, d: dt.date) -> int:
     target_table_ref = f"{client.project}.{dataset}.{table}"
     try:
@@ -240,21 +310,27 @@ def _load_from_gcs_to_staging(
     staging = f"{src.lower()}_raw_stage_{date.isoformat().replace('-', '')}"
     fq_stage = f"{project}.{dataset}.{staging}"
 
-    # Create or replace an empty table for the stage (schema will be auto-detected by load job)
     # Build exact URI for the expected file name written by collector
     uri = f"gs://{bucket}/{prefix.strip('/')}/source={src}/agg=raw/dt={date.isoformat()}/{src}-{date.isoformat()}.parquet"
-
-    job_config = bigquery.LoadJobConfig(
-        source_format=bigquery.SourceFormat.PARQUET,
-        autodetect=True,
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
-    )
     try:
-        load_job = client.load_table_from_uri(uri, fq_stage, job_config=job_config)
-        load_job.result()
+        _create_stage_table_from_uri(client, fq_stage, uri)
         print(f"[materialize] Loaded stage from {uri} into {fq_stage}")
         return fq_stage
     except Exception as e:
+        msg = str(e)
+        if "Parquet column 'qc_status'" in msg and src == "WU":
+            # Known WU drift case. Retry with an explicit schema where qc_status is FLOAT64
+            # to tolerate daily files that alternate between INT64 and DOUBLE.
+            print(
+                "[materialize] Retrying WU load with explicit schema coercion for qc_status FLOAT64."
+            )
+            try:
+                _create_wu_stage_with_explicit_schema(client, fq_stage, uri)
+                print(f"[materialize] Loaded stage via external schema from {uri} into {fq_stage}")
+                return fq_stage
+            except Exception as retry_err:
+                print(f"[materialize] Retry load failed for {src} {date}: {retry_err}")
+                return None
         # Treat missing object or permission as no data for this date/source
         print(f"[materialize] Skipping load for {src} {date}: {e}")
         return None

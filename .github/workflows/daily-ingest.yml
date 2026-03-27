@@ -234,7 +234,7 @@ jobs:
                 echo "MISSING $tbl"
               fi
             done
-            cur=$(date -u -d "$cur +1 day" +%F)
+            cur=$(python -c "import datetime as dt,sys; cur=dt.date.fromisoformat(sys.argv[1]); print((cur+dt.timedelta(days=1)).isoformat())" "$cur")
           done
 
       - name: Merge backfill range (optional)
@@ -286,7 +286,7 @@ jobs:
               echo "Staging presence failed for $CUR" >&2
               FAIL=1
             fi
-            CUR=$(date -u -d "$CUR +1 day" +%F)
+            CUR=$(python -c "import datetime as dt,sys; cur=dt.date.fromisoformat(sys.argv[1]); print((cur+dt.timedelta(days=1)).isoformat())" "$CUR")
           done
           if [ $FAIL -ne 0 ]; then
             echo "One or more staging presence checks failed" >&2
