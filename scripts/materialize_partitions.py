@@ -112,11 +112,55 @@ def delete_partition(client: bigquery.Client, dataset: str, table: str, d: dt.da
     job.result()
 
 
+def _normalize_type_name(type_name: str) -> str:
+    normalized = (type_name or "").upper()
+    aliases = {
+        "INT64": "INTEGER",
+        "FLOAT64": "FLOAT",
+        "BOOL": "BOOLEAN",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _typed_column_expr(
+    col: str,
+    target_type: str,
+    source_cols: set[str],
+    source_type_map: dict[str, str],
+) -> str:
+    if col not in source_cols:
+        return f"NULL AS `{col}`"
+    normalized_target = _normalize_type_name(target_type)
+    normalized_source = _normalize_type_name(source_type_map.get(col, ""))
+    if not normalized_target or normalized_source == normalized_target:
+        return f"`{col}`"
+    cast_map = {
+        "INTEGER": "INT64",
+        "FLOAT": "FLOAT64",
+        "BOOLEAN": "BOOL",
+        "STRING": "STRING",
+        "TIMESTAMP": "TIMESTAMP",
+        "DATE": "DATE",
+        "DATETIME": "DATETIME",
+        "TIME": "TIME",
+        "NUMERIC": "NUMERIC",
+        "BIGNUMERIC": "BIGNUMERIC",
+        "BYTES": "BYTES",
+    }
+    cast_type = cast_map.get(normalized_target)
+    if cast_type is None:
+        return f"`{col}`"
+    return f"SAFE_CAST(`{col}` AS {cast_type}) AS `{col}`"
+
+
 def insert_partition_from_external(client: bigquery.Client, dataset: str, table: str, external_table: str, d: dt.date) -> int:
     target_table_ref = f"{client.project}.{dataset}.{table}"
     try:
         target_table = client.get_table(target_table_ref)
         target_cols = [f.name for f in target_table.schema]
+        target_type_map = {
+            f.name: _normalize_type_name(f.field_type) for f in target_table.schema
+        }
     except NotFound:
         print(f"[materialize] Target table {target_table_ref} not found. Cannot insert.")
         return 0
@@ -124,6 +168,9 @@ def insert_partition_from_external(client: bigquery.Client, dataset: str, table:
     external_table_ref = f"{client.project}.{dataset}.{external_table}"
     external_table_obj = client.get_table(external_table_ref)
     external_cols = {f.name for f in external_table_obj.schema}
+    external_type_map = {
+        f.name: _normalize_type_name(f.field_type) for f in external_table_obj.schema
+    }
 
     time_field = _resolve_time_field(client, dataset, external_table)
 
@@ -142,10 +189,15 @@ def insert_partition_from_external(client: bigquery.Client, dataset: str, table:
     for col in target_cols:
         if col == 'ts':
             select_list.append(f"{ts_expr} AS ts")
-        elif col in external_cols:
-            select_list.append(f"`{col}`")
         else:
-            select_list.append(f"NULL AS `{col}`")
+            select_list.append(
+                _typed_column_expr(
+                    col,
+                    target_type_map.get(col, ""),
+                    external_cols,
+                    external_type_map,
+                )
+            )
 
     sql = f"""
     INSERT INTO `{target_table_ref}` ({', '.join(f'`{c}`' for c in target_cols)})
@@ -219,6 +271,9 @@ def insert_partition_from_gcs(
     try:
         target_table = client.get_table(target_table_ref)
         target_cols = [f.name for f in target_table.schema]
+        target_type_map = {
+            f.name: _normalize_type_name(f.field_type) for f in target_table.schema
+        }
     except NotFound:
         # If the target table doesn't exist, we can't proceed with a targeted insert.
         # The calling function should have already created it.
@@ -227,6 +282,9 @@ def insert_partition_from_gcs(
 
     stage_table_obj = client.get_table(stage_table)
     stage_cols = {f.name for f in stage_table_obj.schema}
+    stage_type_map = {
+        f.name: _normalize_type_name(f.field_type) for f in stage_table_obj.schema
+    }
 
     time_field = _resolve_time_field(client, dataset, stage_table.split('.')[-1])
 
@@ -246,10 +304,15 @@ def insert_partition_from_gcs(
     for col in target_cols:
         if col == 'ts':
             select_list.append(f"{ts_expr} AS ts")
-        elif col in stage_cols:
-            select_list.append(f"`{col}`")
         else:
-            select_list.append(f"NULL AS `{col}`")
+            select_list.append(
+                _typed_column_expr(
+                    col,
+                    target_type_map.get(col, ""),
+                    stage_cols,
+                    stage_type_map,
+                )
+            )
 
     sql = f"""
     INSERT INTO `{target_table_ref}` ({', '.join(f'`{c}`' for c in target_cols)})

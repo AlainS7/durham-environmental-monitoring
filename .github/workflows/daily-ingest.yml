@@ -45,6 +45,7 @@ env:
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 jobs:
   ingest:
@@ -302,6 +303,7 @@ jobs:
 
       - name: Create issue on monitoring failure
         if: failure() && github.event_name == 'schedule'
+        continue-on-error: true
         uses: peter-evans/create-issue-from-file@v5
         with:
           title: "Daily ingestion monitoring failure"
