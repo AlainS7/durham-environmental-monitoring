@@ -77,15 +77,22 @@ err(){ echo "[run-job][error] $*" >&2; }
 
 ANY_FAILURE=0
 for DVAL in "${DATES_TO_RUN[@]}"; do
+  EXECUTE_ARGS=()
   if [ -n "$DVAL" ]; then
     export INGEST_DATE="$DVAL"
+    # Pass explicit args to Cloud Run execution so the container processes this date.
+    EXECUTE_ARGS+=(--args="--start=$DVAL,--end=$DVAL")
     log "Starting ingestion for date $DVAL"
   else
     unset INGEST_DATE
     log "Starting ingestion for 'today' (no explicit date variable)"
   fi
   log "Executing Cloud Run job: $JOB_NAME in $REGION (project: $PROJECT_ID)"
-  EXEC_ID=$(gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID" --format="value(metadata.name)" 2>/dev/null || true)
+  EXEC_ID=$(gcloud run jobs execute "$JOB_NAME" \
+    --region "$REGION" \
+    --project "$PROJECT_ID" \
+    "${EXECUTE_ARGS[@]}" \
+    --format="value(metadata.name)" 2>/dev/null || true)
   if [ -z "$EXEC_ID" ]; then
     err "Failed to start execution (date=$DVAL)."; ANY_FAILURE=1; continue
   fi

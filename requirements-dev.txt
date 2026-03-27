@@ -23,6 +23,8 @@ click==8.3.0
     # via pip-tools
 cyclonedx-python-lib==9.1.0
     # via pip-audit
+db-dtypes==1.5.0
+    # via durham-environmental-monitoring (pyproject.toml)
 defusedxml==0.7.1
     # via py-serializable
 filelock==3.20.0
@@ -33,6 +35,7 @@ google-api-core==2.26.0
     # via
     #   google-cloud-appengine-logging
     #   google-cloud-bigquery
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-logging
     #   google-cloud-secret-manager
@@ -42,6 +45,7 @@ google-auth==2.41.1
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-bigquery
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-logging
     #   google-cloud-secret-manager
@@ -51,6 +55,8 @@ google-cloud-appengine-logging==1.6.2
 google-cloud-audit-log==0.3.3
     # via google-cloud-logging
 google-cloud-bigquery==3.38.0
+    # via durham-environmental-monitoring (pyproject.toml)
+google-cloud-bigquery-storage==2.36.2
     # via durham-environmental-monitoring (pyproject.toml)
 google-cloud-core==2.4.3
     # via
@@ -77,8 +83,6 @@ googleapis-common-protos==1.70.0
     #   google-cloud-audit-log
     #   grpc-google-iam-v1
     #   grpcio-status
-greenlet==3.2.4
-    # via sqlalchemy
 grpc-google-iam-v1==0.14.2
     # via
     #   google-cloud-logging
@@ -86,6 +90,7 @@ grpc-google-iam-v1==0.14.2
 grpcio==1.75.1
     # via
     #   google-api-core
+    #   google-cloud-bigquery-storage
     #   googleapis-common-protos
     #   grpc-google-iam-v1
     #   grpcio-status
@@ -123,7 +128,9 @@ msgpack==1.1.2
 nest-asyncio==1.6.0
     # via durham-environmental-monitoring (pyproject.toml)
 numpy==2.3.3
-    # via pandas
+    # via
+    #   db-dtypes
+    #   pandas
 opentelemetry-api==1.37.0
     # via google-cloud-logging
 packageurl-python==0.17.5
@@ -131,12 +138,15 @@ packageurl-python==0.17.5
 packaging==25.0
     # via
     #   build
+    #   db-dtypes
     #   google-cloud-bigquery
     #   pip-audit
     #   pip-requirements-parser
     #   pytest
 pandas==2.3.3
-    # via durham-environmental-monitoring (pyproject.toml)
+    # via
+    #   durham-environmental-monitoring (pyproject.toml)
+    #   db-dtypes
 pip==25.2
     # via
     #   pip-api
@@ -157,14 +167,16 @@ proto-plus==1.26.1
     # via
     #   google-api-core
     #   google-cloud-appengine-logging
+    #   google-cloud-bigquery-storage
     #   google-cloud-logging
     #   google-cloud-secret-manager
-protobuf==6.32.1
+protobuf==6.33.5
     # via
     #   durham-environmental-monitoring (pyproject.toml)
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-audit-log
+    #   google-cloud-bigquery-storage
     #   google-cloud-logging
     #   google-cloud-secret-manager
     #   googleapis-common-protos
@@ -176,9 +188,12 @@ psycopg2-binary==2.9.11
 py-serializable==2.1.0
     # via cyclonedx-python-lib
 pyarrow==21.0.0
-    # via durham-environmental-monitoring (pyproject.toml)
-pyasn1==0.6.1
     # via
+    #   durham-environmental-monitoring (pyproject.toml)
+    #   db-dtypes
+pyasn1==0.6.3
+    # via
+    #   durham-environmental-monitoring (pyproject.toml)
     #   pyasn1-modules
     #   rsa
 pyasn1-modules==0.4.2
@@ -220,7 +235,7 @@ pytz==2025.2
     # via pandas
 pyyaml==6.0.3
     # via durham-environmental-monitoring (pyproject.toml)
-requests==2.32.5
+requests==2.33.0
     # via
     #   cachecontrol
     #   google-api-core
@@ -261,8 +276,10 @@ typing-inspection==0.4.2
     # via pydantic
 tzdata==2025.2
     # via pandas
-urllib3==2.5.0
-    # via requests
+urllib3==2.6.3
+    # via
+    #   durham-environmental-monitoring (pyproject.toml)
+    #   requests
 wheel==0.45.1
     # via pip-tools
 zipp==3.23.0

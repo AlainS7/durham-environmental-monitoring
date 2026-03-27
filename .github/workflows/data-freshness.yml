@@ -49,9 +49,15 @@ jobs:
           set +e
           EXIT=0
           : > freshness.log
-          for TABLE in sensor_readings sensor_readings_tsi_raw sensor_readings_wu_raw; do
-            echo "=== Checking ${BQ_DATASET}.${TABLE} ===" | tee -a freshness.log
-            python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET" --table "$TABLE" --max-lag-days 1 >> freshness.log 2>&1
+          for SPEC in "sensor_readings:timestamp" "tsi_raw_materialized:ts" "wu_raw_materialized:ts"; do
+            IFS=':' read -r TABLE TIME_COL <<< "$SPEC"
+            echo "=== Checking ${BQ_DATASET}.${TABLE} (${TIME_COL}) ===" | tee -a freshness.log
+            python scripts/check_freshness.py \
+              --project "$BQ_PROJECT" \
+              --dataset "$BQ_DATASET" \
+              --table "$TABLE" \
+              --time-column "$TIME_COL" \
+              --max-lag-days 1 >> freshness.log 2>&1
             TABLE_EXIT=$?
             if [ "$TABLE_EXIT" -ne 0 ]; then
               EXIT=1

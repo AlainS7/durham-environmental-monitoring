@@ -67,8 +67,6 @@ googleapis-common-protos==1.70.0
     #   google-cloud-audit-log
     #   grpc-google-iam-v1
     #   grpcio-status
-greenlet==3.2.4
-    # via sqlalchemy
 grpc-google-iam-v1==0.14.2
     # via
     #   google-cloud-logging
@@ -117,7 +115,7 @@ proto-plus==1.26.1
     #   google-cloud-bigquery-storage
     #   google-cloud-logging
     #   google-cloud-secret-manager
-protobuf==6.32.1
+protobuf==6.33.5
     # via
     #   durham-environmental-monitoring (pyproject.toml)
     #   google-api-core
@@ -136,8 +134,9 @@ pyarrow==21.0.0
     # via
     #   durham-environmental-monitoring (pyproject.toml)
     #   db-dtypes
-pyasn1==0.6.1
+pyasn1==0.6.3
     # via
+    #   durham-environmental-monitoring (pyproject.toml)
     #   pyasn1-modules
     #   rsa
 pyasn1-modules==0.4.2
@@ -156,7 +155,7 @@ pytz==2025.2
     # via pandas
 pyyaml==6.0.3
     # via durham-environmental-monitoring (pyproject.toml)
-requests==2.32.5
+requests==2.33.0
     # via
     #   google-api-core
     #   google-cloud-bigquery
@@ -184,7 +183,9 @@ typing-inspection==0.4.2
     # via pydantic
 tzdata==2025.2
     # via pandas
-urllib3==2.5.0
-    # via requests
+urllib3==2.6.3
+    # via
+    #   durham-environmental-monitoring (pyproject.toml)
+    #   requests
 zipp==3.23.0
     # via importlib-metadata

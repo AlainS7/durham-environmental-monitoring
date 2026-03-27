@@ -45,7 +45,7 @@ Issue-based alerts remain enabled for selected scheduled workflows where persist
 
 ## Source Freshness
 
-A data freshness check is performed by the `data-freshness.yml` GitHub Actions workflow. It now verifies freshness for `sensor_readings` plus source-specific raw tables (`sensor_readings_tsi_raw`, `sensor_readings_wu_raw`) to surface TSI/WU lag independently.
+A data freshness check is performed by the `data-freshness.yml` GitHub Actions workflow. It verifies freshness for `sensor_readings` plus source-specific raw tables (`tsi_raw_materialized`, `wu_raw_materialized`) to surface TSI/WU lag independently.
 
 ## ML / Public API Alerting
 
