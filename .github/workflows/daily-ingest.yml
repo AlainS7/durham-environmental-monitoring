@@ -136,21 +136,33 @@ jobs:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
           REGION: ${{ github.event.inputs.region || 'us-east1' }}
-          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
-          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+          TSI_CREDS_SECRET_ID: ${{ vars.TSI_CREDS_SECRET_ID || 'tsi_creds' }}
+          WU_API_KEY_SECRET_ID: ${{ vars.WU_API_KEY_SECRET_ID || 'wu_api_key' }}
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
         run: |
           set -euo pipefail
           missing=()
-          for k in TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID; do
+          for k in TSI_CREDS_SECRET_ID WU_API_KEY_SECRET_ID GCS_BUCKET; do
             if [ -z "${!k:-}" ]; then missing+=("$k"); fi
           done
           if [ ${#missing[@]} -gt 0 ]; then
             echo "Cannot update job env vars; missing secrets: ${missing[*]}" >&2; exit 1; fi
           echo "Updating Cloud Run job $JOB_NAME env vars in region $REGION"
+
+          cat > /tmp/cloud-run-job-env.yaml << EOF
+          TSI_CREDS_SECRET_ID: "${TSI_CREDS_SECRET_ID}"
+          WU_API_KEY_SECRET_ID: "${WU_API_KEY_SECRET_ID}"
+          GCS_BUCKET: "${GCS_BUCKET}"
+          GCS_PREFIX: "raw/"
+          BQ_PROJECT: "${PROJECT_ID}"
+          BQ_DATASET: "sensors"
+          BQ_LOCATION: "US"
+          EOF
+
           gcloud run jobs update "$JOB_NAME" \
             --region "$REGION" \
             --project "$PROJECT_ID" \
-            --set-env-vars "TSI_CREDS_SECRET_ID=${TSI_CREDS_SECRET_ID},WU_API_KEY_SECRET_ID=${WU_API_KEY_SECRET_ID},GCS_BUCKET=${{ vars.GCS_BUCKET }},GCS_PREFIX=raw/,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=sensors,BQ_LOCATION=US" || {
+            --env-vars-file /tmp/cloud-run-job-env.yaml || {
               echo "Failed to update job env vars" >&2; exit 2; }
           echo "Cloud Run job environment updated."
 
