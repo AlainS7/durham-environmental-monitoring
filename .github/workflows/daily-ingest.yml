@@ -223,7 +223,7 @@ jobs:
           if [ -z "$START" ]; then echo "No explicit dates provided; skipping"; exit 0; fi
           cur="$START"
           echo "Inspecting staging tables in $BQ_PROJECT.sensors for range $START -> $END" >&2
-          while [[ "$cur" <= "$END" ]]; do
+          while [[ "$cur" < "$END" || "$cur" == "$END" ]]; do
             dcompact=${cur//-/}
             for src in tsi wu; do
               tbl="staging_${src}_${dcompact}"
@@ -280,7 +280,7 @@ jobs:
           echo "Running staging presence checks for range $START -> $END"
           CUR="$START"
           FAIL=0
-          while [[ "$CUR" <= "$END" ]]; do
+          while [[ "$CUR" < "$END" || "$CUR" == "$END" ]]; do
             echo "Checking $CUR"
             if ! python scripts/check_staging_presence.py --project "$BQ_PROJECT" --dataset sensors --date "$CUR" --sources tsi,wu; then
               echo "Staging presence failed for $CUR" >&2
