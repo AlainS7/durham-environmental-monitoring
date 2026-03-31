@@ -31,7 +31,7 @@ on:
         required: false
         default: 'true'
       run_checks:
-        description: 'Set to true to run staging presence & freshness checks after merge'
+        description: 'Set to true to run staging presence & raw freshness checks after merge'
         required: false
         default: 'true'
       update_job_env:
@@ -238,7 +238,7 @@ jobs:
           done
 
       - name: Merge backfill range (optional)
-        if: ${{ github.event.inputs.backfill_merge == 'true' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.backfill_merge == 'true' }}
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
@@ -263,7 +263,7 @@ jobs:
             --update-only-if-changed
 
       - name: Staging presence check (optional)
-        if: ${{ github.event.inputs.run_checks == 'true' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_checks == 'true' }}
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
@@ -294,15 +294,24 @@ jobs:
           fi
 
       - name: Freshness check (optional)
-        if: ${{ github.event.inputs.run_checks == 'true' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_checks == 'true' }}
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
           set -euo pipefail
-          if ! python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset sensors --table sensor_readings --max-lag-days 1; then
-            echo "Freshness check failed" >&2
-            exit 1
-          fi
+          for SPEC in "tsi_raw_materialized:ts" "wu_raw_materialized:ts"; do
+            IFS=':' read -r TABLE TIME_COL <<< "$SPEC"
+            echo "Checking ${TABLE} freshness on ${TIME_COL}"
+            if ! python scripts/check_freshness.py \
+              --project "$BQ_PROJECT" \
+              --dataset sensors \
+              --table "$TABLE" \
+              --time-column "$TIME_COL" \
+              --max-lag-days 1; then
+              echo "Freshness check failed for ${TABLE}" >&2
+              exit 1
+            fi
+          done
 
       - name: Prepare failure summary
         if: failure() && github.event_name == 'schedule'

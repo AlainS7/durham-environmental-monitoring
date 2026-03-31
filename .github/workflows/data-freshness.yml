@@ -2,7 +2,7 @@ name: Data Freshness Check
 
 on:
   schedule:
-    - cron: '25 7 * * *' # After daily merge
+    - cron: '45 7 * * *' # After daily merge + transformations
   workflow_dispatch:
 
 permissions:
@@ -49,7 +49,7 @@ jobs:
           set +e
           EXIT=0
           : > freshness.log
-          for SPEC in "sensor_readings:timestamp" "tsi_raw_materialized:ts" "wu_raw_materialized:ts"; do
+          for SPEC in "sensor_readings_long:timestamp" "sensor_readings_hourly:hour_ts" "sensor_readings_daily:day_ts" "tsi_raw_materialized:ts" "wu_raw_materialized:ts"; do
             IFS=':' read -r TABLE TIME_COL <<< "$SPEC"
             echo "=== Checking ${BQ_DATASET}.${TABLE} (${TIME_COL}) ===" | tee -a freshness.log
             python scripts/check_freshness.py \
