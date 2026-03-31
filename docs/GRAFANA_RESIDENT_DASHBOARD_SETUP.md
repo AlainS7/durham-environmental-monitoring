@@ -47,7 +47,31 @@ For true isolation, map each resident credential principal to exactly one
 
 ---
 
-## 3. Dashboard Variables
+## 3. Resident and sensor lifecycle workflows
+
+There are dedicated manual workflows for operational changes with effective dates:
+
+- `.github/workflows/manage-residence-assignment.yml`
+  - `add-assignment`: assign a sensor to a residence from `start_ts`
+  - `end-assignment`: end active assignment(s) at `end_ts`
+  - `switch-assignment`: close `from_residence_id` and open `to_residence_id` at `switch_ts`
+- `.github/workflows/manage-resident-access.yml`
+  - upsert resident principal access (`principal_email` + `residence_id`, `active=true/false`)
+
+Recommended usage:
+
+1. Add or switch sensor assignment first (with precise timestamp).
+2. Add resident access mapping if this is a new resident onboarding.
+3. Keep `sync_grafana=true` so `sensors_shared` is refreshed automatically.
+
+Example timestamps:
+
+- Start/switch: `2026-03-27T00:00:00Z`
+- End: `2026-04-15T23:59:59Z`
+
+---
+
+## 4. Dashboard Variables
 
 The resident import keeps one template variable:
 
@@ -59,7 +83,7 @@ Residents do not get a residence selector in this dashboard.
 
 ---
 
-## 4. Panels Included
+## 5. Panels Included
 
 ### Section — Individual Sensors per Network (resident scoped)
 
@@ -88,7 +112,7 @@ Residents do not get a residence selector in this dashboard.
 
 ---
 
-## 5. Adding More Metrics
+## 6. Adding More Metrics
 
 The resident-limited dashboard intentionally constrains metric choices to:
 
@@ -99,7 +123,7 @@ If you want additional metrics for residents, update the metric variable query i
 
 ---
 
-## 6. Health Dashboard (Local HTML)
+## 7. Health Dashboard (Local HTML)
 
 The **Oura Ring health dashboard** is separate and runs locally:
 
