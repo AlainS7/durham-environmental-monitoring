@@ -110,41 +110,50 @@ fi
 if [ "$NEEDS_SCRIPT_ARG" -eq 1 ] && [ -z "$JOB_ARG0" ]; then
   JOB_ARG0="${COLLECTOR_SCRIPT_PATH:-src/data_collection/daily_data_collector.py}"
 fi
+if [ -z "$JOB_ARG0" ]; then
+  JOB_ARG0="${COLLECTOR_SCRIPT_PATH:-src/data_collection/daily_data_collector.py}"
+fi
 log "Job invocation mode: cmd0='${JOB_CMD0:-<entrypoint>}' arg0='${JOB_ARG0:-<none>}' needs_script_arg=$NEEDS_SCRIPT_ARG source=$SOURCE_FILTER"
 
 ANY_FAILURE=0
-for DVAL in "${DATES_TO_RUN[@]}"; do
-  EXECUTE_ARGS=()
-  append_collector_script_arg() {
-    if [ "$NEEDS_SCRIPT_ARG" -eq 1 ]; then
-      EXECUTE_ARGS+=(--args="$JOB_ARG0")
+run_one_execution() {
+  local dval="$1"
+  local use_script_arg="$2"
+  local -a execute_args=()
+
+  if [ -n "$dval" ]; then
+    if [ "$use_script_arg" -eq 1 ]; then
+      execute_args+=(--args="$JOB_ARG0")
     fi
-  }
-  if [ -n "$DVAL" ]; then
-    append_collector_script_arg
-    EXECUTE_ARGS+=(--args="--start=$DVAL" --args="--end=$DVAL")
+    execute_args+=(--args="--start=$dval" --args="--end=$dval")
     if [ "$SOURCE_FILTER" != "all" ]; then
-      EXECUTE_ARGS+=(--args="--source=$SOURCE_FILTER")
+      execute_args+=(--args="--source=$SOURCE_FILTER")
     fi
-    log "Starting ingestion for date $DVAL"
+    log "Starting ingestion for date $dval (script_arg_mode=$use_script_arg)"
   else
-    if [ "$SOURCE_FILTER" != "all" ]; then
-      append_collector_script_arg
-      EXECUTE_ARGS+=(--args="--source=$SOURCE_FILTER")
+    if [ "$use_script_arg" -eq 1 ]; then
+      execute_args+=(--args="$JOB_ARG0")
     fi
-    log "Starting ingestion for 'today' (no explicit date variable)"
+    if [ "$SOURCE_FILTER" != "all" ]; then
+      execute_args+=(--args="--source=$SOURCE_FILTER")
+    fi
+    log "Starting ingestion for 'today' (script_arg_mode=$use_script_arg)"
   fi
+
   log "Executing Cloud Run job: $JOB_NAME in $REGION (project: $PROJECT_ID)"
   EXEC_ID=$(gcloud run jobs execute "$JOB_NAME" \
     --region "$REGION" \
     --project "$PROJECT_ID" \
-    "${EXECUTE_ARGS[@]}" \
+    "${execute_args[@]}" \
     --format="value(metadata.name)" 2>/dev/null || true)
   if [ -z "$EXEC_ID" ]; then
-    err "Failed to start execution (date=$DVAL)."; ANY_FAILURE=1; continue
+    err "Failed to start execution (date=$dval script_arg_mode=$use_script_arg)."
+    return 1
   fi
-  log "Started execution: $EXEC_ID (date=$DVAL)"
-  elapsed=0
+  log "Started execution: $EXEC_ID (date=$dval)"
+
+  local elapsed=0
+  local run_failed=0
   while true; do
     EXECUTION_JSON=$(gcloud run jobs executions describe "$EXEC_ID" --region "$REGION" --project "$PROJECT_ID" --format="json" 2>/dev/null || echo "{}")
     STATUS=$(echo "$EXECUTION_JSON" | jq -r '(.status.conditions[]? | select(.type=="Completed") | .status) // empty')
@@ -152,28 +161,36 @@ for DVAL in "${DATES_TO_RUN[@]}"; do
     FAILED_COUNT=$(echo "$EXECUTION_JSON" | jq -r '.failedCount // 0')
     SUCCEEDED_COUNT=$(echo "$EXECUTION_JSON" | jq -r '.succeededCount // 0')
     ACTIVE_COUNT=$(echo "$EXECUTION_JSON" | jq -r '.runningCount // 0')
-    log "Status(date=$DVAL): ${STATUS:-unknown} ${LASTMSG} (t=${elapsed}s) failed=${FAILED_COUNT} succeeded=${SUCCEEDED_COUNT} running=${ACTIVE_COUNT}"
+    log "Status(date=$dval): ${STATUS:-unknown} ${LASTMSG} (t=${elapsed}s) failed=${FAILED_COUNT} succeeded=${SUCCEEDED_COUNT} running=${ACTIVE_COUNT}"
     if [ "$FAILED_COUNT" -gt 0 ] && [ "$ACTIVE_COUNT" -eq 0 ] && [ "${STATUS:-}" != "True" ]; then
-      err "Detected failed tasks early (date=$DVAL failedCount=$FAILED_COUNT)."; ANY_FAILURE=1; break
+      err "Detected failed tasks early (date=$dval failedCount=$FAILED_COUNT)."
+      run_failed=1
+      break
     fi
     if [ "$STATUS" = "True" ]; then
       FAILED=$(echo "$EXECUTION_JSON" | jq -r '.failedCount // 0')
       if [ "${FAILED:-0}" -gt 0 ]; then
-        err "Execution completed with failed tasks (date=$DVAL failedCount=$FAILED)."; ANY_FAILURE=1
+        err "Execution completed with failed tasks (date=$dval failedCount=$FAILED)."
+        run_failed=1
       else
-        log "Execution succeeded (date=$DVAL)."
+        log "Execution succeeded (date=$dval)."
       fi
       break
     fi
     if [ "$STATUS" = "False" ]; then
-      err "Execution ended in failure state (date=$DVAL): $LASTMSG"; ANY_FAILURE=1; break
+      err "Execution ended in failure state (date=$dval): $LASTMSG"
+      run_failed=1
+      break
     fi
     if [ $elapsed -ge $MAX_WAIT ]; then
-      err "Timed out waiting for completion (date=$DVAL, $MAX_WAIT s)."; ANY_FAILURE=1; break
+      err "Timed out waiting for completion (date=$dval, $MAX_WAIT s)."
+      run_failed=1
+      break
     fi
     sleep $POLL_DELAY; elapsed=$((elapsed+POLL_DELAY))
   done
-  log "Fetching last 200 log lines (date=$DVAL)"
+
+  log "Fetching last 200 log lines (date=$dval)"
   LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || true)
   if [ -z "$LOGS" ]; then
     LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME" --project "$PROJECT_ID" --limit=50 --format="value(textPayload)" 2>/dev/null || true)
@@ -181,15 +198,15 @@ for DVAL in "${DATES_TO_RUN[@]}"; do
   if [ -n "$LOGS" ]; then
     echo "$LOGS"
   else
-    log "No logs retrieved (date=$DVAL)"
+    log "No logs retrieved (date=$dval)"
   fi
 
   # Fallback staging synthesis (only when a specific date provided)
-  if [ -n "${DVAL}" ]; then
-    DATE_COMPACT="${DVAL//-/}"
+  if [ -n "${dval}" ]; then
+    DATE_COMPACT="${dval//-/}"
     : "${BQ_DATASET:=sensors}"  # default dataset if not provided
     if [ -z "${GCS_BUCKET:-}" ] || [ -z "${GCS_PREFIX:-}" ]; then
-      log "GCS_BUCKET or GCS_PREFIX not set; skipping fallback staging synthesis for $DVAL"
+      log "GCS_BUCKET or GCS_PREFIX not set; skipping fallback staging synthesis for $dval"
     else
       for SRC in tsi wu; do
         TABLE="staging_${SRC}_${DATE_COMPACT}"
@@ -198,7 +215,7 @@ for DVAL in "${DATES_TO_RUN[@]}"; do
           SRC_UPPER=$(echo "$SRC" | tr '[:lower:]' '[:upper:]')
           # Remove trailing slash from GCS_PREFIX if present
           GCS_PREFIX_CLEANED="${GCS_PREFIX%/}"
-          URI="gs://${GCS_BUCKET}/${GCS_PREFIX_CLEANED}/source=${SRC_UPPER}/agg=raw/dt=${DVAL}/*.parquet"
+          URI="gs://${GCS_BUCKET}/${GCS_PREFIX_CLEANED}/source=${SRC_UPPER}/agg=raw/dt=${dval}/*.parquet"
           log "Staging table ${TABLE} missing; attempting load from ${URI}"
           if bq load \
             --project_id="$PROJECT_ID" \
@@ -215,6 +232,32 @@ for DVAL in "${DATES_TO_RUN[@]}"; do
         fi
       done
     fi
+  fi
+
+  return "$run_failed"
+}
+
+for DVAL in "${DATES_TO_RUN[@]}"; do
+  date_success=0
+  ATTEMPT_MODES=("$NEEDS_SCRIPT_ARG")
+  if [ "${ENABLE_ARG_MODE_FALLBACK:-1}" = "1" ]; then
+    if [ "$NEEDS_SCRIPT_ARG" -eq 1 ]; then
+      ATTEMPT_MODES+=(0)
+    else
+      ATTEMPT_MODES+=(1)
+    fi
+  fi
+
+  for MODE in "${ATTEMPT_MODES[@]}"; do
+    if run_one_execution "$DVAL" "$MODE"; then
+      date_success=1
+      break
+    fi
+    err "Execution attempt failed (date=${DVAL:-today} script_arg_mode=$MODE)"
+  done
+
+  if [ "$date_success" -ne 1 ]; then
+    ANY_FAILURE=1
   fi
 done
 
