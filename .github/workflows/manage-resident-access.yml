@@ -1,0 +1,99 @@
+name: Manage Resident Access / Onboarding
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: "GCP project ID (optional, defaults to repo var)"
+        required: false
+        default: ""
+      dataset_id:
+        description: "BigQuery dataset"
+        required: false
+        default: "sensors"
+      principal_email:
+        description: "Resident principal email (service account/user)"
+        required: true
+        default: ""
+      residence_id:
+        description: "Residence ID to grant or revoke"
+        required: true
+        default: ""
+      active:
+        description: "Set mapping active"
+        required: false
+        type: choice
+        default: "true"
+        options:
+          - "true"
+          - "false"
+      execute:
+        description: "Apply changes (true) or dry-run (false)"
+        required: false
+        default: "true"
+      sync_grafana:
+        description: "Sync updated access table to sensors_shared after successful execute"
+        required: false
+        default: "true"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  manage-access:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+
+      - name: Auth to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Upsert resident access
+        env:
+          BQ_PROJECT: ${{ github.event.inputs.project_id || vars.GCP_PROJECT_ID }}
+          BQ_DATASET: ${{ github.event.inputs.dataset_id }}
+        run: |
+          set -euo pipefail
+          CMD=(uv run python scripts/manage_residence_assignments.py
+            --project "$BQ_PROJECT"
+            --dataset "$BQ_DATASET")
+
+          if [ "${{ github.event.inputs.execute }}" = "true" ]; then
+            CMD+=(--execute)
+          fi
+
+          CMD+=(add-resident-access
+            --principal-email "${{ github.event.inputs.principal_email }}"
+            --residence-id "${{ github.event.inputs.residence_id }}"
+            --active "${{ github.event.inputs.active }}")
+
+          printf 'Command: '
+          printf '%q ' "${CMD[@]}"
+          echo
+          "${CMD[@]}"
+
+      - name: Sync to Grafana dataset (optional)
+        if: ${{ github.event.inputs.execute == 'true' && github.event.inputs.sync_grafana == 'true' }}
+        env:
+          GCP_PROJECT_ID: ${{ github.event.inputs.project_id || vars.GCP_PROJECT_ID }}
+        run: |
+          uv run python scripts/sync_to_grafana.py

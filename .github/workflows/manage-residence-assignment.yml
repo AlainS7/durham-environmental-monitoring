@@ -1,0 +1,169 @@
+name: Manage Residence Sensor Assignment
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operation: add-assignment | end-assignment | switch-assignment"
+        required: true
+        type: choice
+        options:
+          - add-assignment
+          - end-assignment
+          - switch-assignment
+      project_id:
+        description: "GCP project ID (optional, defaults to repo var)"
+        required: false
+        default: ""
+      dataset_id:
+        description: "BigQuery dataset"
+        required: false
+        default: "sensors"
+      residence_id:
+        description: "Residence ID (required for add/end)"
+        required: false
+        default: ""
+      native_sensor_id:
+        description: "Native sensor ID (required for all operations)"
+        required: true
+        default: ""
+      sensor_name:
+        description: "Optional sensor display name"
+        required: false
+        default: ""
+      sensor_role:
+        description: "Sensor role (required for add/switch)"
+        required: false
+        type: choice
+        options:
+          - Indoor
+          - Outdoor
+      start_ts:
+        description: "Start timestamp for add-assignment (ISO, e.g. 2026-03-27T00:00:00Z)"
+        required: false
+        default: ""
+      end_ts:
+        description: "End timestamp for end-assignment (ISO)"
+        required: false
+        default: ""
+      from_residence_id:
+        description: "From residence (required for switch-assignment)"
+        required: false
+        default: ""
+      to_residence_id:
+        description: "To residence (required for switch-assignment)"
+        required: false
+        default: ""
+      switch_ts:
+        description: "Switch timestamp for switch-assignment (ISO)"
+        required: false
+        default: ""
+      execute:
+        description: "Apply changes (true) or dry-run (false)"
+        required: false
+        default: "true"
+      sync_grafana:
+        description: "Sync updated tables to sensors_shared after successful execute"
+        required: false
+        default: "true"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  manage-assignment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+
+      - name: Auth to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Execute assignment operation
+        env:
+          BQ_PROJECT: ${{ github.event.inputs.project_id || vars.GCP_PROJECT_ID }}
+          BQ_DATASET: ${{ github.event.inputs.dataset_id }}
+        run: |
+          set -euo pipefail
+          OP="${{ github.event.inputs.operation }}"
+          EXEC_FLAG="${{ github.event.inputs.execute }}"
+          CMD=(uv run python scripts/manage_residence_assignments.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET")
+          if [ "$EXEC_FLAG" = "true" ]; then
+            CMD+=(--execute)
+          fi
+
+          case "$OP" in
+            add-assignment)
+              test -n "${{ github.event.inputs.residence_id }}" || { echo "residence_id is required"; exit 1; }
+              test -n "${{ github.event.inputs.sensor_role }}" || { echo "sensor_role is required"; exit 1; }
+              test -n "${{ github.event.inputs.start_ts }}" || { echo "start_ts is required"; exit 1; }
+              CMD+=(add-assignment
+                --residence-id "${{ github.event.inputs.residence_id }}"
+                --native-sensor-id "${{ github.event.inputs.native_sensor_id }}"
+                --sensor-role "${{ github.event.inputs.sensor_role }}"
+                --start-ts "${{ github.event.inputs.start_ts }}")
+              if [ -n "${{ github.event.inputs.sensor_name }}" ]; then
+                CMD+=(--sensor-name "${{ github.event.inputs.sensor_name }}")
+              fi
+              ;;
+            end-assignment)
+              test -n "${{ github.event.inputs.end_ts }}" || { echo "end_ts is required"; exit 1; }
+              CMD+=(end-assignment
+                --native-sensor-id "${{ github.event.inputs.native_sensor_id }}"
+                --end-ts "${{ github.event.inputs.end_ts }}")
+              if [ -n "${{ github.event.inputs.residence_id }}" ]; then
+                CMD+=(--residence-id "${{ github.event.inputs.residence_id }}")
+              fi
+              ;;
+            switch-assignment)
+              test -n "${{ github.event.inputs.from_residence_id }}" || { echo "from_residence_id is required"; exit 1; }
+              test -n "${{ github.event.inputs.to_residence_id }}" || { echo "to_residence_id is required"; exit 1; }
+              test -n "${{ github.event.inputs.sensor_role }}" || { echo "sensor_role is required"; exit 1; }
+              test -n "${{ github.event.inputs.switch_ts }}" || { echo "switch_ts is required"; exit 1; }
+              CMD+=(switch-assignment
+                --native-sensor-id "${{ github.event.inputs.native_sensor_id }}"
+                --from-residence-id "${{ github.event.inputs.from_residence_id }}"
+                --to-residence-id "${{ github.event.inputs.to_residence_id }}"
+                --sensor-role "${{ github.event.inputs.sensor_role }}"
+                --switch-ts "${{ github.event.inputs.switch_ts }}")
+              if [ -n "${{ github.event.inputs.sensor_name }}" ]; then
+                CMD+=(--sensor-name "${{ github.event.inputs.sensor_name }}")
+              fi
+              ;;
+            *)
+              echo "Unsupported operation: $OP"
+              exit 1
+              ;;
+          esac
+
+          echo "Running operation: $OP"
+          printf 'Command: '
+          printf '%q ' "${CMD[@]}"
+          echo
+          "${CMD[@]}"
+
+      - name: Sync to Grafana dataset (optional)
+        if: ${{ github.event.inputs.execute == 'true' && github.event.inputs.sync_grafana == 'true' }}
+        env:
+          GCP_PROJECT_ID: ${{ github.event.inputs.project_id || vars.GCP_PROJECT_ID }}
+        run: |
+          uv run python scripts/sync_to_grafana.py
