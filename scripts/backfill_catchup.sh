@@ -132,7 +132,10 @@ while [ "$cur_ts" -le "$end_ts" ]; do
     if timeout 900 gcloud run jobs execute "$JOB_NAME" \
         --region "$REGION" \
         --project "$PROJECT_ID" \
-        --args="src/data_collection/daily_data_collector.py,--start=$d,--end=$d,--source=$SOURCE" \
+        --args="src/data_collection/daily_data_collector.py" \
+        --args="--start=$d" \
+        --args="--end=$d" \
+        --args="--source=$SOURCE" \
         --wait 2>&1 | tee /tmp/backfill_${d}.log; then
         echo "  ✓ Success: $d"
     else

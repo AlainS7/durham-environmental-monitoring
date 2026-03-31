@@ -29,7 +29,9 @@ echo "Step 1/3: Collecting WU + TSI data..."
 if gcloud run jobs execute "$JOB_NAME" \
     --region "$REGION" \
     --project "$PROJECT_ID" \
-    --args="--start=$YESTERDAY","--end=$YESTERDAY" \
+    --args="src/data_collection/daily_data_collector.py" \
+    --args="--start=$YESTERDAY" \
+    --args="--end=$YESTERDAY" \
     --wait; then
     echo "  ✓ Data collection complete"
 else

@@ -13,7 +13,7 @@ JOB_NAME=${JOB_NAME:-sensor-ingestion-job}
 if [[ $# -gt 0 ]]; then
   case "$1" in
     -h|--help)
-      echo "Usage: JOB_NAME=<name> REGION=<region> PROJECT_ID=<project> $0 [job-name]"; exit 0;;
+      echo "Usage: JOB_NAME=<name> REGION=<region> PROJECT_ID=<project> SOURCE=<all|wu|tsi> $0 [job-name]"; exit 0;;
     *) JOB_NAME="$1"; shift;;
   esac
 fi
@@ -21,6 +21,15 @@ REGION=${REGION:-us-central1}
 DATE_SINGLE=${DATE:-${INGEST_DATE:-}}
 DATE_START=${START_DATE:-}
 DATE_END=${END_DATE:-}
+SOURCE_FILTER=$(echo "${SOURCE:-all}" | tr '[:upper:]' '[:lower:]')
+
+case "$SOURCE_FILTER" in
+  all|wu|tsi) ;;
+  *)
+    echo "[run-job][error] Invalid SOURCE='$SOURCE_FILTER' (expected all|wu|tsi)." >&2
+    exit 9
+    ;;
+esac
 
 if [ -n "$DATE_SINGLE" ] && { [ -n "$DATE_START" ] || [ -n "$DATE_END" ]; }; then
   err "Provide either DATE (single) or START_DATE/END_DATE, not both."
@@ -75,16 +84,54 @@ MAX_WAIT=${MAX_WAIT:-600}
 log(){ echo "[run-job] $*"; }
 err(){ echo "[run-job][error] $*" >&2; }
 
+# Detect container invocation mode so execution-time --args remain compatible:
+# - If job command is python/python3, execution --args overrides existing args, so we must
+#   include the script path as the first arg.
+# - If image ENTRYPOINT already points to the collector script, we only pass collector flags.
+JOB_DESC_JSON=$(gcloud run jobs describe "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID" --format="json" 2>/dev/null || echo "{}")
+JOB_CMD0=$(echo "$JOB_DESC_JSON" | jq -r '(
+  .spec.template.template.containers[0].command[0] //
+  .spec.template.template.spec.containers[0].command[0] //
+  .template.template.containers[0].command[0] //
+  .template.template.spec.containers[0].command[0] //
+  empty
+)')
+JOB_ARG0=$(echo "$JOB_DESC_JSON" | jq -r '(
+  .spec.template.template.containers[0].args[0] //
+  .spec.template.template.spec.containers[0].args[0] //
+  .template.template.containers[0].args[0] //
+  .template.template.spec.containers[0].args[0] //
+  empty
+)')
+NEEDS_SCRIPT_ARG=0
+if [[ "$(basename "${JOB_CMD0:-}")" =~ ^python([0-9.]*)?$ ]]; then
+  NEEDS_SCRIPT_ARG=1
+fi
+if [ "$NEEDS_SCRIPT_ARG" -eq 1 ] && [ -z "$JOB_ARG0" ]; then
+  JOB_ARG0="${COLLECTOR_SCRIPT_PATH:-src/data_collection/daily_data_collector.py}"
+fi
+log "Job invocation mode: cmd0='${JOB_CMD0:-<entrypoint>}' arg0='${JOB_ARG0:-<none>}' needs_script_arg=$NEEDS_SCRIPT_ARG source=$SOURCE_FILTER"
+
 ANY_FAILURE=0
 for DVAL in "${DATES_TO_RUN[@]}"; do
   EXECUTE_ARGS=()
+  append_collector_script_arg() {
+    if [ "$NEEDS_SCRIPT_ARG" -eq 1 ]; then
+      EXECUTE_ARGS+=(--args="$JOB_ARG0")
+    fi
+  }
   if [ -n "$DVAL" ]; then
-    export INGEST_DATE="$DVAL"
-    # Pass explicit args to Cloud Run execution so the container processes this date.
-    EXECUTE_ARGS+=(--args="--start=$DVAL,--end=$DVAL")
+    append_collector_script_arg
+    EXECUTE_ARGS+=(--args="--start=$DVAL" --args="--end=$DVAL")
+    if [ "$SOURCE_FILTER" != "all" ]; then
+      EXECUTE_ARGS+=(--args="--source=$SOURCE_FILTER")
+    fi
     log "Starting ingestion for date $DVAL"
   else
-    unset INGEST_DATE
+    if [ "$SOURCE_FILTER" != "all" ]; then
+      append_collector_script_arg
+      EXECUTE_ARGS+=(--args="--source=$SOURCE_FILTER")
+    fi
     log "Starting ingestion for 'today' (no explicit date variable)"
   fi
   log "Executing Cloud Run job: $JOB_NAME in $REGION (project: $PROJECT_ID)"

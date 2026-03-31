@@ -102,7 +102,9 @@ Or just collect data (without refresh):
 gcloud run jobs execute weather-data-uploader \
   --region=us-east1 \
   --project=durham-weather-466502 \
-  --args="--start=$(date -u -d yesterday +%F)","--end=$(date -u -d yesterday +%F)" \
+  --args="src/data_collection/daily_data_collector.py" \
+  --args="--start=$(date -u -d yesterday +%F)" \
+  --args="--end=$(date -u -d yesterday +%F)" \
   --wait
 ```
 
