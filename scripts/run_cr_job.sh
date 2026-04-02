@@ -7,7 +7,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 10
 fi
 
-JOB_NAME=${JOB_NAME:-sensor-ingestion-job}
+JOB_NAME=${JOB_NAME:-weather-data-uploader}
 
 # Allow first non-flag arg to override job name for convenience
 if [[ $# -gt 0 ]]; then
@@ -17,7 +17,7 @@ if [[ $# -gt 0 ]]; then
     *) JOB_NAME="$1"; shift;;
   esac
 fi
-REGION=${REGION:-us-central1}
+REGION=${REGION:-us-east1}
 DATE_SINGLE=${DATE:-${INGEST_DATE:-}}
 DATE_START=${START_DATE:-}
 DATE_END=${END_DATE:-}
@@ -32,17 +32,17 @@ case "$SOURCE_FILTER" in
 esac
 
 if [ -n "$DATE_SINGLE" ] && { [ -n "$DATE_START" ] || [ -n "$DATE_END" ]; }; then
-  err "Provide either DATE (single) or START_DATE/END_DATE, not both."
+  echo "[run-job][error] Provide either DATE (single) or START_DATE/END_DATE, not both." >&2
   exit 9
 fi
 
 if { [ -n "$DATE_START" ] && [ -z "$DATE_END" ]; } || { [ -z "$DATE_START" ] && [ -n "$DATE_END" ]; }; then
-  err "Both START_DATE and END_DATE must be provided for a range."
+  echo "[run-job][error] Both START_DATE and END_DATE must be provided for a range." >&2
   exit 9
 fi
 
 make_date_seq() {
-  # Args: start end (YYYY-MM-DD)
+  # Args: start end (YYYY-MM-DD) via DSTART/DEND env vars
   python3 - <<'PY'
 import sys, datetime as dt, os
 try:
@@ -60,14 +60,21 @@ while d<=ed:
 PY
 }
 
+# Build date list — portable (no mapfile, works on bash 3/4/5 and zsh)
+DATES_TO_RUN=()
 if [ -n "$DATE_SINGLE" ]; then
   DATES_TO_RUN=("$DATE_SINGLE")
 elif [ -n "$DATE_START" ]; then
   export DSTART="$DATE_START" DEND="$DATE_END"
-  mapfile -t DATES_TO_RUN < <(make_date_seq)
+  while IFS= read -r _d; do
+    DATES_TO_RUN+=("$_d")
+  done < <(make_date_seq)
 else
-  # Default: run once for 'today' (no explicit date env passed to job)
-  DATES_TO_RUN=("")
+  # Default: collect yesterday so the full day's data is available in the TSI/WU APIs.
+  # At midnight UTC the current day has only minutes of data; yesterday is complete.
+  # Works on both Linux (date -d) and macOS (date -v).
+  YESTERDAY=$(date -u -d 'yesterday' +%F 2>/dev/null || date -u -v-1d +%F)
+  DATES_TO_RUN=("$YESTERDAY")
 fi
 
 # Allow PROJECT_ID to be auto-detected if not explicitly provided
@@ -84,151 +91,123 @@ MAX_WAIT=${MAX_WAIT:-600}
 log(){ echo "[run-job] $*"; }
 err(){ echo "[run-job][error] $*" >&2; }
 
-# Detect container invocation mode so execution-time --args remain compatible:
-# - If job command is python/python3, execution --args overrides existing args, so we must
-#   include the script path as the first arg.
-# - If image ENTRYPOINT already points to the collector script, we only pass collector flags.
-JOB_DESC_JSON=$(gcloud run jobs describe "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID" --format="json" 2>/dev/null || echo "{}")
-JOB_CMD0=$(echo "$JOB_DESC_JSON" | jq -r '(
-  .spec.template.template.containers[0].command[0] //
-  .spec.template.template.spec.containers[0].command[0] //
-  .template.template.containers[0].command[0] //
-  .template.template.spec.containers[0].command[0] //
-  empty
-)')
-JOB_ARG0=$(echo "$JOB_DESC_JSON" | jq -r '(
-  .spec.template.template.containers[0].args[0] //
-  .spec.template.template.spec.containers[0].args[0] //
-  .template.template.containers[0].args[0] //
-  .template.template.spec.containers[0].args[0] //
-  empty
-)')
-NEEDS_SCRIPT_ARG=0
-if [[ "$(basename "${JOB_CMD0:-}")" =~ ^python([0-9.]*)?$ ]]; then
-  NEEDS_SCRIPT_ARG=1
-fi
-if [ "$NEEDS_SCRIPT_ARG" -eq 1 ] && [ -z "$JOB_ARG0" ]; then
-  JOB_ARG0="${COLLECTOR_SCRIPT_PATH:-src/data_collection/daily_data_collector.py}"
-fi
-if [ -z "$JOB_ARG0" ]; then
-  JOB_ARG0="${COLLECTOR_SCRIPT_PATH:-src/data_collection/daily_data_collector.py}"
-fi
-log "Job invocation mode: cmd0='${JOB_CMD0:-<entrypoint>}' arg0='${JOB_ARG0:-<none>}' needs_script_arg=$NEEDS_SCRIPT_ARG source=$SOURCE_FILTER"
-
 ANY_FAILURE=0
 run_one_execution() {
-  local dval="$1"
-  local use_script_arg="$2"
-  local -a execute_args=()
+  local dval="$1"   # YYYY-MM-DD, or empty to use container default
 
+  # Pass the date via INGEST_DATE env var rather than --args.
+  # Passing --args replaces the container CMD entirely (including the python interpreter
+  # when the image uses CMD ["python", "script.py"] instead of ENTRYPOINT+CMD split),
+  # which causes "Application exec likely failed" on images built before Oct 2025.
+  # Using --update-env-vars avoids touching CMD/ENTRYPOINT at all.
+  local env_pairs=""
   if [ -n "$dval" ]; then
-    if [ "$use_script_arg" -eq 1 ]; then
-      execute_args+=(--args="$JOB_ARG0")
-    fi
-    execute_args+=(--args="--start=$dval" --args="--end=$dval")
-    if [ "$SOURCE_FILTER" != "all" ]; then
-      execute_args+=(--args="--source=$SOURCE_FILTER")
-    fi
-    log "Starting ingestion for date $dval (script_arg_mode=$use_script_arg)"
+    env_pairs="INGEST_DATE=$dval"
+    log "Starting ingestion for date $dval"
   else
-    if [ "$use_script_arg" -eq 1 ]; then
-      execute_args+=(--args="$JOB_ARG0")
-    fi
-    if [ "$SOURCE_FILTER" != "all" ]; then
-      execute_args+=(--args="--source=$SOURCE_FILTER")
-    fi
-    log "Starting ingestion for 'today' (script_arg_mode=$use_script_arg)"
+    log "Starting ingestion for default date (no override)"
+  fi
+
+  if [ "$SOURCE_FILTER" != "all" ]; then
+    env_pairs="${env_pairs:+$env_pairs,}SOURCE=$SOURCE_FILTER"
+  fi
+
+  local -a execute_args=()
+  if [ -n "$env_pairs" ]; then
+    execute_args+=(--update-env-vars="$env_pairs")
   fi
 
   log "Executing Cloud Run job: $JOB_NAME in $REGION (project: $PROJECT_ID)"
-  EXEC_ID=$(gcloud run jobs execute "$JOB_NAME" \
+  local exec_id
+  exec_id=$(gcloud run jobs execute "$JOB_NAME" \
     --region "$REGION" \
     --project "$PROJECT_ID" \
     "${execute_args[@]}" \
     --format="value(metadata.name)" 2>/dev/null || true)
-  if [ -z "$EXEC_ID" ]; then
-    err "Failed to start execution (date=$dval script_arg_mode=$use_script_arg)."
+  if [ -z "$exec_id" ]; then
+    err "Failed to start execution (date=${dval:-default})."
     return 1
   fi
-  log "Started execution: $EXEC_ID (date=$dval)"
+  log "Started execution: $exec_id (date=${dval:-default})"
 
   local elapsed=0
   local run_failed=0
   while true; do
-    EXECUTION_JSON=$(gcloud run jobs executions describe "$EXEC_ID" --region "$REGION" --project "$PROJECT_ID" --format="json" 2>/dev/null || echo "{}")
-    STATUS=$(echo "$EXECUTION_JSON" | jq -r '(.status.conditions[]? | select(.type=="Completed") | .status) // empty')
-    LASTMSG=$(echo "$EXECUTION_JSON" | jq -r '(.status.conditions[]? | select(.type=="Completed") | .message) // empty')
-    FAILED_COUNT=$(echo "$EXECUTION_JSON" | jq -r '.failedCount // 0')
-    SUCCEEDED_COUNT=$(echo "$EXECUTION_JSON" | jq -r '.succeededCount // 0')
-    ACTIVE_COUNT=$(echo "$EXECUTION_JSON" | jq -r '.runningCount // 0')
-    log "Status(date=$dval): ${STATUS:-unknown} ${LASTMSG} (t=${elapsed}s) failed=${FAILED_COUNT} succeeded=${SUCCEEDED_COUNT} running=${ACTIVE_COUNT}"
-    if [ "$FAILED_COUNT" -gt 0 ] && [ "$ACTIVE_COUNT" -eq 0 ] && [ "${STATUS:-}" != "True" ]; then
-      err "Detected failed tasks early (date=$dval failedCount=$FAILED_COUNT)."
+    local exec_json status_val last_msg failed_count succeeded_count active_count
+    exec_json=$(gcloud run jobs executions describe "$exec_id" --region "$REGION" --project "$PROJECT_ID" --format="json" 2>/dev/null || echo "{}")
+    status_val=$(echo "$exec_json" | jq -r '(.status.conditions[]? | select(.type=="Completed") | .status) // empty')
+    last_msg=$(echo "$exec_json" | jq -r '(.status.conditions[]? | select(.type=="Completed") | .message) // empty')
+    failed_count=$(echo "$exec_json" | jq -r '.failedCount // 0')
+    succeeded_count=$(echo "$exec_json" | jq -r '.succeededCount // 0')
+    active_count=$(echo "$exec_json" | jq -r '.runningCount // 0')
+    log "Status(date=${dval:-default}): ${status_val:-unknown} ${last_msg} (t=${elapsed}s) failed=${failed_count} succeeded=${succeeded_count} running=${active_count}"
+    if [ "$failed_count" -gt 0 ] && [ "$active_count" -eq 0 ] && [ "${status_val:-}" != "True" ]; then
+      err "Detected failed tasks early (date=${dval:-default} failedCount=$failed_count)."
       run_failed=1
       break
     fi
-    if [ "$STATUS" = "True" ]; then
-      FAILED=$(echo "$EXECUTION_JSON" | jq -r '.failedCount // 0')
-      if [ "${FAILED:-0}" -gt 0 ]; then
-        err "Execution completed with failed tasks (date=$dval failedCount=$FAILED)."
+    if [ "$status_val" = "True" ]; then
+      local final_failed
+      final_failed=$(echo "$exec_json" | jq -r '.failedCount // 0')
+      if [ "${final_failed:-0}" -gt 0 ]; then
+        err "Execution completed with failed tasks (date=${dval:-default} failedCount=$final_failed)."
         run_failed=1
       else
-        log "Execution succeeded (date=$dval)."
+        log "Execution succeeded (date=${dval:-default})."
       fi
       break
     fi
-    if [ "$STATUS" = "False" ]; then
-      err "Execution ended in failure state (date=$dval): $LASTMSG"
+    if [ "$status_val" = "False" ]; then
+      err "Execution ended in failure state (date=${dval:-default}): $last_msg"
       run_failed=1
       break
     fi
     if [ $elapsed -ge $MAX_WAIT ]; then
-      err "Timed out waiting for completion (date=$dval, $MAX_WAIT s)."
+      err "Timed out waiting for completion (date=${dval:-default}, $MAX_WAIT s)."
       run_failed=1
       break
     fi
     sleep $POLL_DELAY; elapsed=$((elapsed+POLL_DELAY))
   done
 
-  log "Fetching last 200 log lines (date=$dval)"
-  LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$EXEC_ID" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || true)
-  if [ -z "$LOGS" ]; then
-    LOGS=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME" --project "$PROJECT_ID" --limit=50 --format="value(textPayload)" 2>/dev/null || true)
+  log "Fetching last 200 log lines (date=${dval:-default})"
+  local logs
+  logs=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.execution_name=$exec_id" --project "$PROJECT_ID" --limit=200 --format="value(textPayload)" 2>/dev/null || true)
+  if [ -z "$logs" ]; then
+    logs=$(gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME" --project "$PROJECT_ID" --limit=50 --format="value(textPayload)" 2>/dev/null || true)
   fi
-  if [ -n "$LOGS" ]; then
-    echo "$LOGS"
+  if [ -n "$logs" ]; then
+    echo "$logs"
   else
-    log "No logs retrieved (date=$dval)"
+    log "No logs retrieved (date=${dval:-default})"
   fi
 
-  # Fallback staging synthesis (only when a specific date provided)
+  # Fallback staging synthesis (only when a specific date was provided)
   if [ -n "${dval}" ]; then
-    DATE_COMPACT="${dval//-/}"
-    : "${BQ_DATASET:=sensors}"  # default dataset if not provided
+    local date_compact="${dval//-/}"
+    : "${BQ_DATASET:=sensors}"
     if [ -z "${GCS_BUCKET:-}" ] || [ -z "${GCS_PREFIX:-}" ]; then
       log "GCS_BUCKET or GCS_PREFIX not set; skipping fallback staging synthesis for $dval"
     else
-      for SRC in tsi wu; do
-        TABLE="staging_${SRC}_${DATE_COMPACT}"
-        # Only attempt synthesis if table is missing
-        if ! bq show --project_id="$PROJECT_ID" "${PROJECT_ID}:${BQ_DATASET}.${TABLE}" >/dev/null 2>&1; then
-          SRC_UPPER=$(echo "$SRC" | tr '[:lower:]' '[:upper:]')
-          # Remove trailing slash from GCS_PREFIX if present
-          GCS_PREFIX_CLEANED="${GCS_PREFIX%/}"
-          URI="gs://${GCS_BUCKET}/${GCS_PREFIX_CLEANED}/source=${SRC_UPPER}/agg=raw/dt=${dval}/*.parquet"
-          log "Staging table ${TABLE} missing; attempting load from ${URI}"
+      local src src_upper table uri
+      for src in tsi wu; do
+        table="staging_${src}_${date_compact}"
+        if ! bq show --project_id="$PROJECT_ID" "${PROJECT_ID}:${BQ_DATASET}.${table}" >/dev/null 2>&1; then
+          src_upper=$(echo "$src" | tr '[:lower:]' '[:upper:]')
+          uri="gs://${GCS_BUCKET}/${GCS_PREFIX%/}/source=${src_upper}/agg=raw/dt=${dval}/*.parquet"
+          log "Staging table ${table} missing; attempting load from ${uri}"
           if bq load \
             --project_id="$PROJECT_ID" \
             --autodetect \
             --source_format=PARQUET \
-            "${BQ_DATASET}.${TABLE}" \
-            "${URI}" >/dev/null 2>&1; then
-            log "Synthesized staging table ${TABLE}"
+            "${BQ_DATASET}.${table}" \
+            "${uri}" >/dev/null 2>&1; then
+            log "Synthesized staging table ${table}"
           else
-            log "Failed to synthesize staging table ${TABLE} (URI may be empty)."
+            log "Failed to synthesize staging table ${table} (URI may be empty)."
           fi
         else
-          log "Staging table ${TABLE} already exists; no synthesis needed."
+          log "Staging table ${table} already exists; no synthesis needed."
         fi
       done
     fi
@@ -238,25 +217,10 @@ run_one_execution() {
 }
 
 for DVAL in "${DATES_TO_RUN[@]}"; do
-  date_success=0
-  ATTEMPT_MODES=("$NEEDS_SCRIPT_ARG")
-  if [ "${ENABLE_ARG_MODE_FALLBACK:-1}" = "1" ]; then
-    if [ "$NEEDS_SCRIPT_ARG" -eq 1 ]; then
-      ATTEMPT_MODES+=(0)
-    else
-      ATTEMPT_MODES+=(1)
-    fi
-  fi
-
-  for MODE in "${ATTEMPT_MODES[@]}"; do
-    if run_one_execution "$DVAL" "$MODE"; then
-      date_success=1
-      break
-    fi
-    err "Execution attempt failed (date=${DVAL:-today} script_arg_mode=$MODE)"
-  done
-
-  if [ "$date_success" -ne 1 ]; then
+  if run_one_execution "$DVAL"; then
+    true
+  else
+    err "Execution failed (date=${DVAL:-default})"
     ANY_FAILURE=1
   fi
 done
@@ -266,18 +230,3 @@ if [ $ANY_FAILURE -ne 0 ]; then
   exit 1
 fi
 log "All ingestion executions completed successfully."
-
-# Optional: trigger BigQuery merge backfill for yesterday (uncomment to enable)
-# if command -v python >/dev/null 2>&1; then
-#   YESTERDAY=$(date -u -d 'yesterday' +%F)
-#   PROJECT_ENV=${BQ_PROJECT:-$PROJECT_ID}
-#   if [ -n "${PROJECT_ENV}" ]; then
-#     echo "[run-job] (optional) Running merge backfill for $YESTERDAY"
-#     python scripts/merge_sensor_readings.py \
-#       --project "$PROJECT_ENV" \
-#       --dataset sensors \
-#       --date "$YESTERDAY" \
-#       --auto-detect-staging \
-#       --update-only-if-changed || echo "[run-job][warn] merge step failed (non-blocking)"
-#   fi
-# fi

@@ -102,7 +102,20 @@ def merge_per_source_dated(client: bigquery.Client, a, start: dt.date, end: dt.d
         if not target_created:
             ensure_target_exists_from_reference(client, a.dataset, existing[0], a.target_table)
             target_created = True
-        selects = [f"SELECT timestamp, deployment_fk, metric_name, value FROM `{client.project}.{a.dataset}.{t}`" for t in existing]
+        # Build per-table SELECTs, handling three timestamp storage formats:
+        #   STRING  → CAST(timestamp AS TIMESTAMP)
+        #   INT64   → TIMESTAMP_MICROS(DIV(timestamp, 1000))  (nanoseconds from bq load fallback)
+        #   TIMESTAMP → pass through as-is
+        def ts_expr(table_name: str) -> str:
+            tbl = client.get_table(f"{a.dataset}.{table_name}")
+            ts_field = next((f for f in tbl.schema if f.name == 'timestamp'), None)
+            ftype = ts_field.field_type.upper() if ts_field else 'TIMESTAMP'
+            if ftype in ('INTEGER', 'INT64'):
+                return 'TIMESTAMP_MICROS(DIV(timestamp, 1000))'
+            if ftype == 'STRING':
+                return 'CAST(timestamp AS TIMESTAMP)'
+            return 'timestamp'
+        selects = [f"SELECT {ts_expr(t)} AS timestamp, deployment_fk, metric_name, value FROM `{client.project}.{a.dataset}.{t}`" for t in existing]
         union = "\nUNION ALL\n".join(selects)
         sql = f"""
 MERGE `{client.project}.{a.dataset}.{a.target_table}` T

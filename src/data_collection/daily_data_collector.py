@@ -394,6 +394,7 @@ def _build_uploader(bucket: str, prefix: str):
                 interval="h",
                 ts_column="timestamp",
                 extra_suffix=None,
+                force=False,
             ):
                 if df.empty:
                     log.info(f"[FAKE] skip empty {source}")
@@ -465,13 +466,17 @@ def _safe_upload(
                 )
 
     try:
+        force_overwrite = os.getenv("GCS_FORCE_OVERWRITE", "0") == "1"
         uploader.upload_parquet(
             df,
             source=src,
             aggregated=aggregate,
             interval=agg_interval,
             ts_column=ts_col,
+            force=force_overwrite,
         )
+        if force_overwrite:
+            log.info(f"{src} upload forced overwrite enabled (GCS_FORCE_OVERWRITE=1)")
         return True
     except ValueError as ve:
         log.warning(f"{src} upload validation skipped: {ve}")
@@ -1111,7 +1116,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--aggregate", action="store_true")
     p.add_argument("--agg-interval", default="h")
     p.add_argument("--sink", choices=["gcs", "db", "both"], default="gcs")
-    p.add_argument("--source", choices=["all", "wu", "tsi"], default="all")
+    p.add_argument("--source", choices=["all", "wu", "tsi"],
+                   default=os.getenv("SOURCE", "all"))
     return p.parse_args(argv)
 
 

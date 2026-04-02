@@ -20,6 +20,10 @@ on:
       end_date:
         description: "End date for range (YYYY-MM-DD). Must be used with start_date"
         required: false
+      source:
+        description: "Data source filter (all, tsi, or wu)"
+        required: false
+        default: "all"
 
 env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -46,10 +50,12 @@ jobs:
 
       - name: Execute Job
         env:
-          JOB_NAME: ${{ github.event.inputs.job_name }}
-          REGION: ${{ github.event.inputs.region }}
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
+          REGION: ${{ github.event.inputs.region || 'us-east1' }}
           DATE: ${{ github.event.inputs.date }}
           START_DATE: ${{ github.event.inputs.start_date }}
           END_DATE: ${{ github.event.inputs.end_date }}
+          SOURCE: ${{ github.event.inputs.source || 'all' }}
         run: |
           bash scripts/run_cr_job.sh
