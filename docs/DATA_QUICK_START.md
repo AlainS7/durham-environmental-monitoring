@@ -106,7 +106,7 @@ If you want, I can also:
 - produce a 1-page PDF with these examples for coworker onboarding
 - add a short list of recommended saved queries (BigQuery)
 
-File: [docs/DATA_QUICK_START.md](docs/DATA_QUICK_START.md)
+File: [docs/DATA_QUICK_START.md](DATA_QUICK_START.md)
 
 ---
 

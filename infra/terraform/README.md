@@ -4,15 +4,15 @@ This module provisions core infra for the Durham Environmental Monitoring pipeli
 
 ## Resources
 
-* GCS bucket (raw Parquet). Infinite retention by default (no lifecycle rule). Enable time-based deletion by setting `raw_retention_days` > 0.
-* BigQuery dataset for raw & transformed tables.
-* Ingestion & verifier service accounts with least privilege example roles.
-* Cloud Run Jobs: ingestion, partition refresh, metrics recording.
-* Cloud Scheduler jobs invoking each Cloud Run job via OIDC.
-* Secret Manager integration for API keys (WU / TSI credentials) injected as env.
-* Basic Monitoring alert policies (ingestion job inactivity, dataset freshness placeholder).
-* Optional auto-creation of empty Secret Manager secrets (set `create_secrets=true`).
-* Pluggable notification channels for alert policies via `notification_channel_ids`.
+- GCS bucket (raw Parquet). Infinite retention by default (no lifecycle rule). Enable time-based deletion by setting `raw_retention_days` > 0.
+- BigQuery dataset for raw & transformed tables.
+- Ingestion & verifier service accounts with least privilege example roles.
+- Cloud Run Jobs: ingestion, partition refresh, metrics recording.
+- Cloud Scheduler jobs invoking each Cloud Run job via OIDC.
+- Secret Manager integration for API keys (WU / TSI credentials) injected as env.
+- Basic Monitoring alert policies (ingestion job inactivity, dataset freshness placeholder).
+- Optional auto-creation of empty Secret Manager secrets (set `create_secrets=true`).
+- Pluggable notification channels for alert policies via `notification_channel_ids`.
 
 ## Usage
 
@@ -46,7 +46,7 @@ module "sensor_pipeline" {
   ]
 
   # Schedules (UTC cron)
-  ingestion_cron      = "5 7 * * *"   # 07:05 UTC daily ingestion
+  ingestion_cron      = "5 */6 * * *" # Every 6 hours ingestion
   refresh_cron        = "0 4 * * *"   # 04:00 UTC partition refresh
   metrics_cron        = "10 4 * * *"  # 04:10 UTC metrics capture
 }
@@ -62,11 +62,11 @@ terraform apply -var project_id=YOUR_PROJECT -var gcs_bucket=your-bucket-name
 
 ## Next Steps
 
-* Add Workload Identity Federation provider & IAM binding conditions.
-* Split roles into custom minimal roles if needed.
-* Add Cloud Scheduler + Cloud Run job resources for end-to-end automation.
-* Optionally pin images to immutable SHAs/digests instead of :latest (update *_image vars after Cloud Build).
-* Configure Notification Channels (email/SMS/PagerDuty) in GCP and attach their resource names to alert policies if needed.
+- Add Workload Identity Federation provider & IAM binding conditions.
+- Split roles into custom minimal roles if needed.
+- Add Cloud Scheduler + Cloud Run job resources for end-to-end automation.
+- Optionally pin images to immutable SHAs/digests instead of :latest (update \*\_image vars after Cloud Build).
+- Configure Notification Channels (email/SMS/PagerDuty) in GCP and attach their resource names to alert policies if needed.
 
 ## Cloud Build (multi-image) Example
 
@@ -78,7 +78,17 @@ Excerpt (simplified) from `cloudbuild.multi.yaml` now using `_TAG` substitution:
 steps:
   - id: Build ingestion image
     name: gcr.io/cloud-builders/docker
-    args: ["build","-t","${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ingestion:${_TAG}","-t","${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ingestion:latest","--build-arg","APP_SCRIPT=src/data_collection/daily_data_collector.py","."]
+    args:
+      [
+        "build",
+        "-t",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ingestion:${_TAG}",
+        "-t",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ingestion:latest",
+        "--build-arg",
+        "APP_SCRIPT=src/data_collection/daily_data_collector.py",
+        ".",
+      ]
   # ... refresh & metrics steps similar
 substitutions:
   _REGION: us-central1
@@ -96,7 +106,7 @@ After a successful build, optionally update Terraform vars to freeze versions (s
 
 ```bash
 ./scripts/pin_image_digests.sh "$PROJECT_ID" us-central1 weather-maintenance-images
-"# Copy the terraform apply command above to pin all three images" 
+"# Copy the terraform apply command above to pin all three images"
 ```
 
 ## Artifact Registry Creation
@@ -104,7 +114,7 @@ After a successful build, optionally update Terraform vars to freeze versions (s
 Option A (Terraform): set `create_artifact_repo=true` and supply `artifact_repo` (defaults to weather-maintenance-images).
 
 Option B (gcloud manual):
- 
+
 ```bash
 gcloud artifacts repositories create weather-maintenance-images \
   --repository-format=DOCKER --location=us-central1 \
@@ -125,8 +135,8 @@ To provision everything (optional repo creation, build images, apply Terraform, 
 
 Flags:
 
-* `--create-repo` ensures Artifact Registry exists (skip if pre-created)
-* `--pin` prints a terraform command with image digests to lock versions
+- `--create-repo` ensures Artifact Registry exists (skip if pre-created)
+- `--pin` prints a terraform command with image digests to lock versions
 
 ## Secrets
 
@@ -177,5 +187,3 @@ Two baseline alert policies are provisioned:
 2. Dataset freshness placeholder (no table modification signal within a 36h window).
 
 Customize by editing the MQL queries or adding notification channels. For production, replace placeholder freshness logic with a custom metric (e.g., latest partition timestamp exported via metrics job).
-
-

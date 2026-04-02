@@ -123,7 +123,7 @@ uv run python scripts/sync_parquet_to_sharepoint.py --date 2026-02-11
 
 ## Operations summary
 
-- **Daily automation:** `.github/workflows/sync-to-sharepoint.yml` (08:45 UTC)
+- **Daily automation:** `.github/workflows/sync-to-sharepoint.yml` (manual `workflow_dispatch`, gated by `ENABLE_SHAREPOINT_WORKFLOWS`)
 - **Historical backfill:** `.github/workflows/backfill-sharepoint.yml`
 - **Failure notifications:** `scripts/notify_teams.py` invoked on failure for alert-enabled sync workflows (not historical backfill by default)
 - **Curated export tooling:** `scripts/export_curated_research_pack.py` + `scripts/upload_research_pack_to_sharepoint.py`

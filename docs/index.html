@@ -153,7 +153,7 @@
             <!-- sub -->
             <p class="hf text-base md:text-lg text-muted leading-relaxed max-w-2xl mx-auto mb-10"
                style="transition-delay:.25s">
-               Raw telemetry to BigQuery using idempotent micro-batches, immutable Parquet, and dbt quality gates.
+               Raw telemetry to BigQuery using idempotent micro-batches, immutable Parquet, and workflow-driven quality gates.
             </p>
 
             <!-- CTAs -->
@@ -314,13 +314,13 @@
                 <div class="grid sm:grid-cols-2 gap-4 max-w-sm mx-auto">
                   <div class="arch-node bg-surface2 border border-sage/35 rounded-xl p-4 text-center
                               hover:border-sage hover:shadow-[0_0_18px_rgba(139,162,148,.14)] cursor-default">
-                    <div class="font-semibold text-txt text-sm">Cloud Scheduler</div>
-                    <div class="text-xs text-muted mt-1">Time-Partitioned Triggers</div>
+                    <div class="font-semibold text-txt text-sm">GitHub Actions</div>
+                    <div class="text-xs text-muted mt-1">Scheduled + Manual Orchestration</div>
                   </div>
                   <div class="arch-node bg-surface2 border border-sage/35 rounded-xl p-4 text-center
                               hover:border-sage hover:shadow-[0_0_18px_rgba(139,162,148,.14)] cursor-default">
                     <div class="font-semibold text-txt text-sm">GitHub Actions</div>
-                    <div class="text-xs text-muted mt-1">CI/CD &amp; Validation</div>
+                    <div class="text-xs text-muted mt-1">CI/CD + Verification</div>
                   </div>
                 </div>
                 <!-- down arrow -->
@@ -409,12 +409,12 @@
                     </div>
                   </div>
 
-                  <!-- dbt Gate -->
+                  <!-- Validation Gate -->
                   <div class="arch-node md:flex-1 bg-surface2 border-2 border-bdr2 rounded-xl p-4 text-center
                               hover:border-txt hover:shadow-[0_0_18px_rgba(255,255,255,.07)] cursor-default
                               min-h-[4.5rem] flex flex-col justify-center">
-                    <div class="font-semibold text-txt text-sm">dbt Gate</div>
-                    <div class="text-xs text-muted mt-1 leading-snug">Freshness Checks<br/>Null Bounds</div>
+                    <div class="font-semibold text-txt text-sm">Validation Gate</div>
+                    <div class="text-xs text-muted mt-1 leading-snug">Freshness + Quality<br/>Threshold Checks</div>
                   </div>
                 </div>
 
@@ -434,7 +434,7 @@
                       <div class="w-full bg-[#ef4444]/10 border border-[#ef4444]/35 text-[#ef4444]
                                   rounded-lg py-2.5 px-3 text-center">
                         <div class="text-xs font-bold">Blocked</div>
-                        <div class="text-[10px] font-mono opacity-70 mt-0.5">Halt Pipeline</div>
+                        <div class="text-[10px] font-mono opacity-70 mt-0.5">Teams Alert</div>
                       </div>
                     </div>
                   </div>
@@ -503,7 +503,7 @@
               </div>
               <strong class="text-txt text-sm block mb-2">4. Validation Gate</strong>
               <p class="text-muted text-xs leading-relaxed">
-                dbt source freshness and model tests plus row-threshold checks gate
+                Freshness checks, quality assertions, and row-threshold checks gate
                 every publish decision with repeatable quality assertions.
               </p>
             </div>
@@ -532,7 +532,7 @@
                 <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-3">01 · Ingestion Model</div>
                 <strong class="text-txt text-base block mb-3">Micro-batch vs Streaming</strong>
                 <p class="text-muted text-sm leading-relaxed">
-                  Scheduled micro-batch via Cloud Scheduler. Streaming intentionally avoided to reduce operational complexity, simplify failure domains, and make partition-replay predictable.
+                  Scheduled micro-batch via GitHub Actions (with optional Cloud Scheduler). Streaming intentionally avoided to reduce operational complexity, simplify failure domains, and make partition-replay predictable.
                 </p>
               </div>
 
@@ -566,8 +566,8 @@
                       </div>
                       <div class="pb-4">
                         <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5">Trigger</div>
-                        <div class="text-sm font-semibold text-txt">Cloud Scheduler</div>
-                        <div class="text-xs text-muted mt-0.5">Fires on partition cadence</div>
+                        <div class="text-sm font-semibold text-txt">GitHub Actions</div>
+                        <div class="text-xs text-muted mt-0.5">Scheduled + manual workflow triggers</div>
                       </div>
                     </div>
 
@@ -682,8 +682,8 @@
               <div class="group flex items-start gap-3">
                 <span class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"></span>
                 <div>
-                  <div class="text-sm font-semibold text-txt mb-1">Incremental dbt Models</div>
-                  <div class="text-xs text-muted leading-relaxed">Incremental materializations to avoid full-table recomputations at scale.</div>
+                  <div class="text-sm font-semibold text-txt mb-1">Expanded dbt Migration</div>
+                  <div class="text-xs text-muted leading-relaxed">Grow dbt coverage from compile/test validation into full transformation execution.</div>
                 </div>
               </div>
             </div>
@@ -727,7 +727,7 @@
             <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
               <div class="text-xs font-mono font-bold text-copper mb-2">dbt</div>
               <div class="text-xs font-semibold text-txt">dbt Core</div>
-              <div class="text-[10px] text-muted mt-0.5">Transformation</div>
+              <div class="text-[10px] text-muted mt-0.5">Validation / Migration</div>
             </div>
             <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
               <div class="text-xs font-mono font-bold text-yellow-400 mb-2">PY</div>
@@ -752,7 +752,7 @@
             <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
               <div class="text-xs font-mono font-bold text-copper mb-2">CS</div>
               <div class="text-xs font-semibold text-txt">Cloud Scheduler</div>
-              <div class="text-[10px] text-muted mt-0.5">Orchestration</div>
+              <div class="text-[10px] text-muted mt-0.5">Optional Trigger Path</div>
             </div>
             <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
               <div class="text-xs font-mono font-bold text-teal-400 mb-2">CRT</div>
@@ -775,7 +775,7 @@
           <div class="rv text-center mb-8">
             <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">Data Quality Gate</div>
             <h2 class="text-xl font-bold">Pipeline Validation</h2>
-            <p class="text-muted text-sm mt-2">Every publish is gated on a dbt assertion.</p>
+            <p class="text-muted text-sm mt-2">Every publish is gated on freshness, quality, and threshold assertions.</p>
           </div>
           <div class="rv code-block bg-[#0a0a0a] border border-bdr rounded-xl overflow-hidden font-mono text-xs shadow-2xl">
             <div class="bg-surface2 px-4 py-2.5 border-b border-bdr flex items-center justify-between">

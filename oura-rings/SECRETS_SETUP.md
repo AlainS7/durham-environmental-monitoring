@@ -193,7 +193,7 @@ rm github-sa-key.json
 
 ### Example GitHub Actions Workflow
 
-Create `.github/workflows/oura-daily-collect.yml`:
+Create a workflow file (for example: `.github/workflows/oura-data-collection.yml`):
 
 ```yaml
 name: Oura Daily Data Collection

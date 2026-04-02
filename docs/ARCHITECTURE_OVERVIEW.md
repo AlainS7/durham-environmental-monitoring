@@ -1,432 +1,247 @@
 # Durham Environmental Monitoring - Architecture Overview
 
+This document is the evergreen system overview for the project. It explains how data moves through the platform, which components own each stage, and where to look for operational procedures.
+
+For step-by-step setup, backfills, refreshes, and verification commands, use [OPERATIONS_RUNBOOK.md](OPERATIONS_RUNBOOK.md).
+
 ## System Architecture
 
-### Data Collection Pipeline
+### System Map
 
+The diagram below shows the control plane, ingestion path, warehouse layers, data export, downstream dashboards, and the isolated Oura utility path.
+
+```mermaid
+flowchart LR
+  %% Core sources
+  TSI[Triangle Sensors API]
+  WU[Weather Underground API]
+  GSM[Google Secret Manager]
+
+  %% Control plane
+  subgraph CONTROL[Control Plane]
+    subgraph INGEST_CTRL[Ingestion Triggers]
+      TF[Terraform<br/>infra/terraform]
+      CS[Cloud Scheduler<br/>optional direct trigger]
+      GHA1[GitHub Actions<br/>daily-ingest.yml]
+    end
+    subgraph MAINT_CTRL[Maintenance & Export]
+      GHA2[GitHub Actions<br/>transformations-execute.yml]
+      GHA3[GitHub Actions<br/>daily-verify.yml<br/>data-quality-check.yml]
+      GHA4[GitHub Actions<br/>daily-refresh-shared.yml]
+      GHA5[GitHub Actions<br/>sync-to-sharepoint.yml]
+    end
+  end
+
+  %% Ingestion
+  subgraph INGEST[Ingestion and Landing]
+    CR[Cloud Run Job<br/>weather-data-uploader]
+    GCS[Google Cloud Storage<br/>raw/source/date parquet]
+    BQRAW[BigQuery sensors<br/>external, staging, and raw materialized tables]
+  end
+
+  %% Transformation + serving
+  subgraph SERVE[Transformation and Serving]
+    SQL[dbt, SQL, and Python transforms<br/>transformations/dbt & scripts/]
+    BQAN[BigQuery analytics and shared layers<br/>derived tables, views, Grafana-ready tables]
+    DASH[Dashboards and analysis<br/>Grafana, Looker Studio, notebooks]
+  end
+
+  %% Export
+  subgraph EXPORT[Data Export]
+    SP[SharePoint<br/>Curated Research Packs]
+  end
+
+  %% Observability
+  subgraph OBS[Verification and Alerting]
+    CHECKS[Freshness, staging presence,<br/>row thresholds, quality checks]
+    ALERTS[MS Teams notifications,<br/>artifacts, GitHub issues]
+  end
+
+  %% Sidecar project
+  subgraph OURA[Isolated sidecar]
+    OCLI[oura-rings CLI and collectors]
+    OBQ[Manual Oura BigQuery loads]
+  end
+
+  %% Triggers
+  TF --> CS
+  TF --> CR
+  CS -->|scheduled run| CR
+  GHA1 -->|scheduled or manual run| CR
+  GHA1 -->|materialize raw partitions| BQRAW
+  GHA2 --> SQL
+  GHA3 --> CHECKS
+  GHA4 --> BQAN
+  GHA5 -->|generate & upload packs| SP
+
+  %% Data Flow
+  GSM --> CR
+  TSI --> CR
+  WU --> CR
+  CR -->|write parquet| GCS
+  GCS -->|external tables and staging| BQRAW
+  BQRAW --> SQL
+  SQL --> BQAN
+  BQAN --> DASH
+
+  %% Exports
+  GCS -.->|sync parquet| SP
+
+  %% Observability Flow
+  BQRAW --> CHECKS
+  BQAN --> CHECKS
+  CHECKS --> ALERTS
+
+  %% Sidecar flow
+  OCLI -. exploratory/manual .-> OBQ
+  OBQ -. optional separate analysis .-> BQAN
+
+  classDef control fill:#0f766e,stroke:#134e4a,color:#ffffff,stroke-width:2px;
+  classDef ingest fill:#1d4ed8,stroke:#1e3a8a,color:#ffffff,stroke-width:2px;
+  classDef serve fill:#7c3aed,stroke:#4c1d95,color:#ffffff,stroke-width:2px;
+  classDef export fill:#0369a1,stroke:#0c4a6e,color:#ffffff,stroke-width:2px;
+  classDef observe fill:#ea580c,stroke:#9a3412,color:#ffffff,stroke-width:2px;
+  classDef sidecar fill:#6b7280,stroke:#374151,color:#ffffff,stroke-width:2px,stroke-dasharray: 6 3;
+  classDef source fill:#f8fafc,stroke:#475569,color:#0f172a,stroke-width:1.5px;
+
+  class TF,CS,GHA1,GHA2,GHA3,GHA4,GHA5 control;
+  class CR,GCS,BQRAW ingest;
+  class SQL,BQAN,DASH serve;
+  class SP export;
+  class CHECKS,ALERTS observe;
+  class OCLI,OBQ sidecar;
+  class TSI,WU,GSM source;
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        GITHUB ACTIONS                           │
-│                  (.github/workflows/daily-ingest.yml)           │
-│                                                                 │
-│  Cron: Every 6 hours (05 past)                                 │
-│  Trigger: schedule / workflow_dispatch                         │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             │ gcloud run jobs execute
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      CLOUD RUN JOB                              │
-│                  (weather-data-uploader)                        │
-│                                                                 │
-│  Region: us-east1                                              │
-│  Container: weather-data-uploader:latest                       │
-│  Runtime: Executes src/collectors/* Python code                │
-│                                                                 │
-│  Sources:                                                      │
-│  • Triangle Sensors (TSI API)                                  │
-│  • Weather Underground (WU API)                                │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             │ Write Parquet files
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    GOOGLE CLOUD STORAGE                         │
-│                                                                 │
-│  Bucket: sensor-data-to-bigquery                               │
-│  Path: raw/{source}/{date}/                                    │
-│                                                                 │
-│  Schema: FLOAT64 enforcement via gcs_uploader.py               │
-│  • TSI_NUMERIC_COLS: pm2_5, pm10, temperature, etc.           │
-│  • WU_NUMERIC_COLS: temperature, humidity, etc.               │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             │ Load as external table → MERGE
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        BIGQUERY                                 │
-│                  (durham-weather-466502)                        │
-│                                                                 │
-│  Dataset: sensors (production)                                 │
-│  • tsi_raw_materialized (1.3M rows, partitioned/clustered)    │
-│  • wu_raw_materialized (31k rows)                             │
-│                                                                 │
-│  Dataset: sensors_shared (Grafana layer)                       │
-│  • tsi_raw_view → sensors.tsi_raw_materialized                │
-│  • tsi_raw_materialized (6-hour refresh from view)            │
-│  • wu_raw_view (enriched with location/sensor_id)             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             │ Query via BigQuery connector
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         GRAFANA                                 │
-│                                                                 │
-│  Data Source: BigQuery (sensors_shared dataset)                │
-│  Queries: Time series format (ts AS time, metric, value)      │
-│  Dashboards: Air quality, weather trends                       │
-└─────────────────────────────────────────────────────────────────┘
-```
+
+## Core Data Flow
+
+1. GitHub Actions or Cloud Scheduler triggers the Cloud Run job `weather-data-uploader`.
+2. The collector fetches TSI and WU data and writes Parquet files to Google Cloud Storage.
+3. External and staging tables are materialized into native BigQuery raw tables.
+4. Transformation jobs (primarily SQL via Python runners, with dbt validation scaffolding) build analytics-ready tables and views in BigQuery.
+5. Shared BigQuery objects are refreshed for Grafana and related downstream consumers.
+6. A workflow-driven export process packages data into research packs and syncs them to SharePoint.
+7. Verification workflows check freshness, row thresholds, and data quality; failures trigger MS Teams notifications and GitHub issues.
 
 ## Key Components
 
-### 1. GitHub Actions (Scheduled Orchestrator)
+### 1\. Orchestration and Control Plane
 
-**File:** [.github/workflows/daily-ingest.yml](.github/workflows/daily-ingest.yml)
+Primary workflows:
 
-- **Schedule:** Every 6 hours (`5 */6 * * *`)
-- **Manual Trigger:** workflow_dispatch with custom date ranges
-- **Actions:**
-  - Authenticate to GCP
-  - Execute Cloud Run job `weather-data-uploader`
-  - Optional: Rebuild/redeploy container image
-  - Optional: Run backfill merge for date ranges
-  - Optional: Data quality checks (freshness, staging presence)
-  - Upload logs as artifacts
+- [`.github/workflows/daily-ingest.yml`](../.github/workflows/daily-ingest.yml) triggers Cloud Run ingestion every 6 hours and can optionally redeploy, materialize, merge, and run checks.
+- [`.github/workflows/transformations-execute.yml`](../.github/workflows/transformations-execute.yml) runs the data transformation layer.
+- [`.github/workflows/sync-to-sharepoint.yml`](../.github/workflows/sync-to-sharepoint.yml) handles manual exports to external researchers.
+- [`.github/workflows/daily-verify.yml`](../.github/workflows/daily-verify.yml) and [`.github/workflows/data-quality-check.yml`](../.github/workflows/data-quality-check.yml) validate the pipeline.
+- [`.github/workflows/daily-refresh-shared.yml`](../.github/workflows/daily-refresh-shared.yml) refreshes Grafana-facing shared tables.
 
-**Environment Variables:**
+Terraform under `infra/terraform` owns the long-lived cloud infrastructure. Cloud Scheduler remains an optional direct production trigger when GitHub Actions is not the preferred scheduler.
 
-```bash
-PROJECT_ID=durham-weather-466502
-JOB_NAME=weather-data-uploader
-REGION=us-east1
-BQ_PROJECT=durham-weather-466502
-BQ_DATASET=sensors
-GCS_BUCKET=sensor-data-to-bigquery
-```
+### 2\. Cloud Run Ingestion Job
 
-### 2. Cloud Run Job (Data Collector)
+The ingestion job runs the collector for one day or a supplied date range.
 
-**Name:** `weather-data-uploader`  
-**Region:** `us-east1`  
-**Container:** Built from [Dockerfile](../Dockerfile) via [cloudbuild-cr-job.yaml](../cloudbuild-cr-job.yaml)
+- Job name: `weather-data-uploader`
+- Region: `us-east1`
+- Collector entry point: [`src/data_collection/daily_data_collector.py`](../src/data_collection/daily_data_collector.py)
+- Cloud Run execution wrapper: [`scripts/run_cr_job.sh`](../scripts/run_cr_job.sh)
+- GCS writer and schema coercion: [`src/storage/gcs_uploader.py`](../src/storage/gcs_uploader.py)
 
-**Runtime Behavior:**
+The collector fetches source data, writes Parquet to GCS, and feeds the downstream raw-materialization process.
 
-- Accepts `--start` and `--end` date arguments
-- Fetches data from TSI API and Weather Underground API
-- Writes Parquet files to GCS with schema enforcement
-- Loads Parquet → BigQuery external tables → MERGE into production tables
+### 3\. Storage and Warehouse Layers
 
-**Key Code:**
+#### Raw landing in GCS
 
-- Entry point: `src/daily_data_collector.py`
-- GCS writer: `src/storage/gcs_uploader.py` (FLOAT64 coercion)
-- BigQuery loader: `src/storage/bigquery_loader.py`
+- Bucket pattern: `gs://<bucket>/raw/...`
+- Layout: `raw/source=<SOURCE>/agg=raw/dt=<YYYY-MM-DD>/`
+- Format: Parquet
 
-### 3. BigQuery (Data Warehouse)
+GCS is the durable landing zone for raw ingested files and the source for BigQuery external or staging loads, as well as the source for SharePoint exports.
 
-**Project:** `durham-weather-466502`  
-**Location:** `US`
+#### BigQuery production dataset: `sensors`
 
-#### Production Dataset: `sensors`
+The `sensors` dataset contains the core warehouse objects:
 
-| Table                  | Type         | Partitioning | Clustering       | Rows   | Date Range               |
-| ---------------------- | ------------ | ------------ | ---------------- | ------ | ------------------------ |
-| `tsi_raw_materialized` | Materialized | DATE(ts)     | native_sensor_id | 1.3M   | 2025-07-07 to 2025-11-16 |
-| `wu_raw_materialized`  | Materialized | DATE(ts)     | -                | 31k    | 2025-07-07 to 2025-11-16 |
-| `staging_tsi_YYYYMMDD` | Staging      | -            | -                | Varies | Daily drops              |
-| `staging_wu_YYYYMMDD`  | Staging      | -            | -                | Varies | Daily drops              |
+- external and staging tables used during load and recovery flows
+- native partitioned raw tables such as `tsi_raw_materialized` and `wu_raw_materialized`
+- enriched and transformed analytics tables used for analysis and sharing
 
-#### Grafana Dataset: `sensors_shared`
+Key materialization script:
 
-| Object                 | Type         | Definition                                   |
-| ---------------------- | ------------ | -------------------------------------------- |
-| `tsi_raw_view`         | View         | `SELECT * FROM sensors.tsi_raw_materialized` |
-| `tsi_raw_materialized` | Materialized | Refreshed daily from `tsi_raw_view`          |
-| `wu_raw_view`          | View         | Enriched WU data with location/sensor_id     |
+- [`scripts/materialize_partitions.py`](../scripts/materialize_partitions.py)
 
-**Why Cross-Dataset Views?**
+#### BigQuery shared dataset: `sensors_shared`
 
-- Partition pruning preserved (no storage duplication)
-- Grafana isolated from production schema changes
-- Daily refresh ensures Grafana sees latest data
+The `sensors_shared` dataset exposes dashboard-friendly objects and copied or refreshed tables for downstream tools such as Grafana.
 
-### 4. Storage Layer (GCS)
+Key refresh scripts:
 
-**Bucket:** `sensor-data-to-bigquery`  
-**Region:** `US` (multi-region)
+- [`scripts/refresh_tsi_shared.sh`](../scripts/refresh_tsi_shared.sh)
+- [`scripts/refresh_wu_shared.sh`](../scripts/refresh_wu_shared.sh)
+- [`scripts/sync_to_grafana.py`](../scripts/sync_to_grafana.py)
 
-**Directory Structure:**
+### 4\. Transformation Layer
 
-```
-raw/
-  tsi/
-    2025-11-17/
-      part-00000.parquet
-      part-00001.parquet
-  wu/
-    2025-11-17/
-      part-00000.parquet
-```
+Transformations render and execute logic over the warehouse to produce analytics-ready tables.
 
-**Schema Enforcement:** [src/storage/gcs_uploader.py](../src/storage/gcs_uploader.py)
+- primary production runner: SQL via [`scripts/run_transformations.py`](../scripts/run_transformations.py)
+- validation/migration path: dbt scaffold in `transformations/dbt/`
+- batch wrapper: [`scripts/run_transformations_batch.sh`](../scripts/run_transformations_batch.sh)
 
-- TSI numeric columns coerced to FLOAT64 before Parquet write
-- WU numeric columns coerced to FLOAT64
-- Prevents INT32 → FLOAT64 schema drift errors in BigQuery
+This layer separates ingestion concerns from reporting and analysis concerns.
 
-## Oura Ring Integration
+### 5\. Data Export (SharePoint)
 
-**Status:** **ISOLATED - NOT IN PRODUCTION PIPELINE**
+To support external researchers, the pipeline packages curated parquet files and syncs them to Microsoft SharePoint.
 
-**Location:** [oura-rings/](../oura-rings/) directory
+- Sync scripts: [`scripts/sync_parquet_to_sharepoint.py`](../scripts/sync_parquet_to_sharepoint.py) and [`scripts/upload_research_pack_to_sharepoint.py`](../scripts/upload_research_pack_to_sharepoint.py)
+- Configuration: [`config/sharepoint_sync_scope.json`](../config/sharepoint_sync_scope.json)
 
-**Files:**
+### 6\. Verification and Alerting
 
-- `oura_collector.py` - Standalone Python collector
-- `cli.py` - CLI interface
-- `oura_bigquery_loader.py` - Manual BigQuery upload
+Verification is handled by scheduled workflows and scripts that check whether expected data arrived and whether derived tables remain healthy.
 
-**No GitHub Actions Integration:** grep search confirmed no Oura references in workflows
+Representative checks:
 
-**Recommendation:** Keep Oura separate for manual/exploratory use. If needed for production, create dedicated workflow.
+- freshness
+- staging-table presence
+- row-count thresholds
+- transformation output validation
+- data-quality assertions
 
-## Data Gap & Backfill
+Representative scripts:
 
-### Current Status
+- [`scripts/check_freshness.py`](../scripts/check_freshness.py)
+- [`scripts/notify_teams.py`](../scripts/notify_teams.py) (MS Teams integration for alerts)
+- [`scripts/check_data_quality.py`](../scripts/check_data_quality.py)
+- [`scripts/verify_cloud_pipeline.py`](../scripts/verify_cloud_pipeline.py)
 
-**Gap Identified:** November 17, 2025 → January 21, 2026 (66 days)
+### 7\. Dashboard and Analytics Consumers
 
-**Last Data:**
+The primary consumer pattern is:
 
-- TSI: 2025-11-16 (1,319,879 rows)
-- WU: 2025-11-16 (31,422 rows)
+- BigQuery `sensors_shared` dataset
+- Grafana dashboards using BigQuery queries shaped as `time`, `metric`, and `value`
+- additional consumers such as Looker Studio, notebooks, and ad hoc BigQuery analysis
 
-**Current Date:** 2026-01-22
+See [GRAFANA_SETUP.md](GRAFANA_SETUP.md) and [DATA_QUICK_START.md](DATA_QUICK_START.md) for consumer-facing guidance.
 
-### Backfill Process
+### 8\. Oura Sidecar
 
-**Script:** [scripts/backfill_catchup.sh](../scripts/backfill_catchup.sh)
+The `oura-rings/` directory is intentionally separate from the core production pipeline. It supports manual or exploratory collection and optional analysis, but it is not part of the default scheduled ingestion path.
 
-**Fixed for macOS:** Cross-platform date command compatibility added
+## Design Notes
 
-**Usage:**
+- The architecture keeps raw ingestion, warehouse materialization, transformations, dashboard serving, exports, and verification as separate concerns.
+- Shared dashboard tables exist to isolate consumers from production-schema churn.
+- Operational details such as backfill windows, row counts, and current freshness are intentionally kept out of this document because they go stale quickly.
 
-```bash
-bash scripts/backfill_catchup.sh
-# Prompts: Continue? (y/N)
-# Executes: gcloud run jobs execute for each day
-# Logs: /tmp/backfill_YYYY-MM-DD.log
-```
+## Related Docs
 
-**Duration:** ~66 days × 5 seconds/day = ~5.5 minutes (with 3s delay between jobs)
-
-**Post-Backfill:**
-
-```bash
-# 1. Refresh materialized table
-bash scripts/refresh_tsi_shared.sh
-
-# 2. Verify in BigQuery
-bq query --nouse_legacy_sql \
-  'SELECT MAX(DATE(ts)) FROM `durham-weather-466502.sensors.tsi_raw_materialized`'
-
-# 3. Check Grafana dashboard
-```
-
-## Automation Cadence
-
-### Current Setup
-
-**Method:** GitHub Actions workflow [daily-ingest.yml](.github/workflows/daily-ingest.yml)
-
-**Schedule:** Every 6 hours (`5 */6 * * *`)
-
-**Workflow:**
-
-1. Execute Cloud Run job for yesterday's data
-2. Optional: Merge backfill if `backfill_merge=true`
-3. Optional: Run data quality checks if `run_checks=true`
-4. Create GitHub issue if monitoring fails (on schedule trigger only)
-5. Upload logs as artifacts
-
-### Alternative: Local Daily Script
-
-**Script:** [scripts/daily_collection.sh](../scripts/daily_collection.sh)
-
-**Fixed for macOS:** Date command compatibility added
-
-**Usage:**
-
-```bash
-bash scripts/daily_collection.sh
-# 1. Collects yesterday's data via Cloud Run
-# 2. Refreshes sensors_shared.tsi_raw_materialized
-# 3. Validates data freshness
-```
-
-**Cloud Scheduler (Optional direct trigger):**
-
-```bash
-gcloud scheduler jobs create http daily-data-collection-trigger \
-  --schedule="0 */6 * * *" \
-  --uri="https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run" \
-  --http-method=POST \
-  --message-body='{}' \
-  --headers="Content-Type=application/json" \
-  --oauth-service-account-email=github-actions-deployer@durham-weather-466502.iam.gserviceaccount.com \
-  --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
-  --location=us-east1
-```
-
-**Recommendation:** Keep GitHub Actions as primary (free, logs visible, issue creation on failure)
-
-## Grafana Setup
-
-**Documentation:** [docs/GRAFANA_SETUP.md](GRAFANA_SETUP.md)
-
-**Data Source:**
-
-- Type: BigQuery
-- Project: `durham-weather-466502`
-- Dataset: `sensors_shared`
-- Authentication: Service account JSON key
-
-**Sample Query:**
-
-```sql
-SELECT
-  ts AS time,
-  native_sensor_id AS metric,
-  pm2_5 AS value
-FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized`
-WHERE
-  DATE(ts) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-  AND pm2_5 IS NOT NULL
-ORDER BY ts
-```
-
-**Dashboard Features:**
-
-- Time series: PM2.5, PM10, temperature trends
-- Heatmap: Sensor coverage by location
-- Table: Latest readings per sensor
-
-## Next Steps
-
-### 1. Run Backfill (Immediate)
-
-```bash
-# Verify gcloud authentication
-gcloud auth list
-
-# Run backfill for 66 days
-bash scripts/backfill_catchup.sh
-# Type 'y' when prompted
-
-# Wait ~5-10 minutes for completion
-
-# Refresh Grafana table
-bash scripts/refresh_tsi_shared.sh
-```
-
-### 2. Verify Data (Post-Backfill)
-
-```bash
-# Check latest TSI date
-bq query --nouse_legacy_sql \
-  'SELECT MAX(DATE(ts)) as latest_date, COUNT(*) as total_rows
-   FROM `durham-weather-466502.sensors.tsi_raw_materialized`'
-
-# Expected: latest_date = 2026-01-21, total_rows ~1.7M
-
-# Check Grafana table
-bq query --nouse_legacy_sql \
-  'SELECT MAX(DATE(ts)) as latest_date, COUNT(*) as total_rows
-   FROM `durham-weather-466502.sensors_shared.tsi_raw_materialized`'
-```
-
-### 3. Configure Grafana Dashboard
-
-1. Add BigQuery data source (see [GRAFANA_SETUP.md](GRAFANA_SETUP.md))
-2. Import sample queries
-3. Create dashboards for:
-   - PM2.5 time series by sensor
-   - Temperature trends
-   - Data freshness monitoring
-
-### 4. Monitor Daily Automation
-
-**GitHub Actions:**
-
-- Check workflow runs: https://github.com/AlainS7/durham-environmental-monitoring/actions/workflows/daily-ingest.yml
-- Review logs in "Artifacts" section
-- Issues auto-created on failure (schedule trigger only)
-
-**BigQuery:**
-
-```sql
--- Check if today's data arrived
-SELECT
-  DATE(ts) as collection_date,
-  COUNT(*) as rows
-FROM `durham-weather-466502.sensors.tsi_raw_materialized`
-WHERE DATE(ts) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)
-GROUP BY 1
-ORDER BY 1 DESC
-```
-
-### 5. Optional Enhancements
-
-- **Alerting:** Configure Cloud Monitoring alerts for job failures
-- **Retention:** Set TTL for staging tables (auto-delete after 7 days)
-- **Metrics:** Export pipeline metrics to Cloud Monitoring
-- **Backups:** Enable BigQuery table snapshots for disaster recovery
-
-## Troubleshooting
-
-### Cloud Run Job Fails
-
-```bash
-# Check recent executions
-gcloud run jobs executions list \
-  --job=weather-data-uploader \
-  --region=us-east1 \
-  --project=durham-weather-466502 \
-  --limit=5
-
-# View logs for failed execution
-gcloud logging read "resource.type=cloud_run_job
-  AND resource.labels.job_name=weather-data-uploader" \
-  --limit=50 \
-  --project=durham-weather-466502
-```
-
-### BigQuery Schema Errors
-
-**Symptom:** "Schema mismatch: INT32 vs FLOAT64"
-
-**Fix:** Already applied in `src/storage/gcs_uploader.py`
-
-- All numeric sensor columns coerced to FLOAT64 before Parquet write
-- Verify `TSI_NUMERIC_COLS` and `WU_NUMERIC_COLS` sets are complete
-
-### Grafana Not Showing Data
-
-**Check:**
-
-1. BigQuery data source authentication (service account key)
-2. Dataset access: `sensors_shared` must be visible
-3. Query format: Ensure `ts AS time`, `native_sensor_id AS metric`, `value AS value`
-4. Refresh materialized table: `bash scripts/refresh_tsi_shared.sh`
-
-### macOS Date Command Errors
-
-**Symptom:** "date: illegal option -- d"
-
-**Fix:** Already applied in `scripts/backfill_catchup.sh` and `scripts/daily_collection.sh`
-
-- Detects OS and uses appropriate date command (GNU vs BSD)
-- Test: `bash scripts/backfill_catchup.sh <<< "N"`
-
-## References
-
-- [GRAFANA_SETUP.md](GRAFANA_SETUP.md) - Grafana configuration guide
-- [DAILY_AUTOMATION.md](DAILY_AUTOMATION.md) - Automation setup details
-- [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) - Original architecture overview
-- [TSI-Data-Quality-Monitoring.md](TSI-Data-Quality-Monitoring.md) - Data quality checks
-
-## Contact
-
-For issues or questions, create a GitHub issue or check the monitoring alerts in Cloud Console.
+- [OPERATIONS_RUNBOOK.md](OPERATIONS_RUNBOOK.md) - reproducible procedures for setup, ingestion, backfill, refresh, and verification
+- [GRAFANA_SETUP.md](GRAFANA_SETUP.md) - Grafana data source setup and example queries
+- [DATA_QUICK_START.md](DATA_QUICK_START.md) - query-first guide for common analyses
+- [DAILY_AUTOMATION.md](DAILY_AUTOMATION.md) - scheduler-specific automation notes
+- [Monitoring-Alerts.md](Monitoring-Alerts.md) - monitoring and alerting references
+- [SHAREPOINT_SYNC.md](SHAREPOINT_SYNC.md) - details on the external researcher export process

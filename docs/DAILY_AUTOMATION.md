@@ -1,17 +1,80 @@
-# Daily Data Collection & Grafana Update Setup
+# Daily Automation Schedule & Flow
 
-## Overview
+This document details the exact schedules, commands, and data paths for the automated daily ingestion pipeline. For the high-level system architecture, see [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md).
 
-This guide sets up automated scheduled data collection for TSI and WU sensors, with a recommended 6-hour cadence for fresher Grafana monitoring.
+## 1. Daily Ingestion Pipeline Flow
+
+The core ingestion runs every 6 hours. Below is the detailed trace of how a single run executes and where the data lands:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│              GITHUB ACTIONS / CLOUD SCHEDULER                   │
+│                                                                 │
+│  Cron: Every 6 hours (05 */6 * * *)                            │
+│  Trigger: schedule / workflow_dispatch / HTTP POST             │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             │ gcloud run jobs execute
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      CLOUD RUN JOB                              │
+│                  (weather-data-uploader)                        │
+│                                                                 │
+│  Region: us-east1                                              │
+│  Container: weather-data-uploader:latest                       │
+│  Runtime: Executes src/collectors/* Python code                │
+│                                                                 │
+│  Sources:                                                      │
+│  • Triangle Sensors (TSI API)                                  │
+│  • Weather Underground (WU API)                                │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             │ Write Parquet files
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    GOOGLE CLOUD STORAGE                         │
+│                                                                 │
+│  Bucket: sensor-data-to-bigquery                               │
+│  Path: raw/{source}/{date}/                                    │
+│                                                                 │
+│  Schema: FLOAT64 enforcement via gcs_uploader.py               │
+│  • TSI_NUMERIC_COLS: pm2_5, pm10, temperature, etc.           │
+│  • WU_NUMERIC_COLS: temperature, humidity, etc.               │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             │ Load as external table → MERGE
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        BIGQUERY                                 │
+│                  (durham-weather-466502)                        │
+│                                                                 │
+│  Dataset: sensors (production)                                 │
+│  • staging_tsi_{YYYYMMDD} (temporary)                          │
+│  • tsi_raw_materialized (Partitioned on DATE(ts))              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## 2. Secondary Schedules
+
+Once the raw data is landed by the pipeline above, secondary automated workflows run to process and serve the data:
+
+| Workflow / Tool               | Schedule                     | Purpose                                                 |
+| ----------------------------- | ---------------------------- | ------------------------------------------------------- |
+| `transformations-execute.yml` | `25 07 * * *` (07:25 UTC)    | Runs SQL transformations to build analytics tables.     |
+| `daily-refresh-shared.yml`    | `45 */6 * * *` (staggered)   | Refreshes the Grafana-facing views in `sensors_shared`. |
+| `data-quality-check.yml`      | `00 8 * * *` (08:00 UTC)     | Validates row counts and checks for missing partitions. |
+| `sync-to-sharepoint.yml`      | Manual (`workflow_dispatch`) | Bundles recent data and pushes to external researchers. |
 
 ---
 
-## Quick Start (Run Backfill First)
+## 3. Quick Start (Run Backfill First)
 
-### 1. Backfill Missing Data (Nov 17, 2025 → Current)
+If the pipeline has been paused or you are deploying to a fresh environment, run a backfill before relying on the automation.
+
+### A. Backfill Missing Data (Nov 17, 2025 → Current)
 
 ```bash
-cd /Users/Projects/Developer/work/github.com/AlainS7/durham-environmental-monitoring
+cd /Users/Projects/Developer/work/[github.com/AlainS7/durham-environmental-monitoring](https://github.com/AlainS7/durham-environmental-monitoring)
 bash scripts/backfill_catchup.sh
 ```
 
@@ -21,13 +84,13 @@ This will:
 - Take ~3-4 hours (3 seconds per day + API time)
 - Log progress to `/tmp/backfill_YYYY-MM-DD.log`
 
-### 2. Refresh Materialized Table
+### B. Refresh Materialized Table
 
 ```bash
 bash scripts/refresh_tsi_shared.sh
 ```
 
-### 3. Verify Data in BigQuery
+### C. Verify Data in BigQuery
 
 ```bash
 bq query --nouse_legacy_sql "
@@ -42,11 +105,15 @@ Expected output: `latest_date` should be yesterday or today.
 
 ---
 
-## Automation Setup (Recommended: Every 6 Hours)
+## 4. Automation Setup (Primary & Alternatives)
 
-### Option A: Cloud Scheduler (Production)
+### Option A: GitHub Actions (Primary)
 
-#### 1. Create or Update Cloud Scheduler Job (Cloud Run Jobs API)
+The preferred method is to allow `.github/workflows/daily-ingest.yml` to trigger the Cloud Run job on its predefined cron schedule. This ensures logs are visible in the repository and provides automatic issue creation on failure.
+
+### Option B: Cloud Scheduler (Production Alternative)
+
+If you prefer GCP-native scheduling over GitHub Actions:
 
 ```bash
 gcloud scheduler jobs create http daily-data-collection-trigger \
@@ -54,49 +121,35 @@ gcloud scheduler jobs create http daily-data-collection-trigger \
   --location=us-east1 \
   --schedule="0 */6 * * *" \
   --time-zone="America/New_York" \
-  --uri="https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run" \
+  --uri="[https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run](https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run)" \
   --http-method=POST \
   --message-body='{}' \
   --headers="Content-Type=application/json" \
   --oauth-service-account-email=github-actions-deployer@durham-weather-466502.iam.gserviceaccount.com \
-  --oauth-token-scope="https://www.googleapis.com/auth/cloud-platform" \
+  --oauth-token-scope="[https://www.googleapis.com/auth/cloud-platform](https://www.googleapis.com/auth/cloud-platform)" \
   --attempt-deadline=1800s
 ```
 
-If the job already exists, use `gcloud scheduler jobs update http ...` with the same flags.
+_(If the job already exists, use `gcloud scheduler jobs update http ...` with the same flags.)_
 
-#### 2. Refresh shared Grafana tables via GitHub Actions
-
-```bash
-Workflow: `.github/workflows/daily-refresh-shared.yml`
-- Recommended schedule: every 6 hours (staggered after ingestion).
-- Current default in repo: `45 */6 * * *`.
-```
-
-**Rollback to daily mode**: set cron back to `45 6 * * *` (ingest) and `0 1 * * *` (shared refresh).
-
----
-
-### Option B: Cron Job (Local/VM)
+### Option C: Cron Job (Local/VM)
 
 Add to crontab (`crontab -e`):
 
 ```cron
 # Every 6 hours
-0 */6 * * * cd /Users/Projects/Developer/work/github.com/AlainS7/durham-environmental-monitoring && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
+0 */6 * * * cd /Users/Projects/Developer/work/[github.com/AlainS7/durham-environmental-monitoring](https://github.com/AlainS7/durham-environmental-monitoring) && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
 ```
 
----
+### Option D: Manual Run
 
-### Option C: Manual Run
-
-Run this command each day:
+To manually force an ingestion run for yesterday's data without waiting for a schedule:
 
 ```bash
 bash scripts/daily_collection.sh
 ```
 
-Or just collect data (without refresh):
+Or execute the Cloud Run job directly:
 
 ```bash
 gcloud run jobs execute weather-data-uploader \
@@ -110,18 +163,11 @@ gcloud run jobs execute weather-data-uploader \
 
 ---
 
-## Verification & Monitoring
-
-### Check Update Freshness
-
-```bash
-# Run this each morning to verify yesterday's data loaded
-bash scripts/daily_collection.sh
-```
+## 5. Verification & Monitoring
 
 ### Grafana Data Freshness Panel
 
-Add this query to your Grafana dashboard to monitor freshness:
+Add this query to your Grafana dashboard to monitor freshness and ensure the automated runs are succeeding:
 
 ```sql
 SELECT
@@ -137,34 +183,31 @@ SELECT
 FROM `durham-weather-466502.sensors_shared.wu_raw_view`
 ```
 
-Set alert threshold: `days_behind > 1`
+**Alert recommendation:** Set an alert threshold for `days_behind > 1`.
 
 ---
 
-## Troubleshooting
+## 6. Troubleshooting
 
 ### Data Not Updating in Grafana
 
 1. Check BigQuery has new data:
-
    ```bash
    bq query --nouse_legacy_sql "SELECT MAX(ts) FROM \`durham-weather-466502.sensors_shared.tsi_raw_materialized\`"
    ```
-
-2. Refresh Grafana dashboard (browser refresh or click refresh icon)
-
-3. Check Grafana time range (not set to static dates)
-
+2. Refresh Grafana dashboard (browser refresh or click refresh icon).
+3. Check Grafana time range (ensure it is not set to static dates).
 4. Verify partition pruning works:
    ```sql
-   -- Add this WHERE clause to all queries
+   -- Add this WHERE clause to all custom queries
    WHERE ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
    ```
 
 ### Cloud Run Job Fails
 
+Check the execution logs directly in GCP:
+
 ```bash
-# Check job logs
 gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=weather-data-uploader" \
   --project=durham-weather-466502 \
   --limit=50 \
@@ -173,32 +216,22 @@ gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=we
 
 ### Backfill Takes Too Long
 
-- Run in batches (1 week at a time)
-- Increase `--wait` timeout if jobs timeout
-- Check API quotas/limits for WU and TSI
+- Run in batches (1 week at a time).
+- Increase `--wait` timeout if jobs timeout.
+- Check API quotas/limits for WU and TSI.
 
 ---
 
-## Cost Optimization
+## 7. Cost Optimization
 
 ### BigQuery Costs
 
-- **Partition pruning**: Always filter on `ts` column
-- **Clustering**: Queries filtering on `native_sensor_id` are faster/cheaper
-- **Materialized table**: Refreshing every 6 hours is still low-cost (~$0.42/month observed scale)
-- **View queries**: Free if under 1TB scanned/month
+- **Partition pruning**: Always filter on `ts` column.
+- **Clustering**: Queries filtering on `native_sensor_id` are faster/cheaper.
+- **Materialized table**: Refreshing every 6 hours is still low-cost (~$0.42/month observed scale).
+- **View queries**: Free if under 1TB scanned/month.
 
 ### Cloud Run Job Costs
 
-- ~$0.05 per day (3 minutes runtime × $0.00002400/vCPU-second)
-- Backfill: ~$3.50 one-time (67 days × $0.05)
-
----
-
-## Next Steps
-
-1. Run backfill: `bash scripts/backfill_catchup.sh`
-2. Verify Grafana queries work (see [GRAFANA_SETUP.md](GRAFANA_SETUP.md))
-3. Set up Cloud Scheduler or cron for 6-hour automation
-4. Add data freshness monitoring panel to Grafana
-5. Optional: Set up alerts via Grafana or Cloud Monitoring
+- ~$0.05 per day (3 minutes runtime × $0.00002400/vCPU-second).
+- Backfill: ~$3.50 one-time (67 days × $0.05).

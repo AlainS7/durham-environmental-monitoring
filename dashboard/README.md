@@ -2,8 +2,6 @@
 
 A modern, responsive weather dashboard for monitoring indoor and outdoor environmental sensors with Appwrite authentication.
 
-![Dashboard Preview](docs/dashboard-preview.png)
-
 ## Features
 
 - **User Authentication**: Secure login/registration using Appwrite
