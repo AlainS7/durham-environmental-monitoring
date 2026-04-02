@@ -13,7 +13,7 @@ certifi==2025.10.5
     #   requests
 charset-normalizer==3.4.3
     # via requests
-db-dtypes==1.4.3
+db-dtypes==1.5.0
     # via durham-environmental-monitoring (pyproject.toml)
 google-api-core==2.26.0
     # via
@@ -40,7 +40,7 @@ google-cloud-audit-log==0.3.3
     # via google-cloud-logging
 google-cloud-bigquery==3.38.0
     # via durham-environmental-monitoring (pyproject.toml)
-google-cloud-bigquery-storage==2.33.1
+google-cloud-bigquery-storage==2.36.2
     # via durham-environmental-monitoring (pyproject.toml)
 google-cloud-core==2.4.3
     # via
