@@ -79,6 +79,15 @@ Workflows use GitHub Actions `concurrency` to prevent overlapping runs for the s
 
 This protects shared tables from concurrent writes and keeps execution order deterministic.
 
+### Pre-publish quality gate
+
+On scheduled runs, `daily-refresh-shared.yml` now enforces a production quality gate **before** syncing to `sensors_shared`:
+
+- Freshness checks for `sensors.tsi_raw_materialized` and `sensors.wu_raw_materialized`
+- Non-zero row checks for production `sensor_readings_daily` and `residence_readings_daily` on the gate date (yesterday UTC)
+
+If the gate fails, the shared publish is blocked so dashboards keep serving last known-good data instead of propagating a bad/stale refresh.
+
 ---
 
 ## 3. Quick Start (Run Backfill First)

@@ -44,6 +44,47 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Resolve quality gate date
+        if: github.event_name == 'schedule'
+        id: quality_date
+        run: |
+          CHECK_DATE=$(date -u -d 'yesterday' +%F)
+          echo "check_date=$CHECK_DATE" >> "$GITHUB_OUTPUT"
+          echo "Quality gate date: $CHECK_DATE"
+
+      - name: Production quality gate (pre-publish)
+        if: github.event_name == 'schedule'
+        env:
+          CHECK_DATE: ${{ steps.quality_date.outputs.check_date }}
+        run: |
+          set -euo pipefail
+          echo "Running pre-publish quality gates for $CHECK_DATE"
+
+          python scripts/check_freshness.py \
+            --project "$BQ_PROJECT" \
+            --dataset "$BQ_PROD_DATASET" \
+            --table tsi_raw_materialized \
+            --time-column ts \
+            --max-lag-days 2
+
+          python scripts/check_freshness.py \
+            --project "$BQ_PROJECT" \
+            --dataset "$BQ_PROD_DATASET" \
+            --table wu_raw_materialized \
+            --time-column ts \
+            --max-lag-days 2
+
+          SENSOR_DAILY_ROWS=$(bq query --project_id="$BQ_PROJECT" --nouse_legacy_sql --format=csv \
+            "SELECT COUNT(*) FROM \`${BQ_PROJECT}.${BQ_PROD_DATASET}.sensor_readings_daily\` WHERE DATE(day_ts)=DATE('${CHECK_DATE}')" | tail -1)
+          RESIDENCE_DAILY_ROWS=$(bq query --project_id="$BQ_PROJECT" --nouse_legacy_sql --format=csv \
+            "SELECT COUNT(*) FROM \`${BQ_PROJECT}.${BQ_PROD_DATASET}.residence_readings_daily\` WHERE DATE(day_ts)=DATE('${CHECK_DATE}')" | tail -1)
+
+          echo "Production transformed row checks on ${CHECK_DATE}: sensor_daily=${SENSOR_DAILY_ROWS}, residence_daily=${RESIDENCE_DAILY_ROWS}"
+          if [ "${SENSOR_DAILY_ROWS}" -eq 0 ] || [ "${RESIDENCE_DAILY_ROWS}" -eq 0 ]; then
+            echo "Pre-publish gate failed: production transformed daily data missing for ${CHECK_DATE}" >&2
+            exit 1
+          fi
+
       - name: Refresh TSI shared table
         id: refresh_tsi
         run: |

@@ -937,6 +937,11 @@ def _log_run_metadata(
                 bigquery.SchemaField("status", "STRING"),
             ]
             tbl = bigquery.Table(fq, schema=schema)
+            tbl.time_partitioning = bigquery.TimePartitioning(
+                type_=bigquery.TimePartitioningType.DAY,
+                field="run_started",
+            )
+            tbl.clustering_fields = ["source", "status"]
             client.create_table(tbl, exists_ok=True)
         rows_to_insert = [
             {
