@@ -109,6 +109,28 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Resolve processing window
+        id: processing_window
+        run: |
+          set -euo pipefail
+          START="${{ github.event.inputs.start_date }}"
+          END="${{ github.event.inputs.end_date }}"
+          SINGLE="${{ github.event.inputs.date }}"
+
+          if [ -n "$SINGLE" ]; then
+            START="$SINGLE"
+            END="$SINGLE"
+          elif [ -z "$START" ] || [ -z "$END" ]; then
+            # Keep default aligned with scripts/run_cr_job.sh and collector behavior.
+            YESTERDAY=$(date -u -d 'yesterday' +%F)
+            START="$YESTERDAY"
+            END="$YESTERDAY"
+          fi
+
+          echo "start=$START" >> "$GITHUB_OUTPUT"
+          echo "end=$END" >> "$GITHUB_OUTPUT"
+          echo "Resolved processing window: $START -> $END"
+
       - name: Build & Push container image (optional)
         if: ${{ github.event.inputs.redeploy_image == 'true' }}
         env:
@@ -174,9 +196,9 @@ jobs:
         env:
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
           REGION: ${{ github.event.inputs.region || 'us-east1' }}
-          START_DATE: ${{ github.event.inputs.start_date }}
-          END_DATE: ${{ github.event.inputs.end_date }}
-          DATE: ${{ github.event.inputs.date }}
+          START_DATE: ${{ steps.processing_window.outputs.start }}
+          END_DATE: ${{ steps.processing_window.outputs.end }}
+          DATE: ""
           SOURCE: ${{ github.event.inputs.source || 'all' }}
           # BigQuery env for staging writer inside container
           BQ_PROJECT: ${{ env.PROJECT_ID }}
@@ -199,15 +221,8 @@ jobs:
           GCS_PREFIX: raw/
         run: |
           set -euo pipefail
-          START="${{ github.event.inputs.start_date }}"
-          END="${{ github.event.inputs.end_date }}"
-          SINGLE="${{ github.event.inputs.date }}"
-          if [ -n "$SINGLE" ]; then
-            START="$SINGLE"; END="$SINGLE"; fi
-          if [ -z "$START" ] || [ -z "$END" ]; then
-            TODAY=$(date -u +%F)
-            START="$TODAY"; END="$TODAY"
-          fi
+          START="${{ steps.processing_window.outputs.start }}"
+          END="${{ steps.processing_window.outputs.end }}"
           echo "Materializing raw partitions $START -> $END"
           python scripts/materialize_partitions.py \
             --project "$BQ_PROJECT" \
@@ -250,15 +265,8 @@ jobs:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
           set -euo pipefail
-          START="${{ github.event.inputs.start_date }}"
-          END="${{ github.event.inputs.end_date }}"
-          SINGLE="${{ github.event.inputs.date }}"
-          if [ -n "$SINGLE" ]; then
-            START="$SINGLE"; END="$SINGLE"; fi
-          if [ -z "$START" ] || [ -z "$END" ]; then
-            TODAY=$(date -u +%F)
-            START="$TODAY"; END="$TODAY"
-          fi
+          START="${{ steps.processing_window.outputs.start }}"
+          END="${{ steps.processing_window.outputs.end }}"
           echo "Running per-source dated merge backfill $START -> $END"
           python scripts/merge_backfill_range.py \
             --project "$BQ_PROJECT" \
@@ -275,15 +283,8 @@ jobs:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
         run: |
           set -euo pipefail
-          START="${{ github.event.inputs.start_date }}"
-          END="${{ github.event.inputs.end_date }}"
-          SINGLE="${{ github.event.inputs.date }}"
-          if [ -n "$SINGLE" ]; then START="$SINGLE"; END="$SINGLE"; fi
-          # If no explicit dates provided (scheduled run), check current UTC day
-          if [ -z "$START" ] || [ -z "$END" ]; then
-            TODAY=$(date -u +%F)
-            START="$TODAY"; END="$TODAY"
-          fi
+          START="${{ steps.processing_window.outputs.start }}"
+          END="${{ steps.processing_window.outputs.end }}"
           echo "Running staging presence checks for range $START -> $END"
           CUR="$START"
           FAIL=0

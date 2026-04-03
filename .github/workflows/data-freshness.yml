@@ -2,7 +2,7 @@ name: Data Freshness Check
 
 on:
   schedule:
-    - cron: '45 7 * * *' # After daily merge + transformations
+    - cron: '35 8 * * *' # After daily merge + shared refresh
   workflow_dispatch:
 
 permissions:
@@ -69,7 +69,45 @@ jobs:
           done
           echo "exit_code=$EXIT" >> $GITHUB_OUTPUT
           cat freshness.log || true
-          exit $EXIT
+          exit 0
+
+      - name: Check residence freshness parity (prod vs shared)
+        id: parity
+        if: always()
+        run: |
+          set +e
+          echo "=== Checking residence freshness parity (prod vs shared) ===" | tee -a freshness.log
+          python scripts/check_residence_freshness_parity.py \
+            --project "$BQ_PROJECT" \
+            --prod-dataset sensors \
+            --shared-dataset sensors_shared \
+            --table residence_readings_daily \
+            --max-lag-days 0 >> freshness.log 2>&1
+          PARITY_EXIT=$?
+          if [ "$PARITY_EXIT" -ne 0 ]; then
+            echo "Result: FAILED (exit $PARITY_EXIT)" | tee -a freshness.log
+          else
+            echo "Result: OK" | tee -a freshness.log
+          fi
+          echo "" >> freshness.log
+          echo "exit_code=$PARITY_EXIT" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Fail on freshness/parity issues
+        if: always()
+        run: |
+          FRESH_EXIT='${{ steps.freshness.outputs.exit_code }}'
+          PARITY_EXIT='${{ steps.parity.outputs.exit_code }}'
+
+          if [ -z "$FRESH_EXIT" ]; then FRESH_EXIT=1; fi
+          if [ -z "$PARITY_EXIT" ]; then PARITY_EXIT=1; fi
+
+          echo "Freshness exit code: $FRESH_EXIT" | tee -a freshness.log
+          echo "Parity exit code: $PARITY_EXIT" | tee -a freshness.log
+
+          if [ "$FRESH_EXIT" -ne 0 ] || [ "$PARITY_EXIT" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Create issue on failure
         if: failure()

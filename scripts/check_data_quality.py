@@ -138,12 +138,11 @@ def check_raw_table_schema(
     issues = []
     
     # Determine table name based on source
-    if source == 'TSI':
-        table_name = 'tsi_raw_materialized'
-        date_col = 'ts'
-    else:  # WU - would need to update this if WU uses different naming
-        log.warning(f"Skipping raw table check for {source} (not implemented)")
-        return True, []
+    raw_table_map = {
+        'TSI': ('tsi_raw_materialized', 'ts'),
+        'WU': ('wu_raw_materialized', 'ts'),
+    }
+    table_name, date_col = raw_table_map[source]
     
     # Query to count records per day
     query = f"""
@@ -221,11 +220,23 @@ def check_coverage(
     
     # Query long-format table for coverage
     # Note: TSI metrics can be identified by pm2_5, ncpm*, co2_ppm, etc.
-    # WU metrics can be identified by dewpoint, pressure_in, etc.
+    # WU metrics must match the transformed names emitted by 01_sensor_readings_long.sql.
     tsi_metrics = ['pm2_5', 'pm10', 'pm1_0', 'pm4_0', 'ncpm0_5', 'ncpm1_0', 'ncpm2_5', 'ncpm4_0', 
                    'ncpm10', 'temperature', 'humidity', 'co2_ppm', 'co_ppm', 'baro_inhg', 
                    'o3_ppb', 'no2_ppb', 'so2_ppb', 'ch2o_ppb']
-    wu_metrics = ['dewpoint', 'pressure_in', 'wind_speed', 'wind_gust']
+    wu_metrics = [
+        'temperature',
+        'humidity',
+        'precip_rate',
+        'precip_total',
+        'pressure_max',
+        'pressure_min',
+        'wind_speed_avg',
+        'wind_gust_avg',
+        'dew_point_avg',
+        'solar_radiation',
+        'uv_high',
+    ]
     
     if source == 'TSI':
         metric_filter = "AND l.metric_name IN ({})".format(
@@ -416,7 +427,19 @@ def check_aggregate_consistency(
     tsi_metrics = ['pm2_5', 'pm10', 'pm1_0', 'pm4_0', 'ncpm0_5', 'ncpm1_0', 'ncpm2_5', 'ncpm4_0', 
                    'ncpm10', 'temperature', 'humidity', 'co2_ppm', 'co_ppm', 'baro_inhg', 
                    'o3_ppb', 'no2_ppb', 'so2_ppb', 'ch2o_ppb']
-    wu_metrics = ['dewpoint', 'pressure_in', 'wind_speed', 'wind_gust']
+    wu_metrics = [
+        'temperature',
+        'humidity',
+        'precip_rate',
+        'precip_total',
+        'pressure_max',
+        'pressure_min',
+        'wind_speed_avg',
+        'wind_gust_avg',
+        'dew_point_avg',
+        'solar_radiation',
+        'uv_high',
+    ]
     
     if source == 'TSI':
         metric_filter = "AND l.metric_name IN ({})".format(

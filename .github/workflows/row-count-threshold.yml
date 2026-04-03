@@ -2,7 +2,7 @@ name: Row Count Threshold Check
 
 on:
   schedule:
-    - cron: '45 6 * * *'
+    - cron: '15 8 * * *'
   workflow_dispatch:
 
 env:

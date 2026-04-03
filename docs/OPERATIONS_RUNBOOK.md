@@ -201,6 +201,7 @@ python scripts/check_freshness.py --project "$BQ_PROJECT" --dataset "$BQ_SHARED_
 python scripts/check_staging_presence.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET" --date 2026-03-29
 python scripts/check_row_thresholds.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET" --date 2026-03-29
 python scripts/check_data_quality.py --start 2026-03-29 --end 2026-03-29
+python scripts/check_residence_freshness_parity.py --project "$BQ_PROJECT" --prod-dataset sensors --shared-dataset sensors_shared --table residence_readings_daily --max-lag-days 0
 ```
 
 ### BigQuery spot checks

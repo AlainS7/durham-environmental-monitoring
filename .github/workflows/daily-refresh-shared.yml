@@ -22,6 +22,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies for sync script
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -35,16 +45,23 @@ jobs:
         run: |
           echo "Refreshing TSI materialized table for Grafana..."
           bash scripts/refresh_tsi_shared.sh
-        continue-on-error: true
 
       - name: Refresh WU shared table
         id: refresh_wu
         run: |
           echo "Refreshing WU materialized table for Grafana..."
           bash scripts/refresh_wu_shared.sh
-        continue-on-error: true
+
+      - name: Sync transformed tables to sensors_shared
+        id: sync_grafana
+        env:
+          GCP_PROJECT_ID: ${{ env.BQ_PROJECT }}
+        run: |
+          echo "Syncing transformed tables to sensors_shared..."
+          python scripts/sync_to_grafana.py
 
       - name: Verify refresh completion
+        id: verify_refresh
         run: |
           echo "=== Verifying Grafana tables refreshed ==="
           
@@ -57,15 +74,28 @@ jobs:
             "SELECT COUNT(*) FROM ${BQ_SHARED_DATASET}.wu_raw_materialized" | tail -1)
           WU_LATEST=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
             "SELECT MAX(DATE(ts)) FROM ${BQ_SHARED_DATASET}.wu_raw_materialized" | tail -1)
+
+          PROD_RESIDENCE_MAX=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
+            "SELECT MAX(DATE(day_ts)) FROM ${BQ_PROD_DATASET}.residence_readings_daily" | tail -1)
+          SHARED_RESIDENCE_MAX=$(bq query --project_id=$BQ_PROJECT --nouse_legacy_sql --format=csv \
+            "SELECT MAX(DATE(day_ts)) FROM ${BQ_SHARED_DATASET}.residence_readings_daily" | tail -1)
           
           echo "TSI: ${TSI_ROWS} rows, latest ${TSI_LATEST}"
           echo "WU: ${WU_ROWS} rows, latest ${WU_LATEST}"
+          echo "Residence daily max(prod/shared): ${PROD_RESIDENCE_MAX} / ${SHARED_RESIDENCE_MAX}"
+
+          if [ "${PROD_RESIDENCE_MAX}" != "${SHARED_RESIDENCE_MAX}" ]; then
+            echo "Residence freshness drift detected between production and shared datasets" >&2
+            exit 1
+          fi
           
           # Set outputs for summary
           echo "tsi_rows=${TSI_ROWS}" >> $GITHUB_OUTPUT
           echo "tsi_latest=${TSI_LATEST}" >> $GITHUB_OUTPUT
           echo "wu_rows=${WU_ROWS}" >> $GITHUB_OUTPUT
           echo "wu_latest=${WU_LATEST}" >> $GITHUB_OUTPUT
+          echo "prod_residence_max=${PROD_RESIDENCE_MAX}" >> $GITHUB_OUTPUT
+          echo "shared_residence_max=${SHARED_RESIDENCE_MAX}" >> $GITHUB_OUTPUT
 
       - name: Create summary
         if: always()
@@ -86,12 +116,19 @@ jobs:
           else
             echo "❌ WU refresh: FAILED" >> $GITHUB_STEP_SUMMARY
           fi
+
+          if [ "${{ steps.sync_grafana.outcome }}" = "success" ]; then
+            echo "✅ sensors→sensors_shared sync: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ sensors→sensors_shared sync: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Data Status" >> $GITHUB_STEP_SUMMARY
           echo "- **Dataset**: \`sensors_shared\` (Grafana)" >> $GITHUB_STEP_SUMMARY
           echo "- **TSI**: Latest data available through \`tsi_raw_materialized\`" >> $GITHUB_STEP_SUMMARY
           echo "- **WU**: Latest data available through \`wu_raw_materialized\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Residence daily max (prod/shared)**: \`${{ steps.verify_refresh.outputs.prod_residence_max }} / ${{ steps.verify_refresh.outputs.shared_residence_max }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Grafana dashboards now have access to yesterday's complete data." >> $GITHUB_STEP_SUMMARY
 
