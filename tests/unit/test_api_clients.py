@@ -1,9 +1,11 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
+import httpx
 
 from src.data_collection.clients.wu_client import WUClient
 from src.data_collection.clients.tsi_client import TSIClient
+from src.data_collection.clients.base_client import BaseClient
 
 @pytest.fixture
 def mock_app_config():
@@ -81,3 +83,72 @@ async def test_tsi_client_fetch_data_success(mocker):
     assert df.iloc[0]['temperature'] == 26.0, "Temperature value should match test data"
     assert df.iloc[0]['rh'] == 55.0, "Relative humidity value should match test data"
 
+
+@pytest.mark.asyncio
+async def test_base_client_retries_on_429_then_succeeds():
+    class DummyClient(BaseClient):
+        async def fetch_data(self, **kwargs):
+            return None
+
+    class FakeResponse:
+        def __init__(self, status_code, headers=None):
+            self.status_code = status_code
+            self.headers = headers or {}
+            self.text = "rate limited"
+            self.request = MagicMock(url="https://example.com/test")
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise httpx.HTTPStatusError("error", request=self.request, response=self)
+
+        def json(self):
+            return {"ok": True}
+
+    class FakeHttpClient:
+        def __init__(self):
+            self.calls = 0
+
+        async def request(self, *args, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                return FakeResponse(429, {"Retry-After": "0"})
+            return FakeResponse(200)
+
+        async def aclose(self):
+            return None
+
+    client = DummyClient("https://example.com", max_retries=2, retry_base_delay=0)
+    client.client = FakeHttpClient()
+    result = await client._request("GET", "test")
+    assert result == {"ok": True}
+    assert client.client.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_base_client_retries_on_transport_error_then_succeeds(mocker):
+    class DummyClient(BaseClient):
+        async def fetch_data(self, **kwargs):
+            return None
+
+    class FakeHttpClient:
+        def __init__(self):
+            self.calls = 0
+
+        async def request(self, *args, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                raise httpx.TimeoutException("timeout")
+            return MagicMock(
+                status_code=200,
+                raise_for_status=MagicMock(return_value=None),
+                json=MagicMock(return_value={"ok": True}),
+            )
+
+        async def aclose(self):
+            return None
+
+    client = DummyClient("https://example.com", max_retries=2, retry_base_delay=0)
+    client.client = FakeHttpClient()
+    result = await client._request("GET", "test")
+    assert result == {"ok": True}
+    assert client.client.calls == 2
