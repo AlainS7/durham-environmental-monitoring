@@ -1,7 +1,6 @@
 #!/bin/bash
 # Refresh WU raw materialized table in sensors_shared (Grafana dataset)
-# Part of daily Grafana data refresh pipeline
-# Should run at 01:00 UTC after production data has been finalized
+# Part of hourly Grafana data refresh pipeline
 
 set -euo pipefail
 

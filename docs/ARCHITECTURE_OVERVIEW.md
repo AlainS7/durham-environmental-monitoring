@@ -129,7 +129,7 @@ flowchart LR
 
 Primary workflows:
 
-- [`.github/workflows/daily-ingest.yml`](../.github/workflows/daily-ingest.yml) triggers Cloud Run ingestion every 6 hours and can optionally redeploy, materialize, merge, and run checks.
+- [`.github/workflows/daily-ingest.yml`](../.github/workflows/daily-ingest.yml) triggers Cloud Run ingestion hourly and can optionally redeploy, materialize, merge, and run checks.
 - [`.github/workflows/transformations-execute.yml`](../.github/workflows/transformations-execute.yml) runs the data transformation layer.
 - [`.github/workflows/sync-to-sharepoint.yml`](../.github/workflows/sync-to-sharepoint.yml) handles manual exports to external researchers.
 - [`.github/workflows/daily-verify.yml`](../.github/workflows/daily-verify.yml) and [`.github/workflows/data-quality-check.yml`](../.github/workflows/data-quality-check.yml) validate the pipeline.

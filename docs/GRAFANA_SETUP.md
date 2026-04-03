@@ -160,11 +160,13 @@ ORDER BY time
 
 ### "No data" in Grafana
 
-1. Check time range picker (default may be "Last 6 hours")
+1. Check time range picker (default may be "Last 1 hour")
 2. Verify table has recent data:
+
    ```bash
    bq query --nouse_legacy_sql "SELECT MAX(ts) FROM \`durham-weather-466502.sensors_shared.tsi_raw_materialized\`"
    ```
+
 3. Check partition pruning - queries with `WHERE ts >= ...` are much faster and cheaper
 
 ### Query too slow
@@ -176,9 +178,9 @@ ORDER BY time
 
 ---
 
-## Cadence Verification (6-hour target)
+## Cadence Verification (hourly target)
 
-### Check if data is updating daily:
+### Check if data is updating hourly:
 
 ```sql
 SELECT
@@ -191,4 +193,4 @@ GROUP BY date
 ORDER BY date DESC
 ```
 
-Expected: New rows appear each day (after daily collection runs).
+Expected: New rows appear throughout the day (roughly hourly).

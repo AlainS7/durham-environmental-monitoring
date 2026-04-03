@@ -32,7 +32,7 @@ For a comprehensive view of the entire system, including data flow, components, 
 
 ### Key Highlights
 
-- **Fully Automated:** Data is collected every 6 hours and processed/verified daily via Cloud Run and GitHub Actions, with optional Cloud Scheduler triggering.
+- **Fully Automated:** Data is collected hourly and processed through fast/stable orchestration via Cloud Run and GitHub Actions, with optional Cloud Scheduler triggering.
 - **High-Resolution Data:** Research-grade 15-minute interval data from multiple sensor types.
 - **Cloud-Native:** Leverages Google Cloud Storage (GCS) for raw data storage and BigQuery for warehousing and analytics.
 - **Continuous Verification:** A daily GitHub Actions workflow (`daily-verify.yml`) runs a cloud pipeline verifier to ensure data integrity, schema consistency, and row count expectations.
@@ -116,10 +116,10 @@ This project uses `uv` for fast and efficient dependency management.
 
 The data pipeline is designed for robustness and automation.
 
-1. **Collection (Every 6 hours at :05 UTC):** The `daily-ingest.yml` GitHub Actions workflow triggers the Cloud Run job that executes `daily_data_collector.py`. Cloud Scheduler is also supported as an optional trigger path.
+1. **Collection (Hourly at :05 UTC):** The `daily-ingest.yml` GitHub Actions workflow triggers the Cloud Run job that executes `daily_data_collector.py`. Cloud Scheduler is also supported as an optional trigger path.
 2. **Storage (Raw):** Raw data is uploaded as Parquet files to a GCS bucket, partitioned by source and date.
 3. **Materialization:** The raw data is then materialized into partitioned BigQuery tables (`tsi_raw_materialized`, `wu_raw_materialized`).
-4. **Transformation (fast + stable lanes):** SQL transformations run intraday (every 6 hours) for dashboard freshness and also on a daily stabilization run to keep finalized daily analytics tables current.
+4. **Transformation (fast + stable lanes):** SQL transformations run hourly for dashboard freshness and also on a daily stabilization run to keep finalized daily analytics tables current.
 5. **Quality Checks (7:45–8:30 UTC):** Scheduled workflows run freshness and quality checks against BigQuery tables. Failures trigger alerts and create GitHub issues.
 6. **Visualization:** Looker Studio dashboards are connected to the BigQuery tables for visualization and analysis.
 
@@ -131,12 +131,12 @@ The project relies heavily on GitHub Actions for automation and verification.
 
 ### Core Pipeline (Scheduled)
 
-| Workflow                      | Purpose                                            | Triggers                  |
-| ----------------------------- | -------------------------------------------------- | ------------------------- |
-| `daily-ingest.yml`            | Triggers the Cloud Run data collection job.        | Schedule (every 6 hours)  |
-| `daily-merge.yml`             | Merges staged sensor readings into the fact table. | Schedule (7:10 UTC daily) |
-| `transformations-execute.yml` | Executes SQL transformation models.                | Schedule (7:25 UTC daily + every 6 hours) |
-| `daily-refresh-shared.yml`    | Refreshes Grafana-facing shared BigQuery tables.   | Schedule (every 6h)       |
+| Workflow                      | Purpose                                            | Triggers                           |
+| ----------------------------- | -------------------------------------------------- | ---------------------------------- |
+| `daily-ingest.yml`            | Triggers the Cloud Run data collection job.        | Schedule (hourly)                  |
+| `daily-merge.yml`             | Merges staged sensor readings into the fact table. | Schedule (7:10 UTC daily)          |
+| `transformations-execute.yml` | Executes SQL transformation models.                | Schedule (7:25 UTC daily + hourly) |
+| `daily-refresh-shared.yml`    | Refreshes Grafana-facing shared BigQuery tables.   | Schedule (hourly)                  |
 
 ### Verification & Quality (Scheduled)
 

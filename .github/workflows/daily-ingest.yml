@@ -2,7 +2,7 @@ name: Daily Ingestion (Cloud Run Job)
 
 on:
   schedule:
-    - cron: '5 */6 * * *' # every 6 hours: ingest -> embedded merge -> checks
+    - cron: '5 * * * *' # hourly: ingest -> embedded merge -> checks
   workflow_dispatch:
     inputs:
       job_name:
@@ -127,11 +127,9 @@ jobs:
           elif [ -n "$START" ] && [ -n "$END" ]; then
             :
           elif [ "${{ github.event_name }}" = "schedule" ]; then
-            # Fast lane: ingest yesterday + today so dashboards stay fresh while
-            # still backfilling the just-finished day.
+            # Fast lane: ingest current-day partition on scheduled runs.
             TODAY=$(date -u +%F)
-            YESTERDAY=$(date -u -d 'yesterday' +%F)
-            START="$YESTERDAY"
+            START="$TODAY"
             END="$TODAY"
           else
             # Stable/manual default remains yesterday.

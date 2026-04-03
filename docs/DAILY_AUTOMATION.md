@@ -4,13 +4,13 @@ This document details the exact schedules, commands, and data paths for the auto
 
 ## 1. Daily Ingestion Pipeline Flow
 
-The core ingestion runs every 6 hours. Below is the detailed trace of how a single run executes and where the data lands:
+The core ingestion runs hourly. Below is the detailed trace of how a single run executes and where the data lands:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │              GITHUB ACTIONS / CLOUD SCHEDULER                   │
 │                                                                 │
-│  Cron: Every 6 hours (05 */6 * * *)                            │
+│  Cron: Hourly (05 * * * *)                                     │
 │  Trigger: schedule / workflow_dispatch / HTTP POST             │
 └────────────────────────────┬────────────────────────────────────┘
                              │
@@ -60,10 +60,10 @@ Once the raw data is landed by the pipeline above, secondary automated workflows
 
 | Workflow / Tool                 | Trigger / Schedule                                                           | Purpose                                                                                                     |
 | ------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `daily-ingest.yml`              | `5 */6 * * *`                                                                | Ingests raw data and runs merge/check for the current-day fast lane (scheduled runs), with manual date overrides available. |
+| `daily-ingest.yml`              | `5 * * * *`                                                                  | Ingests raw data and runs merge/check for the current-day fast lane (scheduled runs), with manual date overrides available. |
 | `daily-merge.yml`               | `10 7 * * *`                                                                 | Merges yesterday staged partitions into consolidated production tables.                                     |
-| `transformations-execute.yml`   | `25 07 * * *` (stable lane) + `40 */6 * * *` (fast lane) + manual (`workflow_dispatch`) | Rebuilds transformed partitions for intraday freshness while keeping a dedicated daily stabilization run. |
-| `daily-refresh-shared.yml`      | `45 */6 * * *`                                                               | Refreshes Grafana-facing shared tables and runs residence parity check.                                     |
+| `transformations-execute.yml`   | `25 07 * * *` (stable lane) + `40 * * * *` (fast lane) + manual (`workflow_dispatch`) | Rebuilds transformed partitions for intraday freshness while keeping a dedicated daily stabilization run. |
+| `daily-refresh-shared.yml`      | `45 * * * *`                                                                 | Refreshes Grafana-facing shared tables and runs residence parity check.                                     |
 | `metric-coverage.yml`           | `5 8 * * *` + `workflow_run` after `Execute Transformations` (success/main)  | Validates transformed metric coverage and raises SLA alerts on streaks.                                     |
 | `row-count-threshold.yml`       | `15 8 * * *` + `workflow_run` after `Execute Transformations` (success/main) | Validates key table row thresholds and raises SLA alerts on streaks.                                        |
 | `data-freshness.yml`            | `35 8 * * *` + `workflow_run` after `Daily Refresh Shared Tables (Grafana)`  | Runs freshness + prod/shared residence parity checks with final fail gate.                                  |
@@ -133,7 +133,7 @@ If you prefer GCP-native scheduling over GitHub Actions:
 gcloud scheduler jobs create http daily-data-collection-trigger \
   --project=durham-weather-466502 \
   --location=us-east1 \
-  --schedule="0 */6 * * *" \
+  --schedule="0 * * * *" \
   --time-zone="America/New_York" \
   --uri="[https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run](https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run)" \
   --http-method=POST \
@@ -151,8 +151,8 @@ _(If the job already exists, use `gcloud scheduler jobs update http ...` with th
 Add to crontab (`crontab -e`):
 
 ```cron
-# Every 6 hours
-0 */6 * * * cd /Users/Projects/Developer/work/[github.com/AlainS7/durham-environmental-monitoring](https://github.com/AlainS7/durham-environmental-monitoring) && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
+# Hourly
+0 * * * * cd /Users/Projects/Developer/work/[github.com/AlainS7/durham-environmental-monitoring](https://github.com/AlainS7/durham-environmental-monitoring) && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
 ```
 
 ### Option D: Manual Run
@@ -242,11 +242,11 @@ gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=we
 
 - **Partition pruning**: Always filter on `ts` column.
 - **Clustering**: Queries filtering on `native_sensor_id` are faster/cheaper.
-- **Fast-lane transforms**: Rebuilding only the current partition intraday keeps frequent refresh feasible and cost-bounded.
-- **Materialized/shared refresh**: Refreshing every 6 hours remains low-cost at current scale.
+- **Fast-lane transforms**: Rebuilding only the current partition intraday keeps hourly refresh feasible and cost-bounded.
+- **Materialized/shared refresh**: Hourly refresh remains low-cost at current scale in this project.
 - **View queries**: Free if under 1TB scanned/month.
 
 ### Cloud Run Job Costs
 
-- Cost scales roughly linearly with run frequency; 6-hour cadence is typically modest, but verify with Billing export.
+- Cost scales roughly linearly with run frequency; hourly cadence is typically still modest at current workload, but verify with Billing export.
 - Backfill: ~$3.50 one-time (67 days × $0.05).

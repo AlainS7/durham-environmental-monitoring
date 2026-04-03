@@ -46,7 +46,7 @@ module "sensor_pipeline" {
   ]
 
   # Schedules (UTC cron)
-  ingestion_cron      = "5 */6 * * *" # Every 6 hours ingestion
+  ingestion_cron      = "5 * * * *"   # Hourly ingestion
   refresh_cron        = "0 4 * * *"   # 04:00 UTC partition refresh
   metrics_cron        = "10 4 * * *"  # 04:10 UTC metrics capture
 }

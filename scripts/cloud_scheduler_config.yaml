@@ -132,8 +132,8 @@ spec:
 # Run at 2 AM weekdays only:
 # 0 2 * * 1-5 /workspaces/durham-environmental-monitoring/scripts/monitor_data_quality.sh
 #
-# Run every 6 hours:
-# 0 */6 * * * /workspaces/durham-environmental-monitoring/scripts/monitor_data_quality.sh
+# Run hourly:
+# 0 * * * * /workspaces/durham-environmental-monitoring/scripts/monitor_data_quality.sh
 
 ---
 # Monitoring and Alerting Configuration

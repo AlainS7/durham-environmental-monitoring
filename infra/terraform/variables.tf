@@ -30,7 +30,7 @@ variable "ingestion_image" {
 }
 variable "ingestion_cron" { 
 	type    = string 
-	default = "5 7 * * *" 
+	default = "5 * * * *" 
 }
 variable "cron_timezone" { 
 	type    = string 

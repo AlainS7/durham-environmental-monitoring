@@ -3,7 +3,7 @@ name: Execute Transformations
 on:
   schedule:
     - cron: "25 07 * * *" # 07:25 UTC daily after ingestion & loads
-    - cron: "40 */6 * * *" # every 6 hours (fast lane intraday refresh)
+    - cron: "40 * * * *" # hourly (fast lane intraday refresh)
   workflow_dispatch:
     inputs:
       date:

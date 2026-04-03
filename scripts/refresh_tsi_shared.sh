@@ -1,7 +1,6 @@
 #!/bin/bash
 # Refresh TSI materialized table in sensors_shared dataset
-# Run daily (e.g., after your daily staging job) to sync with sensors.tsi_raw_materialized
-# Matches your current daily staging + weekly promotion workflow
+# Run hourly (e.g., after hourly ingestion) to keep shared dashboards fresh
 
 set -euo pipefail
 
