@@ -10,6 +10,10 @@ permissions:
   id-token: write
   issues: write
 
+concurrency:
+  group: prod-data-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   BQ_PROJECT: ${{ vars.GCP_PROJECT_ID }}
   BQ_SHARED_DATASET: sensors_shared

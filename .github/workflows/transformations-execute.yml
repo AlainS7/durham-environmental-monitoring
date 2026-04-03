@@ -13,10 +13,15 @@ env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
 
+concurrency:
+  group: prod-data-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   run-transformations:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:

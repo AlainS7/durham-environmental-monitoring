@@ -51,6 +51,10 @@ permissions:
   id-token: write
   issues: write
 
+concurrency:
+  group: prod-data-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   ingest:
     runs-on: ubuntu-latest

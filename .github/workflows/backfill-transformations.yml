@@ -21,6 +21,10 @@ env:
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   DATASET_ID: sensors
 
+concurrency:
+  group: prod-data-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   backfill:
     runs-on: ubuntu-latest
