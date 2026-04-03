@@ -20,7 +20,7 @@ class FakeClient:
 
 
 def run_script(counts, date='2025-08-26', thresholds=None):
-    thresholds = thresholds or {'sensor_readings_wu_raw': 5}
+    thresholds = thresholds or {'wu_raw_materialized': 5}
     # monkeypatch load_thresholds to return provided thresholds
     orig_load = mod.load_thresholds
     mod.load_thresholds = lambda *a, **k: thresholds
@@ -43,12 +43,12 @@ def run_script(counts, date='2025-08-26', thresholds=None):
 
 
 def test_threshold_pass():
-    failures, results = run_script({'sensor_readings_wu_raw': 6})
+    failures, results = run_script({'wu_raw_materialized': 6})
     assert not failures
-    assert results['sensor_readings_wu_raw']['count'] == 6
+    assert results['wu_raw_materialized']['count'] == 6
 
 
 def test_threshold_fail():
-    failures, results = run_script({'sensor_readings_wu_raw': 2})
-    assert failures == ['sensor_readings_wu_raw']
-    assert results['sensor_readings_wu_raw']['count'] == 2
+    failures, results = run_script({'wu_raw_materialized': 2})
+    assert failures == ['wu_raw_materialized']
+    assert results['wu_raw_materialized']['count'] == 2

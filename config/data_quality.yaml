@@ -1,6 +1,6 @@
 row_thresholds:
-  sensor_readings_wu_raw: 100
-  sensor_readings_tsi_raw: 100
+  wu_raw_materialized: 100
+  tsi_raw_materialized: 100
   sensor_readings_long: 100
 
 metric_coverage:
