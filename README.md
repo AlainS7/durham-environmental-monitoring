@@ -119,7 +119,7 @@ The data pipeline is designed for robustness and automation.
 1. **Collection (Every 6 hours at :05 UTC):** The `daily-ingest.yml` GitHub Actions workflow triggers the Cloud Run job that executes `daily_data_collector.py`. Cloud Scheduler is also supported as an optional trigger path.
 2. **Storage (Raw):** Raw data is uploaded as Parquet files to a GCS bucket, partitioned by source and date.
 3. **Materialization:** The raw data is then materialized into partitioned BigQuery tables (`tsi_raw_materialized`, `wu_raw_materialized`).
-4. **Transformation (7:25 UTC):** A scheduled GitHub Actions workflow runs SQL transformations (via `scripts/run_transformations.py`) to build analytics-ready tables (`sensor_readings_long`, `sensor_readings_hourly`, `sensor_readings_daily`). dbt workflows are currently used for compile/test validation.
+4. **Transformation (fast + stable lanes):** SQL transformations run intraday (every 6 hours) for dashboard freshness and also on a daily stabilization run to keep finalized daily analytics tables current.
 5. **Quality Checks (7:45–8:30 UTC):** Scheduled workflows run freshness and quality checks against BigQuery tables. Failures trigger alerts and create GitHub issues.
 6. **Visualization:** Looker Studio dashboards are connected to the BigQuery tables for visualization and analysis.
 
@@ -135,7 +135,7 @@ The project relies heavily on GitHub Actions for automation and verification.
 | ----------------------------- | -------------------------------------------------- | ------------------------- |
 | `daily-ingest.yml`            | Triggers the Cloud Run data collection job.        | Schedule (every 6 hours)  |
 | `daily-merge.yml`             | Merges staged sensor readings into the fact table. | Schedule (7:10 UTC daily) |
-| `transformations-execute.yml` | Executes SQL transformation models.                | Schedule (7:25 UTC daily) |
+| `transformations-execute.yml` | Executes SQL transformation models.                | Schedule (7:25 UTC daily + every 6 hours) |
 | `daily-refresh-shared.yml`    | Refreshes Grafana-facing shared BigQuery tables.   | Schedule (every 6h)       |
 
 ### Verification & Quality (Scheduled)

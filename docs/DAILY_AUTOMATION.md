@@ -58,17 +58,17 @@ The core ingestion runs every 6 hours. Below is the detailed trace of how a sing
 
 Once the raw data is landed by the pipeline above, secondary automated workflows run to process and serve the data:
 
-| Workflow / Tool                 | Trigger / Schedule                                                           | Purpose                                                                     |
-| ------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `daily-ingest.yml`              | `5 */6 * * *`                                                                | Ingests raw data and runs ingest-adjacent merge/check steps.                |
-| `daily-merge.yml`               | `10 7 * * *`                                                                 | Merges yesterday staged partitions into consolidated production tables.     |
-| `transformations-execute.yml`   | `25 07 * * *` + manual (`workflow_dispatch`)                                 | Builds `sensor_readings_long/hourly/daily` tables.                          |
-| `daily-refresh-shared.yml`      | `45 */6 * * *`                                                               | Refreshes Grafana-facing shared tables and runs residence parity check.     |
-| `metric-coverage.yml`           | `5 8 * * *` + `workflow_run` after `Execute Transformations` (success/main)  | Validates transformed metric coverage and raises SLA alerts on streaks.     |
-| `row-count-threshold.yml`       | `15 8 * * *` + `workflow_run` after `Execute Transformations` (success/main) | Validates key table row thresholds and raises SLA alerts on streaks.        |
-| `data-freshness.yml`            | `35 8 * * *` + `workflow_run` after `Daily Refresh Shared Tables (Grafana)`  | Runs freshness + prod/shared residence parity checks with final fail gate.  |
-| `weekly-self-heal-backfill.yml` | `20 9 * * 0` (Sunday)                                                        | Re-merges + re-transforms recent days and syncs shared tables to self-heal. |
-| `sync-to-sharepoint.yml`        | Manual (`workflow_dispatch`)                                                 | Bundles recent data and pushes to external researchers.                     |
+| Workflow / Tool                 | Trigger / Schedule                                                           | Purpose                                                                                                     |
+| ------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `daily-ingest.yml`              | `5 */6 * * *`                                                                | Ingests raw data and runs merge/check for the current-day fast lane (scheduled runs), with manual date overrides available. |
+| `daily-merge.yml`               | `10 7 * * *`                                                                 | Merges yesterday staged partitions into consolidated production tables.                                     |
+| `transformations-execute.yml`   | `25 07 * * *` (stable lane) + `40 */6 * * *` (fast lane) + manual (`workflow_dispatch`) | Rebuilds transformed partitions for intraday freshness while keeping a dedicated daily stabilization run. |
+| `daily-refresh-shared.yml`      | `45 */6 * * *`                                                               | Refreshes Grafana-facing shared tables and runs residence parity check.                                     |
+| `metric-coverage.yml`           | `5 8 * * *` + `workflow_run` after `Execute Transformations` (success/main)  | Validates transformed metric coverage and raises SLA alerts on streaks.                                     |
+| `row-count-threshold.yml`       | `15 8 * * *` + `workflow_run` after `Execute Transformations` (success/main) | Validates key table row thresholds and raises SLA alerts on streaks.                                        |
+| `data-freshness.yml`            | `35 8 * * *` + `workflow_run` after `Daily Refresh Shared Tables (Grafana)`  | Runs freshness + prod/shared residence parity checks with final fail gate.                                  |
+| `weekly-self-heal-backfill.yml` | `20 9 * * 0` (Sunday)                                                        | Re-merges + re-transforms recent days and syncs shared tables to self-heal.                                 |
+| `sync-to-sharepoint.yml`        | Manual (`workflow_dispatch`)                                                 | Bundles recent data and pushes to external researchers.                                                     |
 
 ### Concurrency guardrails
 
@@ -242,10 +242,11 @@ gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=we
 
 - **Partition pruning**: Always filter on `ts` column.
 - **Clustering**: Queries filtering on `native_sensor_id` are faster/cheaper.
-- **Materialized table**: Refreshing every 6 hours is still low-cost (~$0.42/month observed scale).
+- **Fast-lane transforms**: Rebuilding only the current partition intraday keeps frequent refresh feasible and cost-bounded.
+- **Materialized/shared refresh**: Refreshing every 6 hours remains low-cost at current scale.
 - **View queries**: Free if under 1TB scanned/month.
 
 ### Cloud Run Job Costs
 
-- ~$0.05 per day (3 minutes runtime × $0.00002400/vCPU-second).
+- Cost scales roughly linearly with run frequency; 6-hour cadence is typically modest, but verify with Billing export.
 - Backfill: ~$3.50 one-time (67 days × $0.05).

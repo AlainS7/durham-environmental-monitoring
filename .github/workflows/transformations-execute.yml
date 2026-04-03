@@ -3,10 +3,17 @@ name: Execute Transformations
 on:
   schedule:
     - cron: "25 07 * * *" # 07:25 UTC daily after ingestion & loads
+    - cron: "40 */6 * * *" # every 6 hours (fast lane intraday refresh)
   workflow_dispatch:
     inputs:
       date:
         description: "Processing date (YYYY-MM-DD). Leave blank for current UTC date."
+        required: false
+      start_date:
+        description: "Optional start date (YYYY-MM-DD) for intraday/day-range refresh."
+        required: false
+      end_date:
+        description: "Optional end date (YYYY-MM-DD). Defaults to start_date when omitted."
         required: false
 
 env:
@@ -86,12 +93,40 @@ jobs:
           RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID: ${{ secrets.RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID }}
           RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION: ${{ vars.RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION }}
         run: |
-          if [ -n "${{ github.event.inputs.date }}" ]; then
-            PROC_DATE="${{ github.event.inputs.date }}"
-          else
-            PROC_DATE=$(date -u -d 'yesterday' +%Y-%m-%d)
+          set -euo pipefail
+          DATE_SINGLE="${{ github.event.inputs.date }}"
+          START_DATE="${{ github.event.inputs.start_date }}"
+          END_DATE="${{ github.event.inputs.end_date }}"
+          SCHEDULE_EXPR="${{ github.event.schedule }}"
+
+          if [ -n "$DATE_SINGLE" ]; then
+            START_DATE="$DATE_SINGLE"
+            END_DATE="$DATE_SINGLE"
+          elif [ -n "$START_DATE" ] && [ -z "$END_DATE" ]; then
+            END_DATE="$START_DATE"
+          elif [ -z "$START_DATE" ] && [ -n "$END_DATE" ]; then
+            START_DATE="$END_DATE"
+          elif [ -z "$START_DATE" ] || [ -z "$END_DATE" ]; then
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              YESTERDAY=$(date -u -d 'yesterday' +%F)
+              TODAY=$(date -u +%F)
+              if [ "$SCHEDULE_EXPR" = "25 07 * * *" ]; then
+                # Stable lane: finalize yesterday with complete-day inputs.
+                START_DATE="$YESTERDAY"
+                END_DATE="$YESTERDAY"
+              else
+                # Fast lane: keep intraday dashboards fresh.
+                START_DATE="$TODAY"
+                END_DATE="$TODAY"
+              fi
+            else
+              YESTERDAY=$(date -u -d 'yesterday' +%F)
+              START_DATE="$YESTERDAY"
+              END_DATE="$YESTERDAY"
+            fi
           fi
-          echo "Processing date: $PROC_DATE"
+
+          echo "Processing transformation window: $START_DATE -> $END_DATE"
           if [ ! -f transformations/sql/07_residence_sensor_assignments.sql ]; then
             test -n "$RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID" || { echo "Missing required secret: RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_ID"; exit 1; }
             uv run python scripts/generate_residence_assignments.py \
@@ -101,7 +136,12 @@ jobs:
               --template-secret-version "${RESIDENCE_ASSIGNMENTS_TEMPLATE_SECRET_VERSION:-latest}" \
               --execute
           fi
-          uv run python scripts/run_transformations.py --project "$BQ_PROJECT" --dataset ${{ env.DATASET_ID }} --date "$PROC_DATE" --execute
+          CUR="$START_DATE"
+          while [[ "$CUR" < "$END_DATE" || "$CUR" == "$END_DATE" ]]; do
+            echo "Running transformations for $CUR"
+            uv run python scripts/run_transformations.py --project "$BQ_PROJECT" --dataset ${{ env.DATASET_ID }} --date "$CUR" --execute
+            CUR=$(python -c "import datetime as dt,sys; cur=dt.date.fromisoformat(sys.argv[1]); print((cur+dt.timedelta(days=1)).isoformat())" "$CUR")
+          done
 
       - name: Teams notify failure
         if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true'

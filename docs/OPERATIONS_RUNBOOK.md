@@ -43,7 +43,8 @@ This is the best path when you want parity with production orchestration.
 2. Supply either `date` or `start_date` plus `end_date`.
 3. Leave `backfill_merge=true` and `run_checks=true` unless you are isolating a failure.
 4. Run [`.github/workflows/daily-refresh-shared.yml`](../.github/workflows/daily-refresh-shared.yml) if you need Grafana-facing tables refreshed immediately.
-5. Run [`.github/workflows/data-freshness.yml`](../.github/workflows/data-freshness.yml), [`.github/workflows/row-count-threshold.yml`](../.github/workflows/row-count-threshold.yml), or [`.github/workflows/metric-coverage.yml`](../.github/workflows/metric-coverage.yml) to validate transformed/shared results.
+5. Run [`.github/workflows/transformations-execute.yml`](../.github/workflows/transformations-execute.yml) to force an immediate transformed-table refresh window (intraday fast lane).
+6. Run [`.github/workflows/data-freshness.yml`](../.github/workflows/data-freshness.yml), [`.github/workflows/row-count-threshold.yml`](../.github/workflows/row-count-threshold.yml), or [`.github/workflows/metric-coverage.yml`](../.github/workflows/metric-coverage.yml) to validate transformed/shared results.
 
 ### Concurrency behavior in workflow runs
 

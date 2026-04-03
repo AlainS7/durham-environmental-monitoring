@@ -124,8 +124,17 @@ jobs:
           if [ -n "$SINGLE" ]; then
             START="$SINGLE"
             END="$SINGLE"
-          elif [ -z "$START" ] || [ -z "$END" ]; then
-            # Keep default aligned with scripts/run_cr_job.sh and collector behavior.
+          elif [ -n "$START" ] && [ -n "$END" ]; then
+            :
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            # Fast lane: ingest yesterday + today so dashboards stay fresh while
+            # still backfilling the just-finished day.
+            TODAY=$(date -u +%F)
+            YESTERDAY=$(date -u -d 'yesterday' +%F)
+            START="$YESTERDAY"
+            END="$TODAY"
+          else
+            # Stable/manual default remains yesterday.
             YESTERDAY=$(date -u -d 'yesterday' +%F)
             START="$YESTERDAY"
             END="$YESTERDAY"
