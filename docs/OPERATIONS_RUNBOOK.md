@@ -43,7 +43,15 @@ This is the best path when you want parity with production orchestration.
 2. Supply either `date` or `start_date` plus `end_date`.
 3. Leave `backfill_merge=true` and `run_checks=true` unless you are isolating a failure.
 4. Run [`.github/workflows/daily-refresh-shared.yml`](../.github/workflows/daily-refresh-shared.yml) if you need Grafana-facing tables refreshed immediately.
-5. Run [`.github/workflows/daily-verify.yml`](../.github/workflows/daily-verify.yml) or [`.github/workflows/data-quality-check.yml`](../.github/workflows/data-quality-check.yml) to validate the result.
+5. Run [`.github/workflows/data-freshness.yml`](../.github/workflows/data-freshness.yml), [`.github/workflows/row-count-threshold.yml`](../.github/workflows/row-count-threshold.yml), or [`.github/workflows/metric-coverage.yml`](../.github/workflows/metric-coverage.yml) to validate transformed/shared results.
+
+### Concurrency behavior in workflow runs
+
+Core production workflows define GitHub Actions `concurrency` groups so the same workflow family does not run in parallel on the same branch.
+
+- Shared group workflows (for example `prod-data-pipeline-${{ github.ref }}`) queue in order and prevent overlapping writes across ingest/merge/transform/refresh.
+- Check workflows use workflow-specific groups (for example `metric-coverage-${{ github.ref }}`) to avoid duplicate simultaneous checks.
+- `cancel-in-progress: false` keeps active runs alive and queues later runs, preserving deterministic processing.
 
 ### Option B: Reproduce the pipeline locally from the repo
 

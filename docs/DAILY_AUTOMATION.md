@@ -58,12 +58,26 @@ The core ingestion runs every 6 hours. Below is the detailed trace of how a sing
 
 Once the raw data is landed by the pipeline above, secondary automated workflows run to process and serve the data:
 
-| Workflow / Tool               | Schedule                     | Purpose                                                 |
-| ----------------------------- | ---------------------------- | ------------------------------------------------------- |
-| `transformations-execute.yml` | `25 07 * * *` (07:25 UTC)    | Runs SQL transformations to build analytics tables.     |
-| `daily-refresh-shared.yml`    | `45 */6 * * *` (staggered)   | Refreshes the Grafana-facing views in `sensors_shared`. |
-| `data-quality-check.yml`      | `00 8 * * *` (08:00 UTC)     | Validates row counts and checks for missing partitions. |
-| `sync-to-sharepoint.yml`      | Manual (`workflow_dispatch`) | Bundles recent data and pushes to external researchers. |
+| Workflow / Tool                 | Trigger / Schedule                                                           | Purpose                                                                     |
+| ------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `daily-ingest.yml`              | `5 */6 * * *`                                                                | Ingests raw data and runs ingest-adjacent merge/check steps.                |
+| `daily-merge.yml`               | `10 7 * * *`                                                                 | Merges yesterday staged partitions into consolidated production tables.     |
+| `transformations-execute.yml`   | `25 07 * * *` + manual (`workflow_dispatch`)                                 | Builds `sensor_readings_long/hourly/daily` tables.                          |
+| `daily-refresh-shared.yml`      | `45 */6 * * *`                                                               | Refreshes Grafana-facing shared tables and runs residence parity check.     |
+| `metric-coverage.yml`           | `5 8 * * *` + `workflow_run` after `Execute Transformations` (success/main)  | Validates transformed metric coverage and raises SLA alerts on streaks.     |
+| `row-count-threshold.yml`       | `15 8 * * *` + `workflow_run` after `Execute Transformations` (success/main) | Validates key table row thresholds and raises SLA alerts on streaks.        |
+| `data-freshness.yml`            | `35 8 * * *` + `workflow_run` after `Daily Refresh Shared Tables (Grafana)`  | Runs freshness + prod/shared residence parity checks with final fail gate.  |
+| `weekly-self-heal-backfill.yml` | `20 9 * * 0` (Sunday)                                                        | Re-merges + re-transforms recent days and syncs shared tables to self-heal. |
+| `sync-to-sharepoint.yml`        | Manual (`workflow_dispatch`)                                                 | Bundles recent data and pushes to external researchers.                     |
+
+### Concurrency guardrails
+
+Workflows use GitHub Actions `concurrency` to prevent overlapping runs for the same branch.
+
+- `group` defines which runs are mutually exclusive (for example, `prod-data-pipeline-${{ github.ref }}`).
+- `cancel-in-progress: false` means new runs **queue** instead of canceling active runs.
+
+This protects shared tables from concurrent writes and keeps execution order deterministic.
 
 ---
 

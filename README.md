@@ -140,16 +140,16 @@ The project relies heavily on GitHub Actions for automation and verification.
 
 ### Verification & Quality (Scheduled)
 
-| Workflow                  | Purpose                                                       | Triggers                  |
-| ------------------------- | ------------------------------------------------------------- | ------------------------- |
-| `e2e-nightly.yml`         | Nightly end-to-end pipeline integrity test.                   | Schedule (7:05 UTC daily) |
-| `staging-presence.yml`    | Confirms staging tables are populated before transforms run.  | Schedule (7:05 UTC daily) |
-| `row-count-threshold.yml` | Validates row counts against expected thresholds.             | Schedule (6:45 UTC daily) |
-| `metric-coverage.yml`     | Validates metric field coverage across sensor sources.        | Schedule (6:30 UTC daily) |
-| `data-freshness.yml`      | Checks data freshness in BigQuery after merge and transforms. | Schedule (7:45 UTC daily) |
-| `data-quality-check.yml`  | Runs full data quality assertions against BigQuery tables.    | Schedule (8:00 UTC daily) |
-| `tsi-data-quality.yml`    | TSI-specific quality checks; sends Teams alert on failure.    | Schedule (8:30 UTC daily) |
-| `daily-verify.yml`        | Verifies cloud pipeline integrity (GCS presence, row counts). | Schedule (6:15 UTC daily) |
+| Workflow                  | Purpose                                                       | Triggers                                                   |
+| ------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| `e2e-nightly.yml`         | Nightly end-to-end pipeline integrity test.                   | Schedule (7:05 UTC daily)                                  |
+| `staging-presence.yml`    | Confirms staging tables are populated before transforms run.  | Schedule (7:05 UTC daily)                                  |
+| `row-count-threshold.yml` | Validates row counts against expected thresholds.             | Schedule (8:15 UTC) + `workflow_run` after transformations |
+| `metric-coverage.yml`     | Validates metric field coverage across sensor sources.        | Schedule (8:05 UTC) + `workflow_run` after transformations |
+| `data-freshness.yml`      | Checks data freshness and prod/shared residence parity.       | Schedule (8:35 UTC) + `workflow_run` after shared refresh  |
+| `data-quality-check.yml`  | Runs full data quality assertions against BigQuery tables.    | Schedule (8:00 UTC daily)                                  |
+| `tsi-data-quality.yml`    | TSI-specific quality checks; sends Teams alert on failure.    | Schedule (8:30 UTC daily)                                  |
+| `daily-verify.yml`        | Verifies cloud pipeline integrity (GCS presence, row counts). | Schedule (6:15 UTC daily)                                  |
 
 ### CI & Build
 
@@ -161,13 +161,14 @@ The project relies heavily on GitHub Actions for automation and verification.
 
 ### Infrastructure & Manual Operations
 
-| Workflow                       | Purpose                                             | Triggers        |
-| ------------------------------ | --------------------------------------------------- | --------------- |
-| `deploy.yml`                   | Deploys infrastructure changes via Terraform.       | Manual dispatch |
-| `sync-to-sharepoint.yml`       | Exports curated data packs to SharePoint.           | Manual dispatch |
-| `execute-job.yml`              | Ad-hoc Cloud Run job trigger for any date or range. | Manual dispatch |
-| `verify-compare.yml`           | Compare-mode verification of pipeline output.       | Manual dispatch |
-| `backfill-transformations.yml` | Backfills historical transformation tables.         | Manual dispatch |
+| Workflow                        | Purpose                                                        | Triggers                             |
+| ------------------------------- | -------------------------------------------------------------- | ------------------------------------ |
+| `deploy.yml`                    | Deploys infrastructure changes via Terraform.                  | Manual dispatch                      |
+| `sync-to-sharepoint.yml`        | Exports curated data packs to SharePoint.                      | Manual dispatch                      |
+| `execute-job.yml`               | Ad-hoc Cloud Run job trigger for any date or range.            | Manual dispatch                      |
+| `verify-compare.yml`            | Compare-mode verification of pipeline output.                  | Manual dispatch                      |
+| `backfill-transformations.yml`  | Backfills historical transformation tables.                    | Manual dispatch                      |
+| `weekly-self-heal-backfill.yml` | Re-merges/rebuilds a recent window and re-syncs shared tables. | Schedule (Sunday 09:20 UTC) + manual |
 
 ---
 
