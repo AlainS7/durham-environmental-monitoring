@@ -112,7 +112,7 @@ SELECT 'TSI' AS source, COUNT(*) AS rows, MAX(DATE(ts)) AS latest_date
 FROM \`durham-weather-466502.sensors_shared.tsi_raw_materialized\`
 UNION ALL
 SELECT 'WU' AS source, COUNT(*) AS rows, MAX(DATE(ts)) AS latest_date
-FROM \`durham-weather-466502.sensors_shared.wu_raw_view\`"
+FROM \`durham-weather-466502.sensors_shared.wu_raw_materialized\`"
 ```
 
 Expected output: `latest_date` should be yesterday or today.
@@ -194,7 +194,7 @@ SELECT
   'WU' AS source,
   MAX(DATE(ts)) AS latest_date,
   DATE_DIFF(CURRENT_DATE(), MAX(DATE(ts)), DAY) AS days_behind
-FROM `durham-weather-466502.sensors_shared.wu_raw_view`
+FROM `durham-weather-466502.sensors_shared.wu_raw_materialized`
 ```
 
 **Alert recommendation:** Set an alert threshold for `days_behind > 1`.
