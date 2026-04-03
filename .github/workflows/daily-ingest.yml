@@ -348,7 +348,6 @@ jobs:
         with:
           title: "Daily ingestion monitoring failure"
           content-filepath: ingestion_summary.log
-          labels: monitoring, ingestion
 
       - name: Teams notify failure
         if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true' && env.TEAMS_WEBHOOK_URL != '' && github.event_name == 'schedule'
