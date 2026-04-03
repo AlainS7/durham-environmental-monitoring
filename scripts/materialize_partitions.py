@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import re
 from typing import Iterable, List, Optional
 import os
 
@@ -66,6 +67,14 @@ WU_STAGE_SCHEMA = [
     ]),
     bigquery.SchemaField("stationID", "STRING"),
 ]
+
+
+def _extract_parquet_uri_from_error(error_message: str) -> Optional[str]:
+    """Extract a gs://...parquet URI from BigQuery external-table errors."""
+    match = re.search(r"File:\s*(gs://\S+\.parquet)", error_message or "")
+    if not match:
+        return None
+    return match.group(1).strip()
 
 
 def daterange(start: dt.date, end: dt.date) -> Iterable[dt.date]:
@@ -302,6 +311,7 @@ def _load_from_gcs_to_staging(
     bucket: str,
     prefix: str,
     date: dt.date,
+    uri_override: Optional[str] = None,
 ) -> Optional[str]:
     """Load a single partition parquet from GCS into a temporary staging table.
 
@@ -311,7 +321,7 @@ def _load_from_gcs_to_staging(
     fq_stage = f"{project}.{dataset}.{staging}"
 
     # Build exact URI for the expected file name written by collector
-    uri = f"gs://{bucket}/{prefix.strip('/')}/source={src}/agg=raw/dt={date.isoformat()}/{src}-{date.isoformat()}.parquet"
+    uri = uri_override or f"gs://{bucket}/{prefix.strip('/')}/source={src}/agg=raw/dt={date.isoformat()}/{src}-{date.isoformat()}.parquet"
     try:
         _create_stage_table_from_uri(client, fq_stage, uri)
         print(f"[materialize] Loaded stage from {uri} into {fq_stage}")
@@ -432,6 +442,7 @@ def main() -> None:
                 delete_partition(client, args.dataset, mat, d)
                 # Prefer external table path when available; otherwise, load from GCS directly
                 use_external = _table_exists(client, client.project, args.dataset, ext)
+                external_error_message: Optional[str] = None
                 if use_external:
                     try:
                         # Ensure target exists using external schema
@@ -442,12 +453,25 @@ def main() -> None:
                             continue
                         print(f"[materialize] External path inserted 0 rows for {src} {d}; falling back to GCS stage.")
                     except Exception as e:
+                        external_error_message = str(e)
                         print(f"[materialize] External path failed for {src} {d}: {e}. Falling back to GCS stage.")
                 # Fallback to GCS direct load
-                if not args.bucket:
-                    print("[materialize] No bucket provided; skipping fallback load.")
+                uri_override = _extract_parquet_uri_from_error(external_error_message or "")
+                if not args.bucket and not uri_override:
+                    print("[materialize] No bucket provided and no file URI found in error; skipping fallback load.")
                     continue
-                stage = _load_from_gcs_to_staging(client, client.project, args.dataset, src, args.bucket, args.prefix, d)
+                if uri_override and not args.bucket:
+                    print(f"[materialize] Using URI from external-table error for fallback load: {uri_override}")
+                stage = _load_from_gcs_to_staging(
+                    client,
+                    client.project,
+                    args.dataset,
+                    src,
+                    args.bucket or "",
+                    args.prefix,
+                    d,
+                    uri_override=uri_override,
+                )
                 if stage is None:
                     # nothing to insert
                     continue

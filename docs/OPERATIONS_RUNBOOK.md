@@ -134,6 +134,8 @@ dbt run --target dev
 dbt test --target dev
 ```
 
+> Note: dbt validation artifacts are now isolated to a dedicated dataset (`sensors_dbt_ci`) so they cannot overwrite production transformed tables in `sensors`.
+
 For multi-day SQL backfill runs, use:
 
 ```bash

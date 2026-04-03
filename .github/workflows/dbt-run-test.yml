@@ -11,6 +11,7 @@ on:
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   BQ_DATASET: sensors
+  BQ_DBT_DATASET: sensors_dbt_ci
 
 jobs:
   run-dbt:
@@ -46,12 +47,15 @@ jobs:
                 type: bigquery
                 method: oauth
                 project: ${{ env.GCP_PROJECT_ID }}
-                dataset: ${{ env.BQ_DATASET }}
+                dataset: ${{ env.BQ_DBT_DATASET }}
                 threads: 4
                 timeout_seconds: 300
                 priority: interactive
                 location: US
           EOF
+      - name: Ensure isolated dbt dataset exists
+        run: |
+          bq --project_id="${{ env.GCP_PROJECT_ID }}" mk --dataset --location=US "${{ env.GCP_PROJECT_ID }}:${{ env.BQ_DBT_DATASET }}" || true
       - name: dbt deps
         run: dbt deps --project-dir transformations/dbt
       - name: dbt run
