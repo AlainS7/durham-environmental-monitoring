@@ -74,6 +74,7 @@ grpc-google-iam-v1==0.14.2
 grpcio==1.75.1
     # via
     #   google-api-core
+    #   google-cloud-bigquery-storage
     #   googleapis-common-protos
     #   grpc-google-iam-v1
     #   grpcio-status
