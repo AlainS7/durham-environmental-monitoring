@@ -2,7 +2,7 @@ UV?=uv
 PY?=python
 PKG_SRC=src
 
-.PHONY: help lint test fmt run-collector load-bq run-transformations generate-sensor-assignments install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
+.PHONY: help lint test fmt run-collector run-transformations generate-sensor-assignments install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
 
 help:
 	@echo "Targets:"
@@ -11,7 +11,6 @@ help:
 	@echo "  test                   Run pytest (unit & integration)"
 	@echo "  fmt                    Run ruff format"
 	@echo "  run-collector          Execute data collection (env controls)"
-	@echo "  load-bq                Load a date partition to BigQuery"
 	@echo "  run-transformations    Execute transformation SQL files"
 	@echo "  generate-sensor-assignments  Generate gitignored residence assignment SQL with real sensor IDs"
 	@echo "  create-external        Create or replace BQ external tables over GCS raw Parquet"
@@ -41,10 +40,6 @@ test:
 run-collector:
 	@# Example: make run-collector START=2025-08-01 END=2025-08-01 SOURCE=all SINK=gcs
 	python -m src.data_collection.daily_data_collector --start $(START) --end $(END) --source $(SOURCE) --sink $(SINK) $(if $(AGG),--aggregate,) $(if $(AGG_INTERVAL),--agg-interval $(AGG_INTERVAL),)
-
-load-bq:
-	@# Required vars: DATE=YYYY-MM-DD SOURCE=all|WU|TSI AGG=raw|h
-	$(UV) run python scripts/load_to_bigquery.py --date $(DATE) --source $(SOURCE) --agg $(AGG) --dataset $$BQ_DATASET --project $$BQ_PROJECT --bucket $$GCS_BUCKET --prefix $$GCS_PREFIX
 
 run-transformations:
 	@# Required vars: DATE=YYYY-MM-DD DATASET=sensors PROJECT overrides BQ_PROJECT if set
