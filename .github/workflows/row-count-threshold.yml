@@ -3,18 +3,30 @@ name: Row Count Threshold Check
 on:
   schedule:
     - cron: '15 8 * * *'
+  workflow_run:
+    workflows: ["Execute Transformations"]
+    types:
+      - completed
   workflow_dispatch:
 
 env:
   BQ_PROJECT: ${{ vars.GCP_PROJECT_ID }}
   BQ_DATASET: sensors
+  SLA_CONSECUTIVE_FAILURES: '3'
+
+concurrency:
+  group: row-count-threshold-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   thresholds:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       id-token: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,3 +46,71 @@ jobs:
         run: |
           YESTERDAY=$(date -u -d 'yesterday' +%F)
           python scripts/check_row_thresholds.py --project ${{ env.BQ_PROJECT }} --dataset ${{ env.BQ_DATASET }} --date $YESTERDAY
+
+      - name: Evaluate consecutive failure streak
+        if: failure() && github.event_name != 'workflow_dispatch'
+        id: failure_streak
+        uses: actions/github-script@v7
+        env:
+          SLA_CONSECUTIVE_FAILURES: ${{ env.SLA_CONSECUTIVE_FAILURES }}
+        with:
+          script: |
+            const threshold = Number(process.env.SLA_CONSECUTIVE_FAILURES || '3');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = 'main';
+
+            const resp = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              branch,
+              status: 'completed',
+              per_page: 100,
+            });
+
+            const workflowName = context.workflow;
+            const priorRuns = resp.data.workflow_runs
+              .filter(r => r.name === workflowName && r.id !== context.runId)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const failedConclusions = new Set(['failure', 'timed_out', 'cancelled']);
+            let priorFailureStreak = 0;
+            for (const run of priorRuns) {
+              if (failedConclusions.has(run.conclusion)) {
+                priorFailureStreak += 1;
+                continue;
+              }
+              if (run.conclusion === 'success') {
+                break;
+              }
+            }
+
+            const currentStreak = priorFailureStreak + 1;
+            const alert = currentStreak === threshold;
+            core.setOutput('streak', String(currentStreak));
+            core.setOutput('threshold', String(threshold));
+            core.setOutput('alert', alert ? 'true' : 'false');
+            core.info(`Row threshold failure streak: ${currentStreak} (threshold: ${threshold})`);
+
+      - name: Create issue on repeated failure
+        if: failure() && github.event_name != 'workflow_dispatch' && steps.failure_streak.outputs.alert == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Row threshold check failed ${process.env.STREAK} runs in a row`,
+              body: [
+                '## Row Count Threshold SLA Alert',
+                '',
+                `- Consecutive failures: ${process.env.STREAK}`,
+                `- Threshold: ${process.env.THRESHOLD}`,
+                `- Workflow run: ${process.env.RUN_URL}`,
+              ].join('\n'),
+              labels: ['monitoring', 'row-threshold', 'sla-alert']
+            });
+        env:
+          STREAK: ${{ steps.failure_streak.outputs.streak }}
+          THRESHOLD: ${{ steps.failure_streak.outputs.threshold }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
