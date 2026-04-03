@@ -1,0 +1,139 @@
+name: Weekly Self-Healing Backfill
+
+on:
+  schedule:
+    - cron: '20 9 * * 0' # Sunday 09:20 UTC
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Recent days window to heal (default: 7)'
+        required: false
+        default: '7'
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  DATASET_ID: sensors
+
+concurrency:
+  group: prod-data-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  self-heal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Auth to GCP (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Resolve backfill window
+        id: window
+        run: |
+          set -euo pipefail
+          DAYS="${{ github.event.inputs.days }}"
+          if [ -z "$DAYS" ]; then DAYS=7; fi
+          case "$DAYS" in
+            ''|*[!0-9]*) echo "days must be a positive integer" >&2; exit 1 ;;
+          esac
+          if [ "$DAYS" -lt 1 ]; then
+            echo "days must be >= 1" >&2
+            exit 1
+          fi
+
+          END=$(date -u -d 'yesterday' +%F)
+          START=$(date -u -d "$END -$((DAYS-1)) day" +%F)
+          echo "start=$START" >> "$GITHUB_OUTPUT"
+          echo "end=$END" >> "$GITHUB_OUTPUT"
+          echo "days=$DAYS" >> "$GITHUB_OUTPUT"
+          echo "Self-heal window: $START -> $END ($DAYS days)"
+
+      - name: Re-merge recent staged partitions
+        run: |
+          python scripts/merge_backfill_range.py \
+            --project "${{ env.PROJECT_ID }}" \
+            --dataset "${{ env.DATASET_ID }}" \
+            --start "${{ steps.window.outputs.start }}" \
+            --end "${{ steps.window.outputs.end }}" \
+            --per-source-dated \
+            --sources tsi,wu \
+            --update-only-if-changed
+
+      - name: Rebuild recent transformation partitions
+        run: |
+          python scripts/backfill_transformations.py \
+            --project "${{ env.PROJECT_ID }}" \
+            --dataset "${{ env.DATASET_ID }}" \
+            --start "${{ steps.window.outputs.start }}" \
+            --end "${{ steps.window.outputs.end }}" \
+            --execute
+
+      - name: Sync transformed tables to sensors_shared
+        env:
+          GCP_PROJECT_ID: ${{ env.PROJECT_ID }}
+        run: |
+          python scripts/sync_to_grafana.py
+
+      - name: Verify residence parity after self-heal
+        run: |
+          python scripts/check_residence_freshness_parity.py \
+            --project "${{ env.PROJECT_ID }}" \
+            --prod-dataset sensors \
+            --shared-dataset sensors_shared \
+            --table residence_readings_daily \
+            --max-lag-days 0
+
+      - name: Create issue on scheduled self-heal failure
+        if: failure() && github.event_name == 'schedule'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Weekly self-heal backfill failed",
+              body: [
+                "## Weekly Self-Healing Backfill Failure",
+                "",
+                `- Workflow run: ${process.env.RUN_URL}`,
+                `- Trigger: ${process.env.TRIGGER}`,
+                `- Window: ${process.env.START} -> ${process.env.END}`,
+              ].join('\n'),
+              labels: ['monitoring', 'backfill', 'self-heal']
+            });
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER: ${{ github.event_name }}
+          START: ${{ steps.window.outputs.start }}
+          END: ${{ steps.window.outputs.end }}
+
+      - name: Teams notify failure
+        if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true' && env.TEAMS_WEBHOOK_URL != ''
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          python3 scripts/notify_teams.py \
+            --webhook "$TEAMS_WEBHOOK_URL" \
+            --title "Weekly Self-Heal Backfill FAILED" \
+            --text "Window: ${{ steps.window.outputs.start }} -> ${{ steps.window.outputs.end }}\nRepo: $GITHUB_REPOSITORY\nSHA: $GITHUB_SHA\nRun: $GITHUB_RUN_ID"
