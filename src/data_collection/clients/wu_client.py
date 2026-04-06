@@ -16,20 +16,40 @@ class EndpointStrategy(Enum):
     ALL = "all"
     MULTIDAY = "multiday"
     HOURLY = "hourly"
+    HYBRID = "hybrid"
 
 log = logging.getLogger(__name__)
 
 class WUClient(BaseClient):
+    @staticmethod
+    def _normalize_endpoint_strategy(
+        endpoint_strategy: EndpointStrategy | str,
+    ) -> EndpointStrategy:
+        if isinstance(endpoint_strategy, EndpointStrategy):
+            return endpoint_strategy
+        try:
+            return EndpointStrategy(str(endpoint_strategy).strip().lower())
+        except ValueError:
+            log.warning(
+                "Invalid WU endpoint strategy '%s'; defaulting to HYBRID",
+                endpoint_strategy,
+            )
+            return EndpointStrategy.HYBRID
+
     def _build_requests(self, start_date: str, end_date: str) -> list:
         """
         Builds a list of (station_id, date_str, end_date) tuples for the selected endpoint strategy.
         - HOURLY: one request per station per day (for /history/hourly endpoint)
-        - MULTIDAY: one request per station per day (for /observations/all/1day endpoint)
+        - MULTIDAY: one request per station per day (for /history/all endpoint)
+        - HYBRID: two requests per station per day (HOURLY + MULTIDAY), merged later
         - ALL: one request per station for the full date range (for /observations/all endpoint)
         """
         requests = []
         date_range = pd.date_range(start=start_date, end=end_date)
-        if self.endpoint_strategy == EndpointStrategy.HOURLY or self.endpoint_strategy == EndpointStrategy.MULTIDAY:
+        if self.endpoint_strategy in (
+            EndpointStrategy.HOURLY,
+            EndpointStrategy.MULTIDAY,
+        ):
             # HOURLY and MULTIDAY: build (station, date) requests for each day in range
             for s in self.stations:
                 if 'stationId' not in s:
@@ -37,14 +57,25 @@ class WUClient(BaseClient):
                 station_id = s['stationId']
                 for d in date_range:
                     date_str = d.strftime("%Y-%m-%d")
-                    requests.append((station_id, date_str, None))
+                    requests.append((station_id, date_str, None, self.endpoint_strategy))
+        elif self.endpoint_strategy == EndpointStrategy.HYBRID:
+            # HYBRID mode: collect rich hourly fields + higher-frequency intraday rows
+            # and reconcile them by (stationID, obsTimeUtc) after fetch.
+            for s in self.stations:
+                if 'stationId' not in s:
+                    continue
+                station_id = s['stationId']
+                for d in date_range:
+                    date_str = d.strftime("%Y-%m-%d")
+                    requests.append((station_id, date_str, None, EndpointStrategy.HOURLY))
+                    requests.append((station_id, date_str, None, EndpointStrategy.MULTIDAY))
         elif self.endpoint_strategy == EndpointStrategy.ALL:
             # ALL: build (station, start_date, end_date) requests for each station
             for s in self.stations:
                 if 'stationId' not in s:
                     continue
                 station_id = s['stationId']
-                requests.append((station_id, start_date, end_date))
+                requests.append((station_id, start_date, end_date, EndpointStrategy.ALL))
         else:
             # Fallback: treat as per-day requests
             for s in self.stations:
@@ -53,26 +84,20 @@ class WUClient(BaseClient):
                 station_id = s['stationId']
                 for d in date_range:
                     date_str = d.strftime("%Y-%m-%d")
-                    requests.append((station_id, date_str, None))
+                    requests.append((station_id, date_str, None, EndpointStrategy.HOURLY))
         return requests
 
     async def _execute_fetches(self, requests: list) -> list:
         """
         Executes async fetches for the given requests and collects results.
-        - For ALL: calls _fetch_one(station_id, start_date, end_date)
-        - For HOURLY/MULTIDAY: calls _fetch_one(station_id, date_str)
+        - For ALL: calls _fetch_one(station_id, start_date, end_date, strategy=ALL)
+        - For HOURLY/MULTIDAY/HYBRID: calls _fetch_one(station_id, date_str, strategy=...)
         """
         all_results = []
         tasks = []
         for req in requests:
-            if self.endpoint_strategy == EndpointStrategy.ALL:
-                # /observations/all endpoint
-                station_id, start_date, end_date = req
-                tasks.append(self._fetch_one(station_id, start_date, end_date))
-            else:
-                # /history/hourly or /observations/all/1day endpoint
-                station_id, date_str, _ = req
-                tasks.append(self._fetch_one(station_id, date_str))
+            station_id, start_date, end_date, strategy = req
+            tasks.append(self._fetch_one(station_id, start_date, end_date, strategy))
         for future in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc="Fetching WU Data"):
             result = await future
             if result is not None and not result.empty:
@@ -81,31 +106,45 @@ class WUClient(BaseClient):
     """Client for fetching data from the Weather Underground API."""
 
     # FEAT: Replace boolean parameters with an enum-based endpoint strategy
-    def __init__(self, api_key: str, base_url: str = "https://api.weather.com/v2/pws", endpoint_strategy: EndpointStrategy = EndpointStrategy.HOURLY):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.weather.com/v2/pws",
+        endpoint_strategy: EndpointStrategy | str = EndpointStrategy.HYBRID,
+    ):
         """
         endpoint_strategy: Specifies the endpoint strategy to use. Options are:
             - EndpointStrategy.ALL: Use 'observations/all' (multi-day, no date param).
-            - EndpointStrategy.MULTIDAY: Use 'observations/all/1day' (per-day, rapid history - LIMITED FIELDS).
+            - EndpointStrategy.MULTIDAY: Use 'history/all' (per-day, denser intraday observations).
             - EndpointStrategy.HOURLY: Use 'history/hourly' endpoint (per-day, per-station, FULL HISTORICAL DATA with all fields).
+            - EndpointStrategy.HYBRID: Fetch both HOURLY + MULTIDAY and reconcile by timestamp.
         
-        NOTE: EndpointStrategy.HOURLY is REQUIRED for historical data with complete field coverage.
-        The rapid history endpoints (MULTIDAY, ALL) only return 4-6 fields (humidity, solar, wind direction, UV).
-        Historical API returns ALL fields: temperature, wind speed/gust, precipitation, pressure, dew point, comfort indices.
+        NOTE:
+            - HOURLY provides full weather fields but at coarser cadence.
+            - MULTIDAY/ALL can provide denser intraday rows but fewer fields.
+            - HYBRID keeps richer hourly records and supplements with denser intraday points.
         """
         super().__init__(base_url, api_key)
         self.stations = get_wu_stations()
-        self.endpoint_strategy = endpoint_strategy
+        self.endpoint_strategy = self._normalize_endpoint_strategy(endpoint_strategy)
 
-    async def _fetch_one(self, station_id: str, start_date: str, end_date: str = "") -> Optional[pd.DataFrame]:
+    async def _fetch_one(
+        self,
+        station_id: str,
+        start_date: str,
+        end_date: str = "",
+        strategy: EndpointStrategy | None = None,
+    ) -> Optional[pd.DataFrame]:
         """
         Fetches all rapid observations for a single station and date range, returns as DataFrame.
         If using /all endpoint, fetches all data for the range in one call; else, expects start_date == end_date and fetches for that day.
         If using /history/hourly endpoint, fetches hourly summary for a single day and station.
         Uses Pydantic WUResponse for validation.
         """
+        mode = strategy or self.endpoint_strategy
         data = None
         filter_end_date_for_helper = "" # Initialize for clarity
-        if self.endpoint_strategy == EndpointStrategy.HOURLY:
+        if mode == EndpointStrategy.HOURLY:
             # Use /history/hourly endpoint (per-day, per-station) - Returns ALL fields including temp, wind, precip
             # This is the PWS Historical v2 API that returns complete weather data
             endpoint = "history/hourly"
@@ -120,7 +159,7 @@ class WUClient(BaseClient):
             }
             data = await self._request("GET", endpoint, params=params)
             filter_end_date_for_helper = start_date # For history/hourly, filter for just the start_date
-        elif self.endpoint_strategy == EndpointStrategy.ALL:
+        elif mode == EndpointStrategy.ALL:
             endpoint = "observations/all"
             filter_end_date_for_helper = end_date if end_date else start_date # Use the actual end_date for filtering
             params = {
@@ -133,10 +172,13 @@ class WUClient(BaseClient):
             }
             data = await self._request("GET", endpoint, params=params)
         else:
-            endpoint = "observations/all/1day"
-            filter_end_date_for_helper = start_date # For 1day endpoint, filter for just the start_date
+            # MULTIDAY path: use date-addressable dense history endpoint.
+            endpoint = "history/all"
+            date_param = start_date.replace("-", "")  # YYYYMMDD
+            filter_end_date_for_helper = start_date
             params = {
                 "stationId": station_id,
+                "date": date_param,
                 "format": "json",
                 "apiKey": self.api_key,
                 "units": "m"
@@ -218,6 +260,16 @@ class WUClient(BaseClient):
 
         log.info("Converting obsTimeUtc to datetime...")
         raw_df['obsTimeUtc'] = pd.to_datetime(raw_df['obsTimeUtc'])
+        if {'stationID', 'obsTimeUtc'}.issubset(raw_df.columns):
+            # Collapse overlap between HOURLY and MULTIDAY requests on same timestamp.
+            # For duplicate rows, keep the first non-null value per column.
+            order_cols = ['stationID', 'obsTimeUtc']
+            raw_df = raw_df.sort_values(order_cols)
+            raw_df = (
+                raw_df.groupby(order_cols, as_index=False, sort=False)
+                .agg(lambda s: s.dropna().iloc[0] if not s.dropna().empty else s.iloc[0])
+                .reset_index(drop=True)
+            )
 
         if not aggregate:
             log.info("Aggregation disabled; returning raw observations DataFrame.")

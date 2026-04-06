@@ -25,7 +25,8 @@ class Config:
             api_key = os.getenv("DUMMY_WU_API_KEY")
         return {
             "base_url": "https://api.weather.com/v2/pws",
-            "api_key": api_key
+            "api_key": api_key,
+            "endpoint_strategy": os.getenv("WU_ENDPOINT_STRATEGY", "hybrid"),
         }
 
     @property
