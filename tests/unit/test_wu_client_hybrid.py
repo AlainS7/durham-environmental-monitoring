@@ -117,5 +117,6 @@ async def test_multiday_uses_history_all_with_date_param(mocker):
     assert [c['method'] for c in calls] == ['GET', 'GET']
     assert all(c['endpoint'] == 'history/all' for c in calls)
     assert [c['params']['date'] for c in calls] == ['20260331', '20260401']
+    assert all(c['params']['numericPrecision'] == 'decimal' for c in calls)
     assert not df.empty
     assert pd.Timestamp('2026-04-01T00:05:00Z') in set(df['obsTimeUtc'])

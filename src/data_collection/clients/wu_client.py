@@ -191,6 +191,7 @@ class WUClient(BaseClient):
                     "format": "json",
                     "apiKey": self.api_key,
                     "units": "m",
+                    "numericPrecision": "decimal",
                 }
                 payload = await self._request("GET", endpoint, params=params)
                 if payload:
