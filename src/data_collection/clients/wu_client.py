@@ -173,27 +173,55 @@ class WUClient(BaseClient):
             data = await self._request("GET", endpoint, params=params)
         else:
             # MULTIDAY path: use date-addressable dense history endpoint.
+            # WU "date" is local-day based, while downstream partitioning is UTC-day based.
+            # Fetch previous + current local dates so early UTC hours (00:00-03:59/04:59)
+            # are not dropped for the target UTC day.
             endpoint = "history/all"
-            date_param = start_date.replace("-", "")  # YYYYMMDD
             filter_end_date_for_helper = start_date
-            params = {
-                "stationId": station_id,
-                "date": date_param,
-                "format": "json",
-                "apiKey": self.api_key,
-                "units": "m"
-            }
-            data = await self._request("GET", endpoint, params=params)
+            target = pd.to_datetime(start_date)
+            local_dates = [
+                (target - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                target.strftime("%Y-%m-%d"),
+            ]
+            payloads = []
+            for local_date in local_dates:
+                params = {
+                    "stationId": station_id,
+                    "date": local_date.replace("-", ""),  # YYYYMMDD
+                    "format": "json",
+                    "apiKey": self.api_key,
+                    "units": "m",
+                }
+                payload = await self._request("GET", endpoint, params=params)
+                if payload:
+                    payloads.append(payload)
+
+            obs_dicts = []
+            for payload in payloads:
+                try:
+                    validated = WUResponse.model_validate(payload)
+                except pydantic.ValidationError as e:
+                    log.error(
+                        "WU API response validation failed for station %s: %s",
+                        station_id,
+                        e,
+                    )
+                    continue
+                obs_dicts.extend(obs.model_dump() for obs in validated.observations)
+
+            if not obs_dicts:
+                return None
 
         # Validate and parse using Pydantic WUResponse
-        try:
-            validated = WUResponse.model_validate(data)
-        except pydantic.ValidationError as e:
-            log.error(f"WU API response validation failed for station {station_id}: {e}")
-            return None
+        if mode != EndpointStrategy.MULTIDAY:
+            try:
+                validated = WUResponse.model_validate(data)
+            except pydantic.ValidationError as e:
+                log.error(f"WU API response validation failed for station {station_id}: {e}")
+                return None
 
-        # Convert validated observations to dicts for DataFrame
-        obs_dicts = [obs.model_dump() for obs in validated.observations]
+            # Convert validated observations to dicts for DataFrame
+            obs_dicts = [obs.model_dump() for obs in validated.observations]
         
         # Flatten the 'metric' and 'imperial' nested objects into top-level fields
         # WU API returns temp/wind/precip data inside these nested objects

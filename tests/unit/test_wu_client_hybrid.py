@@ -84,17 +84,24 @@ async def test_multiday_uses_history_all_with_date_param(mocker):
         endpoint_strategy='multiday',
     )
 
-    captured = {}
+    calls = []
 
     async def _fake_request(method, endpoint, params=None):
-        captured['method'] = method
-        captured['endpoint'] = endpoint
-        captured['params'] = params or {}
+        call = {
+            'method': method,
+            'endpoint': endpoint,
+            'params': params or {},
+        }
+        calls.append(call)
         return {
             'observations': [
                 {
                     'stationID': 'KNCGARNE13',
-                    'obsTimeUtc': '2026-04-01T04:00:00Z',
+                    'obsTimeUtc': (
+                        '2026-04-01T00:05:00Z'
+                        if (params or {}).get('date') == '20260331'
+                        else '2026-04-01T04:00:00Z'
+                    ),
                 }
             ]
         }
@@ -107,7 +114,8 @@ async def test_multiday_uses_history_all_with_date_param(mocker):
         strategy=EndpointStrategy.MULTIDAY,
     )
 
-    assert captured['method'] == 'GET'
-    assert captured['endpoint'] == 'history/all'
-    assert captured['params']['date'] == '20260401'
+    assert [c['method'] for c in calls] == ['GET', 'GET']
+    assert all(c['endpoint'] == 'history/all' for c in calls)
+    assert [c['params']['date'] for c in calls] == ['20260331', '20260401']
     assert not df.empty
+    assert pd.Timestamp('2026-04-01T00:05:00Z') in set(df['obsTimeUtc'])
