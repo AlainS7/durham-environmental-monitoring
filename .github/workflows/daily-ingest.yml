@@ -189,6 +189,7 @@ jobs:
           cat > /tmp/cloud-run-job-env.yaml << EOF
           TSI_CREDS_SECRET_ID: "${TSI_CREDS_SECRET_ID}"
           WU_API_KEY_SECRET_ID: "${WU_API_KEY_SECRET_ID}"
+          WU_ENDPOINT_STRATEGY: "hybrid"
           GCS_BUCKET: "${GCS_BUCKET}"
           GCS_PREFIX: "raw/"
           BQ_PROJECT: "${PROJECT_ID}"
