@@ -226,6 +226,71 @@ jobs:
         run: |
           bash scripts/run_cr_job.sh
 
+      - name: Self-heal WU ingest when staging is stale
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          BQ_DATASET: sensors
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+          GCS_PREFIX: raw/
+          GCS_FORCE_OVERWRITE: '1'
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+          START_DATE: ${{ steps.processing_window.outputs.start }}
+          END_DATE: ${{ steps.processing_window.outputs.end }}
+          INPUT_SOURCE: ${{ github.event.inputs.source || 'all' }}
+        run: |
+          set -euo pipefail
+
+          SRC=$(echo "${INPUT_SOURCE:-all}" | tr '[:upper:]' '[:lower:]')
+          if [ "$SRC" = "tsi" ]; then
+            echo "Source filter is tsi; skipping WU self-heal check."
+            exit 0
+          fi
+
+          if [ -z "${START_DATE:-}" ] || [ -z "${END_DATE:-}" ]; then
+            echo "Processing window not resolved; skipping WU self-heal check."
+            exit 0
+          fi
+
+          if [ "$START_DATE" != "$END_DATE" ]; then
+            echo "Date range run ($START_DATE -> $END_DATE); skipping single-day WU self-heal."
+            exit 0
+          fi
+
+          DAY="$START_DATE"
+          DCOMPACT=${DAY//-/}
+          TABLE="staging_wu_${DCOMPACT}"
+          STALE=0
+          REASON=""
+
+          if ! bq show --project_id="$BQ_PROJECT" "$BQ_PROJECT:$BQ_DATASET.$TABLE" >/dev/null 2>&1; then
+            STALE=1
+            REASON="missing staging table ${TABLE}"
+          else
+            MAX_TS=$(bq query --nouse_legacy_sql --project_id="$BQ_PROJECT" --format=csv \
+              "SELECT CAST(MAX(CAST(timestamp AS TIMESTAMP)) AS STRING) FROM \`$BQ_PROJECT.$BQ_DATASET.$TABLE\`" | tail -1)
+            if [ -z "${MAX_TS:-}" ] || [ "$MAX_TS" = "NULL" ]; then
+              STALE=1
+              REASON="no WU timestamps present in ${TABLE}"
+            elif [ "$DAY" = "$(date -u +%F)" ]; then
+              if ! python -c 'import sys; from datetime import datetime, timezone, timedelta; max_ts=datetime.fromisoformat(sys.argv[1].replace(" ","T")).replace(tzinfo=timezone.utc); threshold=datetime.now(timezone.utc)-timedelta(hours=2); raise SystemExit(1) if max_ts < threshold else None' "$MAX_TS"
+              then
+                STALE=1
+                REASON="latest WU timestamp ${MAX_TS} is older than 2h"
+              fi
+            fi
+          fi
+
+          if [ "$STALE" -eq 0 ]; then
+            echo "WU staging is fresh for ${DAY}; no self-heal needed."
+            exit 0
+          fi
+
+          echo "WU staging self-heal triggered: ${REASON}"
+          echo "Running local WU collection for ${DAY} on GitHub runner."
+          PYTHONPATH=. SOURCE=wu INGEST_DATE="$DAY" python src/data_collection/daily_data_collector.py
+
       - name: Materialize raw partitions for ingested dates
         env:
           BQ_PROJECT: ${{ env.PROJECT_ID }}
