@@ -197,7 +197,7 @@ class Config:
             if not secret_id:
                 logging.critical("Attempted to fetch a secret but secret_id was empty or None.")
                 return None
-            name = f"projects/{self.project_id}/secrets/{secret_id.strip()}/versions/latest"
+            name = self._resolve_secret_version_name(secret_id)
             response = client.access_secret_version(request={"name": name})
             payload = response.payload.data.decode("UTF-8")
             try:
@@ -210,6 +210,21 @@ class Config:
         except Exception as e:
             logging.critical(f"Fatal: Could not access or parse secret '{secret_id}'. Error: {e}")
             return None
+
+    def _resolve_secret_version_name(self, secret_id: str) -> str:
+        """Normalize secret identifiers to a Secret Manager version resource name.
+
+        Supports:
+          - short secret id: "wu_api_key"
+          - full secret path without version: "projects/<p>/secrets/<id>"
+          - full secret version path: "projects/<p>/secrets/<id>/versions/<v>"
+        """
+        sid = (secret_id or "").strip()
+        if sid.startswith("projects/"):
+            if "/versions/" in sid:
+                return sid
+            return f"{sid}/versions/latest"
+        return f"projects/{self.project_id}/secrets/{sid}/versions/latest"
 
     def _validate_secrets(self):
         """Validate the contents of the fetched secrets.
