@@ -576,7 +576,11 @@ def _write_bq_staging(
             FARM_FINGERPRINT(native_sensor_id) AS deployment_pk
         FROM `{bq_project}.{dataset}.sensor_id_map`
         """
-        deployment_map_df = client.query(deployment_map_sql).to_dataframe()
+        # Use REST fallback to avoid requiring BigQuery Storage API permissions
+        # (bigquery.readsessions.create) in GitHub Actions verifier/self-heal paths.
+        deployment_map_df = client.query(deployment_map_sql).to_dataframe(
+            create_bqstorage_client=False
+        )
     except Exception as e:
         log.error(f"Failed to fetch deployment map from BigQuery: {e}")
         deployment_map_df = pd.DataFrame()
