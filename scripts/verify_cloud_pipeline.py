@@ -353,6 +353,10 @@ def _epoch_diag_for_table(client: bigquery.Client, fq_table: str, tbl) -> List[D
 def _needs_norm_check(table: str) -> bool:
     if table.startswith(('tmp_unpivot_', 'snapshot_', 'view_')):
         return False
+    # Historical/date-suffixed staging shards are legacy ingestion artifacts
+    # and don't always expose normalized canonical timestamp fields.
+    if re.search(r'_\d{8}$', table):
+        return False
     return table.startswith(('staging_', 'tmp_'))
 
 
