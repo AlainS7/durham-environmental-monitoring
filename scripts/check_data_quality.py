@@ -15,7 +15,7 @@ Usage:
 import argparse
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Tuple
 
@@ -113,7 +113,9 @@ def parse_args() -> argparse.Namespace:
 def calculate_date_range(args: argparse.Namespace) -> Tuple[str, str]:
     """Calculate start and end dates based on arguments."""
     if args.days:
-        end_date = datetime.now().date()
+        # Default to complete days only. This avoids partial-day false alerts in
+        # scheduled checks that run before the current UTC day is complete.
+        end_date = datetime.now(timezone.utc).date() - timedelta(days=1)
         start_date = end_date - timedelta(days=args.days - 1)
         return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
     else:
@@ -422,8 +424,8 @@ def check_aggregate_consistency(
     
     issues = []
     
-    # Compare row counts between long and hourly tables
-    # Use metric names to identify source
+    # Compare the number of unique source-hour bins in long-format data with
+    # rows in hourly aggregates for the same source/metric set.
     tsi_metrics = ['pm2_5', 'pm10', 'pm1_0', 'pm4_0', 'ncpm0_5', 'ncpm1_0', 'ncpm2_5', 'ncpm4_0', 
                    'ncpm10', 'temperature', 'humidity', 'co2_ppm', 'co_ppm', 'baro_inhg', 
                    'o3_ppb', 'no2_ppb', 'so2_ppb', 'ch2o_ppb']
@@ -454,7 +456,12 @@ def check_aggregate_consistency(
     WITH long_counts AS (
         SELECT 
             DATE(l.timestamp) as date,
-            COUNT(*) as long_count
+            COUNT(*) as long_count,
+            COUNT(DISTINCT TO_JSON_STRING(STRUCT(
+                l.native_sensor_id,
+                l.metric_name,
+                TIMESTAMP_TRUNC(l.timestamp, HOUR)
+            ))) as expected_hourly_count
         FROM `{dataset}.sensor_readings_long` l
         WHERE DATE(l.timestamp) BETWEEN '{start_date}' AND '{end_date}'
           {metric_filter}
@@ -472,6 +479,7 @@ def check_aggregate_consistency(
     SELECT 
         COALESCE(l.date, h.date) as date,
         COALESCE(l.long_count, 0) as long_count,
+        COALESCE(l.expected_hourly_count, 0) as expected_hourly_count,
         COALESCE(h.hourly_count, 0) as hourly_count
     FROM long_counts l
     FULL OUTER JOIN hourly_counts h ON l.date = h.date
@@ -495,21 +503,29 @@ def check_aggregate_consistency(
                 )
                 log.warning(f"Missing hourly aggregates for {source} on {row['date']}")
         
-        # Hourly count should be roughly long_count / 60 (minutes per hour)
-        df['expected_hourly'] = df['long_count'] / 60
-        df['hourly_ratio'] = df['hourly_count'] / df['expected_hourly']
-        
-        # Allow 50-150% range (some variation is expected due to aggregation)
-        anomalies = df[(df['hourly_ratio'] < 0.5) | (df['hourly_ratio'] > 1.5)]
+        # Hourly rows should roughly match the number of unique
+        # (sensor, metric, hour) bins observed in long-format data.
+        nonzero = df['expected_hourly_count'] > 0
+        df.loc[nonzero, 'hourly_ratio'] = (
+            df.loc[nonzero, 'hourly_count'] / df.loc[nonzero, 'expected_hourly_count']
+        )
+
+        # Allow broad tolerance to handle minor dedupe/skew while still
+        # flagging real aggregation gaps/duplication.
+        anomalies = df[
+            (df['expected_hourly_count'] > 0)
+            & ((df['hourly_ratio'] < 0.7) | (df['hourly_ratio'] > 1.3))
+        ]
         if not anomalies.empty:
             for _, row in anomalies.iterrows():
                 issues.append(
-                    f"{source} on {row['date']}: unexpected hourly/long ratio {row['hourly_ratio']:.2f} "
-                    f"(long: {row['long_count']}, hourly: {row['hourly_count']})"
+                    f"{source} on {row['date']}: unexpected hourly/expected ratio "
+                    f"{row['hourly_ratio']:.2f} (expected hourly: {row['expected_hourly_count']}, "
+                    f"actual hourly: {row['hourly_count']}, long rows: {row['long_count']})"
                 )
                 log.warning(
                     f"Aggregate anomaly for {source} on {row['date']}: "
-                    f"ratio {row['hourly_ratio']:.2f}"
+                    f"hourly/expected ratio {row['hourly_ratio']:.2f}"
                 )
         
         if not issues:
