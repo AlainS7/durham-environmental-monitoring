@@ -1,8 +1,8 @@
 # Daily Automation Schedule & Flow
 
-This document details the exact schedules, commands, and data paths for the automated daily ingestion pipeline. For the high-level system architecture, see [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md).
+This document details the exact schedules, commands, and data paths for the automated hourly ingestion pipeline. For the high-level system architecture, see [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md).
 
-## 1. Daily Ingestion Pipeline Flow
+## 1. Hourly Ingestion Pipeline Flow
 
 The core ingestion runs hourly. Below is the detailed trace of how a single run executes and where the data lands:
 
@@ -10,7 +10,7 @@ The core ingestion runs hourly. Below is the detailed trace of how a single run 
 ┌─────────────────────────────────────────────────────────────────┐
 │              GITHUB ACTIONS / CLOUD SCHEDULER                   │
 │                                                                 │
-│  Cron: Hourly (05 * * * *)                                     │
+│  Cron: Hourly (5 * * * *)                                      │
 │  Trigger: schedule / workflow_dispatch / HTTP POST             │
 └────────────────────────────┬────────────────────────────────────┘
                              │
@@ -142,7 +142,7 @@ If you prefer GCP-native scheduling over GitHub Actions:
 gcloud scheduler jobs create http daily-data-collection-trigger \
   --project=durham-weather-466502 \
   --location=us-east1 \
-  --schedule="0 * * * *" \
+  --schedule="5 * * * *" \
   --time-zone="America/New_York" \
   --uri="[https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run](https://run.googleapis.com/v2/projects/durham-weather-466502/locations/us-east1/jobs/weather-data-uploader:run)" \
   --http-method=POST \
@@ -161,7 +161,7 @@ Add to crontab (`crontab -e`):
 
 ```cron
 # Hourly
-0 * * * * cd /Users/Projects/Developer/work/[github.com/AlainS7/durham-environmental-monitoring](https://github.com/AlainS7/durham-environmental-monitoring) && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
+5 * * * * cd /Users/Projects/Developer/work/[github.com/AlainS7/durham-environmental-monitoring](https://github.com/AlainS7/durham-environmental-monitoring) && bash scripts/daily_collection.sh >> /tmp/daily_collection.log 2>&1
 ```
 
 ### Option D: Manual Run
