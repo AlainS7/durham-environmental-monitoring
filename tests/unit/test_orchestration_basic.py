@@ -1,6 +1,7 @@
 import asyncio
 import pandas as pd
 from datetime import datetime
+import pytest
 
 import src.data_collection.daily_data_collector as dc
 
@@ -44,3 +45,27 @@ def test_run_collection_process_dry(monkeypatch, capsys):
     asyncio.run(dc.run_collection_process(datetime(2025,8,26), datetime(2025,8,26), sink='gcs', source='all', is_dry_run=True))
     captured = capsys.readouterr()
     assert 'WU sample' in captured.out
+
+
+class DummyWUEmpty:
+    async def fetch_data(self, *a, **k):
+        return pd.DataFrame()
+
+    async def __aenter__(self): return self
+
+    async def __aexit__(self, exc_type, exc, tb): return False
+
+
+def test_run_collection_process_fails_when_required_source_empty(monkeypatch):
+    monkeypatch.setattr(dc, 'WUClient', lambda **cfg: DummyWUEmpty())
+    monkeypatch.setattr(dc, 'TSIClient', lambda **cfg: DummyTSI())
+
+    with pytest.raises(RuntimeError, match="No WU raw rows fetched"):
+        asyncio.run(
+            dc.run_collection_process(
+                datetime(2025, 8, 26),
+                datetime(2025, 8, 26),
+                sink='gcs',
+                source='wu',
+            )
+        )
