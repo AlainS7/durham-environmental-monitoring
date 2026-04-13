@@ -112,6 +112,14 @@ run_one_execution() {
     env_pairs="${env_pairs:+$env_pairs,}SOURCE=$SOURCE_FILTER"
   fi
 
+  # Pass-through optional WU runtime tuning env vars for this execution.
+  for wu_var in WU_ENDPOINT_STRATEGY WU_CONCURRENCY WU_MAX_RETRIES WU_RETRY_BASE_DELAY; do
+    wu_val="${!wu_var:-}"
+    if [ -n "$wu_val" ]; then
+      env_pairs="${env_pairs:+$env_pairs,}${wu_var}=${wu_val}"
+    fi
+  done
+
   local -a execute_args=()
   if [ -n "$env_pairs" ]; then
     execute_args+=(--update-env-vars="$env_pairs")
