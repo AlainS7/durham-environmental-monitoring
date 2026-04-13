@@ -7,6 +7,58 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
+    def _parse_int_env(self, env_var_name: str, default: int, minimum: int = 1) -> int:
+        raw = self._parse_env_var_value(env_var_name)
+        if raw is None:
+            return default
+        try:
+            parsed = int(raw)
+        except ValueError:
+            logging.warning(
+                "Invalid %s value '%s'; using default %s",
+                env_var_name,
+                raw,
+                default,
+            )
+            return default
+        if parsed < minimum:
+            logging.warning(
+                "%s=%s is below minimum %s; using %s",
+                env_var_name,
+                parsed,
+                minimum,
+                default,
+            )
+            return default
+        return parsed
+
+    def _parse_float_env(
+        self, env_var_name: str, default: float, minimum: float = 0.0
+    ) -> float:
+        raw = self._parse_env_var_value(env_var_name)
+        if raw is None:
+            return default
+        try:
+            parsed = float(raw)
+        except ValueError:
+            logging.warning(
+                "Invalid %s value '%s'; using default %.2f",
+                env_var_name,
+                raw,
+                default,
+            )
+            return default
+        if parsed < minimum:
+            logging.warning(
+                "%s=%.2f is below minimum %.2f; using %.2f",
+                env_var_name,
+                parsed,
+                minimum,
+                default,
+            )
+            return default
+        return parsed
+
     @property
     def wu_api_config(self):
         # Allow for dummy config in test/dev environments
@@ -26,7 +78,11 @@ class Config:
         return {
             "base_url": "https://api.weather.com/v2/pws",
             "api_key": api_key,
-            "endpoint_strategy": os.getenv("WU_ENDPOINT_STRATEGY", "hybrid"),
+            # Multiday is a quota-safe default that retains dense intraday data.
+            "endpoint_strategy": os.getenv("WU_ENDPOINT_STRATEGY", "multiday"),
+            "semaphore_limit": self._parse_int_env("WU_CONCURRENCY", 2),
+            "max_retries": self._parse_int_env("WU_MAX_RETRIES", 6),
+            "retry_base_delay": self._parse_float_env("WU_RETRY_BASE_DELAY", 2.0),
         }
 
     @property
