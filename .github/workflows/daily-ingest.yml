@@ -127,9 +127,12 @@ jobs:
           elif [ -n "$START" ] && [ -n "$END" ]; then
             :
           elif [ "${{ github.event_name }}" = "schedule" ]; then
-            # Fast lane: ingest current-day partition on scheduled runs.
+            # Scheduled runs process yesterday+today:
+            # - yesterday: complete-day catchup
+            # - today: intraday freshness
+            YESTERDAY=$(date -u -d 'yesterday' +%F)
             TODAY=$(date -u +%F)
-            START="$TODAY"
+            START="$YESTERDAY"
             END="$TODAY"
           else
             # Stable/manual default remains yesterday.
@@ -189,7 +192,10 @@ jobs:
           cat > /tmp/cloud-run-job-env.yaml << EOF
           TSI_CREDS_SECRET_ID: "${TSI_CREDS_SECRET_ID}"
           WU_API_KEY_SECRET_ID: "${WU_API_KEY_SECRET_ID}"
-          WU_ENDPOINT_STRATEGY: "hybrid"
+          WU_ENDPOINT_STRATEGY: "multiday"
+          WU_CONCURRENCY: "2"
+          WU_MAX_RETRIES: "6"
+          WU_RETRY_BASE_DELAY: "2"
           GCS_BUCKET: "${GCS_BUCKET}"
           GCS_PREFIX: "raw/"
           BQ_PROJECT: "${PROJECT_ID}"
@@ -223,6 +229,11 @@ jobs:
           # Secret Manager IDs (the app will fetch JSON secrets at runtime)
           TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
           WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+          # WU quota-safe defaults for scheduled runs
+          WU_ENDPOINT_STRATEGY: multiday
+          WU_CONCURRENCY: '2'
+          WU_MAX_RETRIES: '6'
+          WU_RETRY_BASE_DELAY: '2'
         run: |
           bash scripts/run_cr_job.sh
 
@@ -239,6 +250,10 @@ jobs:
           START_DATE: ${{ steps.processing_window.outputs.start }}
           END_DATE: ${{ steps.processing_window.outputs.end }}
           INPUT_SOURCE: ${{ github.event.inputs.source || 'all' }}
+          WU_ENDPOINT_STRATEGY: multiday
+          WU_CONCURRENCY: '2'
+          WU_MAX_RETRIES: '6'
+          WU_RETRY_BASE_DELAY: '2'
         run: |
           set -euo pipefail
 
