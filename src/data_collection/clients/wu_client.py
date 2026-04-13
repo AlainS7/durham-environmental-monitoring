@@ -111,6 +111,9 @@ class WUClient(BaseClient):
         api_key: str,
         base_url: str = "https://api.weather.com/v2/pws",
         endpoint_strategy: EndpointStrategy | str = EndpointStrategy.HYBRID,
+        semaphore_limit: int = 10,
+        max_retries: int = 3,
+        retry_base_delay: float = 1.0,
     ):
         """
         endpoint_strategy: Specifies the endpoint strategy to use. Options are:
@@ -124,7 +127,13 @@ class WUClient(BaseClient):
             - MULTIDAY/ALL can provide denser intraday rows but fewer fields.
             - HYBRID keeps richer hourly records and supplements with denser intraday points.
         """
-        super().__init__(base_url, api_key)
+        super().__init__(
+            base_url,
+            api_key,
+            semaphore_limit=semaphore_limit,
+            max_retries=max_retries,
+            retry_base_delay=retry_base_delay,
+        )
         self.stations = get_wu_stations()
         self.endpoint_strategy = self._normalize_endpoint_strategy(endpoint_strategy)
 
@@ -215,6 +224,14 @@ class WUClient(BaseClient):
 
         # Validate and parse using Pydantic WUResponse
         if mode != EndpointStrategy.MULTIDAY:
+            if not data:
+                log.warning(
+                    "WU API returned empty payload for station %s (%s date=%s)",
+                    station_id,
+                    mode.value,
+                    start_date,
+                )
+                return None
             try:
                 validated = WUResponse.model_validate(data)
             except pydantic.ValidationError as e:
