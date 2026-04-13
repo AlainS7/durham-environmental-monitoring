@@ -374,6 +374,22 @@ def _clean(
     return wu_df, tsi_df
 
 
+def _assert_required_source_data(
+    source: str, day_str: str, wu_raw: pd.DataFrame, tsi_raw: pd.DataFrame
+) -> None:
+    missing_sources: list[str] = []
+    if source in ("all", "wu") and wu_raw.empty:
+        missing_sources.append("WU")
+    if source in ("all", "tsi") and tsi_raw.empty:
+        missing_sources.append("TSI")
+    if missing_sources:
+        joined = ", ".join(missing_sources)
+        raise RuntimeError(
+            f"No {joined} raw rows fetched for {day_str}. "
+            "This usually indicates upstream API/auth/quota issues."
+        )
+
+
 def _has_ts(df: pd.DataFrame) -> bool:
     return not df.empty and (("ts" in df.columns) or ("timestamp" in df.columns))
 
@@ -1050,6 +1066,7 @@ async def run_collection_process(
     )
     total_days = (end_dt.date() - start_dt.date()).days + 1
     log.info(f"Processing {total_days} days: {start_dt.date()} to {end_dt.date()}")
+    failures: list[tuple[str, str]] = []
     for i in range(total_days):
         day = start_dt + timedelta(days=i)
         day_str = day.strftime("%Y-%m-%d")
@@ -1061,6 +1078,7 @@ async def run_collection_process(
             wu_raw, tsi_raw = await _fetch_raw(
                 day_str, day_str, config.source, config.aggregate, config.agg_interval
             )
+            _assert_required_source_data(config.source, day_str, wu_raw, tsi_raw)
             log.info(
                 f"[DEBUG] Completed TSI fetch for {day_str}. wu_raw rows: {len(wu_raw) if wu_raw is not None else 'None'}, tsi_raw rows: {len(tsi_raw) if tsi_raw is not None else 'None'}"
             )
@@ -1103,6 +1121,10 @@ async def run_collection_process(
             )
         except Exception as e:
             log.error(f"Exception processing {day_str}: {e}", exc_info=True)
+            failures.append((day_str, str(e)))
+    if failures:
+        summary = "; ".join(f"{day}: {reason}" for day, reason in failures)
+        raise RuntimeError(f"Collection failed for {len(failures)} day(s): {summary}")
     log.info("Collection complete for all days.")
 
 
