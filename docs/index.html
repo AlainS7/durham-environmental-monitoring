@@ -4,9 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Durham Environmental Data Platform · AlainS7</title>
-    <meta name="description" content="Fault-isolated environmental data pipeline: idempotent micro-batch ingestion, immutable GCS Parquet, BigQuery analytical tables with 98.8% scan reduction via partitioning and clustering." />
+    <meta
+      name="description"
+      content="Fault-isolated environmental data pipeline: idempotent micro-batch ingestion, immutable GCS Parquet, BigQuery analytical tables with 98.8% scan reduction via partitioning and clustering."
+    />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -17,115 +23,256 @@
               mono: ["JetBrains Mono", "monospace"],
             },
             colors: {
-              bg:        "#080808",
-              surface:   "#111111",
-              surface2:  "#181818",
-              bdr:       "#212121",
-              bdr2:      "#2c2c2c",
-              copper:    "#c07828",
-              copplt:    "#e09848",
-              sage:      "#8ba294",
-              sagelgt:   "#a8c4b4",
-              txt:       "#ebebeb",
-              muted:     "#7a7a7a",
-              dim:       "#444444",
+              bg: "#080808",
+              surface: "#111111",
+              surface2: "#181818",
+              bdr: "#212121",
+              bdr2: "#2c2c2c",
+              copper: "#c07828",
+              copplt: "#e09848",
+              sage: "#8ba294",
+              sagelgt: "#a8c4b4",
+              txt: "#ebebeb",
+              muted: "#7a7a7a",
+              dim: "#444444",
             },
           },
         },
       };
     </script>
     <style>
-      html { scroll-behavior: smooth; }
-      body { background-color: #080808; color: #ebebeb; }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background-color: #080808;
+        color: #ebebeb;
+      }
 
-      ::-webkit-scrollbar { width: 5px; }
-      ::-webkit-scrollbar-track { background: #080808; }
-      ::-webkit-scrollbar-thumb { background: #2c2c2c; border-radius: 3px; }
+      ::-webkit-scrollbar {
+        width: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #080808;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2c2c2c;
+        border-radius: 3px;
+      }
 
       .grid-bg {
         background-size: 56px 56px;
         background-image:
-          linear-gradient(to right,  rgba(255,255,255,0.022) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px);
+          linear-gradient(
+            to right,
+            rgba(255, 255, 255, 0.022) 1px,
+            transparent 1px
+          ),
+          linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.022) 1px,
+            transparent 1px
+          );
       }
 
       /* ── Reveal animations ── */
-      .hf { opacity:0; transform:translateY(22px); transition: opacity .7s ease, transform .7s ease; }
-      .hf.on { opacity:1; transform:translateY(0); }
-      .rv { opacity:0; transform:translateY(28px); transition: opacity .6s ease, transform .6s ease; }
-      .rv.on { opacity:1; transform:translateY(0); }
+      .hf {
+        opacity: 0;
+        transform: translateY(22px);
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s ease;
+      }
+      .hf.on {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .rv {
+        opacity: 0;
+        transform: translateY(28px);
+        transition:
+          opacity 0.6s ease,
+          transform 0.6s ease;
+      }
+      .rv.on {
+        opacity: 1;
+        transform: translateY(0);
+      }
 
       /* ── Gradient text ── */
       .gc {
-        background: linear-gradient(135deg,#c07828 0%,#e09848 100%);
-        -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        background: linear-gradient(135deg, #c07828 0%, #e09848 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
 
       /* ── Cards ── */
-      .metric-card { transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
-      .metric-card:hover { transform:translateY(-4px); box-shadow:0 20px 60px rgba(0,0,0,.55); }
+      .metric-card {
+        transition:
+          transform 0.3s ease,
+          box-shadow 0.3s ease,
+          border-color 0.3s ease;
+      }
+      .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+      }
 
-      .feat-card { transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease; }
-      .feat-card:hover { border-color: rgba(192,120,40,.45); transform:translateY(-3px); box-shadow:0 10px 36px rgba(0,0,0,.5); }
+      .feat-card {
+        transition:
+          border-color 0.25s ease,
+          transform 0.25s ease,
+          box-shadow 0.25s ease;
+      }
+      .feat-card:hover {
+        border-color: rgba(192, 120, 40, 0.45);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
+      }
 
-      .tech-badge { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
-      .tech-badge:hover { transform:translateY(-2px); border-color:rgba(192,120,40,.45); background:rgba(192,120,40,.06); }
+      .tech-badge {
+        transition:
+          transform 0.2s ease,
+          border-color 0.2s ease,
+          background 0.2s ease;
+      }
+      .tech-badge:hover {
+        transform: translateY(-2px);
+        border-color: rgba(192, 120, 40, 0.45);
+        background: rgba(192, 120, 40, 0.06);
+      }
 
-      .arch-node { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
-      .arch-node:hover { transform:translateY(-3px) scale(1.02); }
+      .arch-node {
+        transition:
+          transform 0.2s ease,
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .arch-node:hover {
+        transform: translateY(-3px) scale(1.02);
+      }
 
       /* ── Buttons ── */
-      .btn-p { transition: transform .2s ease, box-shadow .2s ease; }
-      .btn-p:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(235,235,235,.14); }
-      .btn-g { transition: transform .2s ease, background .2s ease, border-color .2s ease; }
-      .btn-g:hover { transform:translateY(-2px); }
+      .btn-p {
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .btn-p:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(235, 235, 235, 0.14);
+      }
+      .btn-g {
+        transition:
+          transform 0.2s ease,
+          background 0.2s ease,
+          border-color 0.2s ease;
+      }
+      .btn-g:hover {
+        transform: translateY(-2px);
+      }
 
       /* ── Code block ── */
-      .code-block { transition: box-shadow .3s ease; }
-      .code-block:hover { box-shadow: 0 0 50px rgba(139,162,148,.15); }
-      .cur::after { content:"▋"; animation: blink 1.1s step-end infinite; color:#8ba294; }
-      @keyframes blink { 50% { opacity:0; } }
+      .code-block {
+        transition: box-shadow 0.3s ease;
+      }
+      .code-block:hover {
+        box-shadow: 0 0 50px rgba(139, 162, 148, 0.15);
+      }
+      .cur::after {
+        content: "▋";
+        animation: blink 1.1s step-end infinite;
+        color: #8ba294;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
 
       /* ── Nav underline ── */
-      .navl { position:relative; }
-      .navl::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:1px;
-        background:#c07828; transform:scaleX(0); transition:transform .2s ease; }
-      .navl:hover::after { transform:scaleX(1); }
+      .navl {
+        position: relative;
+      }
+      .navl::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #c07828;
+        transform: scaleX(0);
+        transition: transform 0.2s ease;
+      }
+      .navl:hover::after {
+        transform: scaleX(1);
+      }
 
       /* ── Timeline ── */
-      .tl-item { position:relative; }
+      .tl-item {
+        position: relative;
+      }
 
       /* ── Tradeoff sticky panels ── */
-      .tradeoff-panel { transition: opacity .35s ease; }
-      .tradeoff-dot { cursor: pointer; }
+      .tradeoff-panel {
+        transition: opacity 0.35s ease;
+      }
+      .tradeoff-dot {
+        cursor: pointer;
+      }
       .tl-item:not(:last-child)::before {
-        content:''; position:absolute; left:.75rem; top:2.2rem; bottom:-.75rem;
-        width:1px; background:linear-gradient(to bottom,rgba(192,120,40,.35),transparent);
+        content: "";
+        position: absolute;
+        left: 0.75rem;
+        top: 2.2rem;
+        bottom: -0.75rem;
+        width: 1px;
+        background: linear-gradient(
+          to bottom,
+          rgba(192, 120, 40, 0.35),
+          transparent
+        );
       }
 
       /* ── Reduction bars ── */
-      .bar-before { width:100%; }
-      .bar-after  { width:1.2%; }
+      .bar-before {
+        width: 100%;
+      }
+      .bar-after {
+        width: 1.2%;
+      }
     </style>
   </head>
 
   <body class="font-sans antialiased min-h-screen flex flex-col">
-
     <!-- ════════════════ HEADER ════════════════ -->
-    <header class="sticky top-0 z-50 border-b border-bdr bg-bg/80 backdrop-blur-xl">
-      <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-
-        <nav class="hidden md:flex items-center gap-6 text-xs font-mono uppercase tracking-wider text-muted">
-          <a href="#impact"       class="navl hover:text-txt transition">Impact</a>
-          <a href="#architecture" class="navl hover:text-txt transition">Architecture</a>
-          <a href="#stack"        class="navl hover:text-txt transition">Stack</a>
+    <header
+      class="sticky top-0 z-50 border-b border-bdr bg-bg/80 backdrop-blur-xl"
+    >
+      <div
+        class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between"
+      >
+        <nav
+          class="hidden md:flex items-center gap-6 text-xs font-mono uppercase tracking-wider text-muted"
+        >
+          <a href="#impact" class="navl hover:text-txt transition">Impact</a>
+          <a href="#architecture" class="navl hover:text-txt transition"
+            >Architecture</a
+          >
+          <a href="#stack" class="navl hover:text-txt transition">Stack</a>
         </nav>
 
-        <a href="https://github.com/AlainS7/durham-environmental-monitoring" target="_blank"
-           class="btn-g inline-flex items-center gap-1.5 text-xs font-mono text-muted hover:text-txt
-                  border border-bdr hover:border-bdr2 px-3 py-1.5 rounded-md transition">
+        <a
+          href="https://github.com/AlainS7/durham-environmental-monitoring"
+          target="_blank"
+          class="btn-g inline-flex items-center gap-1.5 text-xs font-mono text-muted hover:text-txt border border-bdr hover:border-bdr2 px-3 py-1.5 rounded-md transition"
+        >
           <svg class="size-3.5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+            <path
+              d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+            />
           </svg>
           Source
         </a>
@@ -133,75 +280,148 @@
     </header>
 
     <main class="flex-grow">
-
       <!-- ════════════════ HERO ════════════════ -->
       <section class="relative pt-28 pb-24 px-6 overflow-hidden">
         <div class="absolute inset-0 grid-bg -z-10"></div>
 
         <div class="max-w-6xl mx-auto">
           <div class="max-w-3xl mx-auto text-center">
-
             <!-- eyebrow -->
             <!-- headline -->
-            <h1 class="hf text-5xl md:text-6xl lg:text-[4.25rem] font-extrabold leading-[1.04] tracking-tight mb-6"
-                style="transition-delay:.15s">
-              Fault-Isolated<br/>
-              Environmental<br/>
+            <h1
+              class="hf text-5xl md:text-6xl lg:text-[4.25rem] font-extrabold leading-[1.04] tracking-tight mb-6"
+              style="transition-delay: 0.15s"
+            >
+              Fault-Isolated<br />
+              Environmental<br />
               Data Platform
             </h1>
 
             <!-- sub -->
-            <p class="hf text-base md:text-lg text-muted leading-relaxed max-w-2xl mx-auto mb-10"
-               style="transition-delay:.25s">
-               Raw telemetry to BigQuery using idempotent micro-batches, immutable Parquet, and workflow-driven quality gates.
+            <p
+              class="hf text-base md:text-lg text-muted leading-relaxed max-w-2xl mx-auto mb-10"
+              style="transition-delay: 0.25s"
+            >
+              Raw telemetry to BigQuery using idempotent micro-batches,
+              immutable Parquet, and workflow-driven quality gates.
             </p>
 
             <!-- CTAs -->
-            <div class="hf flex flex-wrap items-center justify-center gap-3 mb-16" style="transition-delay:.35s">
-              <a href="https://research-study-dashboard.appwrite.network/" target="_blank"
-                 class="btn-p inline-flex items-center gap-2 bg-txt text-bg px-5 py-2.5 rounded-lg text-sm font-bold">
-                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            <div
+              class="hf flex flex-wrap items-center justify-center gap-3 mb-16"
+              style="transition-delay: 0.35s"
+            >
+              <a
+                href="https://research-study-dashboard.appwrite.network/"
+                target="_blank"
+                class="btn-p inline-flex items-center gap-2 bg-txt text-bg px-5 py-2.5 rounded-lg text-sm font-bold"
+              >
+                <svg
+                  class="size-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
                 </svg>
                 Demo Dashboard
               </a>
-              <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb" target="_blank"
-                 class="btn-g inline-flex items-center gap-2 border border-bdr bg-surface px-5 py-2.5
-                        rounded-lg text-sm font-medium text-muted hover:text-txt hover:border-bdr2 transition">
-                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+              <a
+                href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
+                target="_blank"
+                class="btn-g inline-flex items-center gap-2 border border-bdr bg-surface px-5 py-2.5 rounded-lg text-sm font-medium text-muted hover:text-txt hover:border-bdr2 transition"
+              >
+                <svg
+                  class="size-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                  />
                 </svg>
                 Map
               </a>
-              <a href="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8" target="_blank"
-                 class="btn-g inline-flex items-center gap-2 border border-bdr bg-surface px-5 py-2.5
-                        rounded-lg text-sm font-medium text-muted hover:text-txt hover:border-bdr2 transition">
-                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              <a
+                href="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8"
+                target="_blank"
+                class="btn-g inline-flex items-center gap-2 border border-bdr bg-surface px-5 py-2.5 rounded-lg text-sm font-medium text-muted hover:text-txt hover:border-bdr2 transition"
+              >
+                <svg
+                  class="size-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
                 </svg>
                 Analytics Notebook
               </a>
             </div>
 
             <!-- stat strip -->
-            <div class="hf grid grid-cols-2 md:grid-cols-3 gap-3 max-w-3xl mx-auto"
-                 style="transition-delay:.45s">
-              <div class="metric-card bg-surface border border-bdr rounded-xl p-5 text-left">
-                <div class="text-2xl font-extrabold gc"
-                     data-count="2800000" data-suffix="M+" data-divisor="1000000">2.8M+</div>
-                <div class="text-[10px] font-mono uppercase tracking-wider text-muted mt-1">Raw Rows Ingested</div>
+            <div
+              class="hf grid grid-cols-2 md:grid-cols-3 gap-3 max-w-3xl mx-auto"
+              style="transition-delay: 0.45s"
+            >
+              <div
+                class="metric-card bg-surface border border-bdr rounded-xl p-5 text-left"
+              >
+                <div
+                  class="text-2xl font-extrabold gc"
+                  data-count="2800000"
+                  data-suffix="M+"
+                  data-divisor="1000000"
+                >
+                  2.8M+
+                </div>
+                <div
+                  class="text-[10px] font-mono uppercase tracking-wider text-muted mt-1"
+                >
+                  Raw Rows Ingested
+                </div>
               </div>
-              <div class="metric-card bg-surface border border-bdr rounded-xl p-5 text-left">
+              <div
+                class="metric-card bg-surface border border-bdr rounded-xl p-5 text-left"
+              >
                 <div class="text-2xl font-extrabold text-sage">1.23 MB</div>
-                <div class="text-[10px] font-mono uppercase tracking-wider text-muted mt-1">7-Day Query Scan</div>
+                <div
+                  class="text-[10px] font-mono uppercase tracking-wider text-muted mt-1"
+                >
+                  7-Day Query Scan
+                </div>
               </div>
-              <div class="metric-card bg-surface border border-bdr rounded-xl p-5 text-left">
-                <div class="text-2xl font-extrabold gc"
-                     data-count="98.8" data-suffix="%">98.8%</div>
-                <div class="text-[10px] font-mono uppercase tracking-wider text-muted mt-1">Scan Reduction</div>
+              <div
+                class="metric-card bg-surface border border-bdr rounded-xl p-5 text-left"
+              >
+                <div
+                  class="text-2xl font-extrabold gc"
+                  data-count="98.8"
+                  data-suffix="%"
+                >
+                  98.8%
+                </div>
+                <div
+                  class="text-[10px] font-mono uppercase tracking-wider text-muted mt-1"
+                >
+                  Scan Reduction
+                </div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -209,34 +429,56 @@
       <!-- ════════════════ IMPACT ════════════════ -->
       <section id="impact" class="py-14 px-6 border-t border-bdr">
         <div class="max-w-6xl mx-auto">
-          <div class="rv bg-[#0d0d0d] border border-bdr rounded-2xl p-8 md:p-10 overflow-hidden relative">
-
+          <div
+            class="rv bg-[#0d0d0d] border border-bdr rounded-2xl p-8 md:p-10 overflow-hidden relative"
+          >
             <div class="grid md:grid-cols-2 gap-10 items-center relative">
               <!-- left: prose -->
               <div>
-                <div class="text-[10px] font-mono uppercase tracking-widest text-copper mb-3">
+                <div
+                  class="text-[10px] font-mono uppercase tracking-widest text-copper mb-3"
+                >
                   Measured Optimization · 2026-03-10
                 </div>
-                <h2 class="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
-                  <span class="gc">98.8%</span> less<br/>data scanned
+                <h2
+                  class="text-4xl md:text-5xl font-extrabold leading-tight mb-4"
+                >
+                  <span class="gc">98.8%</span> less<br />data scanned
                 </h2>
                 <p class="text-muted text-sm leading-relaxed mb-6">
                   Partitioning by
-                  <code class="font-mono text-copper text-xs bg-surface px-1.5 py-0.5 rounded">DATE(ts)</code>
+                  <code
+                    class="font-mono text-copper text-xs bg-surface px-1.5 py-0.5 rounded"
+                    >DATE(ts)</code
+                  >
                   and clustering by
-                  <code class="font-mono text-copper text-xs bg-surface px-1.5 py-0.5 rounded">native_sensor_id</code>
+                  <code
+                    class="font-mono text-copper text-xs bg-surface px-1.5 py-0.5 rounded"
+                    >native_sensor_id</code
+                  >
                   reduced a representative 7-day PM2.5 dry-run scan from
-                  <strong class="text-txt">102.95 MB</strong> (unpartitioned copy) to
-                  <strong class="text-txt">1.23 MB</strong> on
-                  <code class="font-mono text-sage text-xs bg-surface px-1.5 py-0.5 rounded">sensors.tsi_raw_materialized</code>.
+                  <strong class="text-txt">102.95 MB</strong> (unpartitioned
+                  copy) to <strong class="text-txt">1.23 MB</strong> on
+                  <code
+                    class="font-mono text-sage text-xs bg-surface px-1.5 py-0.5 rounded"
+                    >sensors.tsi_raw_materialized</code
+                  >.
                 </p>
-                <div class="flex items-center gap-5 text-xs font-mono text-muted">
+                <div
+                  class="flex items-center gap-5 text-xs font-mono text-muted"
+                >
                   <span class="flex items-center gap-1.5">
-                    <span class="size-2 rounded-full bg-[#ef4444] inline-block"></span>Before: 102.95 MB
+                    <span
+                      class="size-2 rounded-full bg-[#ef4444] inline-block"
+                    ></span
+                    >Before: 102.95 MB
                   </span>
                   <span class="text-dim">→</span>
                   <span class="flex items-center gap-1.5">
-                    <span class="size-2 rounded-full bg-[#10b981] inline-block"></span>After: 1.23 MB
+                    <span
+                      class="size-2 rounded-full bg-[#10b981] inline-block"
+                    ></span
+                    >After: 1.23 MB
                   </span>
                 </div>
               </div>
@@ -244,28 +486,40 @@
               <!-- right: bar chart comparison -->
               <div class="space-y-5">
                 <div class="space-y-1.5">
-                  <div class="flex justify-between text-xs font-mono text-muted">
+                  <div
+                    class="flex justify-between text-xs font-mono text-muted"
+                  >
                     <span>Unpartitioned scan</span>
                     <span class="text-[#ef4444] font-semibold">102.95 MB</span>
                   </div>
-                  <div class="h-7 bg-surface2 border border-bdr rounded-lg overflow-hidden">
-                    <div class="bar-before h-full rounded-lg
-                                bg-gradient-to-r from-[#ef4444]/60 to-[#ef4444]/30"></div>
+                  <div
+                    class="h-7 bg-surface2 border border-bdr rounded-lg overflow-hidden"
+                  >
+                    <div
+                      class="bar-before h-full rounded-lg bg-gradient-to-r from-[#ef4444]/60 to-[#ef4444]/30"
+                    ></div>
                   </div>
                 </div>
                 <div class="space-y-1.5">
-                  <div class="flex justify-between text-xs font-mono text-muted">
+                  <div
+                    class="flex justify-between text-xs font-mono text-muted"
+                  >
                     <span>Partitioned + clustered</span>
                     <span class="text-[#10b981] font-semibold">1.23 MB</span>
                   </div>
-                  <div class="h-7 bg-surface2 border border-bdr rounded-lg overflow-hidden">
-                    <div class="bar-after h-full rounded-lg
-                                bg-gradient-to-r from-[#10b981]/70 to-[#10b981]/40"></div>
+                  <div
+                    class="h-7 bg-surface2 border border-bdr rounded-lg overflow-hidden"
+                  >
+                    <div
+                      class="bar-after h-full rounded-lg bg-gradient-to-r from-[#10b981]/70 to-[#10b981]/40"
+                    ></div>
                   </div>
                 </div>
                 <p class="text-xs font-mono text-muted pt-1">
                   BigQuery bills per byte scanned.
-                  <strong class="text-txt">This directly reduces query costs at scale.</strong>
+                  <strong class="text-txt"
+                    >This directly reduces query costs at scale.</strong
+                  >
                 </p>
               </div>
             </div>
@@ -276,141 +530,198 @@
       <!-- ════════════════ ARCHITECTURE ════════════════ -->
       <section id="architecture" class="py-16 px-6 border-t border-bdr">
         <div class="max-w-6xl mx-auto">
-
           <div class="rv mb-10 flex items-start justify-between gap-6">
             <div>
-              <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">System Design</div>
-              <h2 class="text-2xl font-bold">System Topology & Fault Boundaries</h2>
+              <div
+                class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2"
+              >
+                System Design
+              </div>
+              <h2 class="text-2xl font-bold">
+                System Topology & Fault Boundaries
+              </h2>
               <p class="text-muted text-sm mt-2 max-w-xl">
-                End-to-end pipeline from raw sensor data to analytics-ready views,
-                with explicit failure isolation at every layer.
+                End-to-end pipeline from raw sensor data to analytics-ready
+                views, with explicit failure isolation at every layer.
               </p>
             </div>
-            <a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/ARCHITECTURE_OVERVIEW.md"
-               target="_blank"
-               class="flex-shrink-0 btn-g inline-flex items-center gap-1.5 border border-bdr bg-surface px-3 py-2
-                      rounded-lg text-xs font-mono text-muted hover:text-txt hover:border-bdr2 transition mt-1">
-              <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            <a
+              href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/ARCHITECTURE_OVERVIEW.md"
+              target="_blank"
+              class="flex-shrink-0 btn-g inline-flex items-center gap-1.5 border border-bdr bg-surface px-3 py-2 rounded-lg text-xs font-mono text-muted hover:text-txt hover:border-bdr2 transition mt-1"
+            >
+              <svg
+                class="size-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               Architecture Docs
             </a>
           </div>
 
-          <div class="rv bg-[#0a0a0a] border border-bdr p-6 md:p-10 rounded-2xl">
+          <div
+            class="rv bg-[#0a0a0a] border border-bdr p-6 md:p-10 rounded-2xl"
+          >
             <div class="max-w-4xl mx-auto flex flex-col gap-6">
-
               <!-- Control Plane -->
-              <div class="border border-sage/20 bg-sage/[.04] p-6 rounded-xl relative">
-                <div class="absolute -top-3 left-5 bg-[#0a0a0a] px-2.5
-                            text-[10px] text-sage font-mono uppercase tracking-widest
-                            border border-sage/20 rounded">
+              <div
+                class="border border-sage/20 bg-sage/[.04] p-6 rounded-xl relative"
+              >
+                <div
+                  class="absolute -top-3 left-5 bg-[#0a0a0a] px-2.5 text-[10px] text-sage font-mono uppercase tracking-widest border border-sage/20 rounded"
+                >
                   Control Plane
                 </div>
                 <div class="grid sm:grid-cols-2 gap-4 max-w-sm mx-auto">
-                  <div class="arch-node bg-surface2 border border-sage/35 rounded-xl p-4 text-center
-                              hover:border-sage hover:shadow-[0_0_18px_rgba(139,162,148,.14)] cursor-default">
-                    <div class="font-semibold text-txt text-sm">GitHub Actions</div>
-                    <div class="text-xs text-muted mt-1">Scheduled + Manual Orchestration</div>
+                  <div
+                    class="arch-node bg-surface2 border border-sage/35 rounded-xl p-4 text-center hover:border-sage hover:shadow-[0_0_18px_rgba(139,162,148,.14)] cursor-default"
+                  >
+                    <div class="font-semibold text-txt text-sm">
+                      GitHub Actions
+                    </div>
+                    <div class="text-xs text-muted mt-1">
+                      Scheduled + Manual Orchestration
+                    </div>
                   </div>
-                  <div class="arch-node bg-surface2 border border-sage/35 rounded-xl p-4 text-center
-                              hover:border-sage hover:shadow-[0_0_18px_rgba(139,162,148,.14)] cursor-default">
-                    <div class="font-semibold text-txt text-sm">GitHub Actions</div>
-                    <div class="text-xs text-muted mt-1">CI/CD + Verification</div>
+                  <div
+                    class="arch-node bg-surface2 border border-sage/35 rounded-xl p-4 text-center hover:border-sage hover:shadow-[0_0_18px_rgba(139,162,148,.14)] cursor-default"
+                  >
+                    <div class="font-semibold text-txt text-sm">
+                      GitHub Actions
+                    </div>
+                    <div class="text-xs text-muted mt-1">
+                      CI/CD + Verification
+                    </div>
                   </div>
                 </div>
                 <!-- down arrow -->
                 <div class="flex justify-center mt-5">
                   <div class="flex flex-col items-center">
                     <div class="w-px h-6 bg-dim"></div>
-                    <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[7px]
-                                border-l-transparent border-r-transparent border-t-dim"></div>
+                    <div
+                      class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[7px] border-l-transparent border-r-transparent border-t-dim"
+                    ></div>
                   </div>
                 </div>
               </div>
 
               <!-- Data Plane -->
-              <div class="border border-copper/20 bg-copper/[.04] p-6 rounded-xl relative">
-                <div class="absolute -top-3 left-5 bg-[#0a0a0a] px-2.5
-                            text-[10px] text-copper font-mono uppercase tracking-widest
-                            border border-copper/20 rounded">
+              <div
+                class="border border-copper/20 bg-copper/[.04] p-6 rounded-xl relative"
+              >
+                <div
+                  class="absolute -top-3 left-5 bg-[#0a0a0a] px-2.5 text-[10px] text-copper font-mono uppercase tracking-widest border border-copper/20 rounded"
+                >
                   Data Plane
                 </div>
 
                 <!-- Responsive pipeline -->
-                <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-2">
-
+                <div
+                  class="flex flex-col md:flex-row md:items-center gap-4 md:gap-2"
+                >
                   <!-- Cloud Run -->
-                  <div class="arch-node md:flex-1 bg-surface2 border-2 border-copper/35 rounded-xl p-4 text-center
-                              hover:border-copper hover:shadow-[0_0_18px_rgba(192,120,40,.14)] cursor-default
-                              min-h-[4.5rem] flex flex-col justify-center">
+                  <div
+                    class="arch-node md:flex-1 bg-surface2 border-2 border-copper/35 rounded-xl p-4 text-center hover:border-copper hover:shadow-[0_0_18px_rgba(192,120,40,.14)] cursor-default min-h-[4.5rem] flex flex-col justify-center"
+                  >
                     <div class="font-semibold text-txt text-sm">Cloud Run</div>
-                    <div class="text-xs text-muted mt-1 leading-snug">Stateless Extract<br/>Schema Coercion</div>
+                    <div class="text-xs text-muted mt-1 leading-snug">
+                      Stateless Extract<br />Schema Coercion
+                    </div>
                   </div>
 
                   <div class="flex flex-col items-center md:items-stretch">
-                    <span class="text-[9px] font-mono text-muted text-center mb-0.5">Idempotent</span>
+                    <span
+                      class="text-[9px] font-mono text-muted text-center mb-0.5"
+                      >Idempotent</span
+                    >
                     <div class="hidden md:flex items-center">
                       <div class="w-6 h-px bg-dim"></div>
-                      <div class="w-0 h-0 border-l-[6px] border-t-[4px] border-b-[4px]
-                                  border-l-dim border-t-transparent border-b-transparent"></div>
+                      <div
+                        class="w-0 h-0 border-l-[6px] border-t-[4px] border-b-[4px] border-l-dim border-t-transparent border-b-transparent"
+                      ></div>
                     </div>
                     <div class="md:hidden flex flex-col items-center">
                       <div class="w-px h-4 bg-dim"></div>
-                      <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px]
-                                  border-l-transparent border-r-transparent border-t-dim"></div>
+                      <div
+                        class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-dim"
+                      ></div>
                     </div>
                   </div>
 
                   <!-- GCS -->
-                  <div class="arch-node md:flex-1 bg-surface2 border-2 border-blue-500/35 rounded-xl p-4 text-center
-                              hover:border-blue-500 hover:shadow-[0_0_18px_rgba(59,130,246,.14)] cursor-default
-                              min-h-[4.5rem] flex flex-col justify-center">
-                    <div class="font-semibold text-txt text-sm">GCS Parquet</div>
-                    <div class="text-xs text-muted mt-1 leading-snug">Immutable Raw<br/>Append Only</div>
+                  <div
+                    class="arch-node md:flex-1 bg-surface2 border-2 border-blue-500/35 rounded-xl p-4 text-center hover:border-blue-500 hover:shadow-[0_0_18px_rgba(59,130,246,.14)] cursor-default min-h-[4.5rem] flex flex-col justify-center"
+                  >
+                    <div class="font-semibold text-txt text-sm">
+                      GCS Parquet
+                    </div>
+                    <div class="text-xs text-muted mt-1 leading-snug">
+                      Immutable Raw<br />Append Only
+                    </div>
                   </div>
 
                   <div class="flex flex-col items-center md:items-stretch">
-                    <span class="text-[9px] font-mono text-muted text-center mb-0.5">Replay</span>
+                    <span
+                      class="text-[9px] font-mono text-muted text-center mb-0.5"
+                      >Replay</span
+                    >
                     <div class="hidden md:flex items-center">
                       <div class="w-6 h-px bg-dim"></div>
-                      <div class="w-0 h-0 border-l-[6px] border-t-[4px] border-b-[4px]
-                                  border-l-dim border-t-transparent border-b-transparent"></div>
+                      <div
+                        class="w-0 h-0 border-l-[6px] border-t-[4px] border-b-[4px] border-l-dim border-t-transparent border-b-transparent"
+                      ></div>
                     </div>
                     <div class="md:hidden flex flex-col items-center">
                       <div class="w-px h-4 bg-dim"></div>
-                      <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px]
-                                  border-l-transparent border-r-transparent border-t-dim"></div>
+                      <div
+                        class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-dim"
+                      ></div>
                     </div>
                   </div>
 
                   <!-- BigQuery -->
-                  <div class="arch-node md:flex-1 bg-surface2 border-2 border-blue-500/35 rounded-xl p-4 text-center
-                              hover:border-blue-500 hover:shadow-[0_0_18px_rgba(59,130,246,.14)] cursor-default
-                              min-h-[4.5rem] flex flex-col justify-center">
+                  <div
+                    class="arch-node md:flex-1 bg-surface2 border-2 border-blue-500/35 rounded-xl p-4 text-center hover:border-blue-500 hover:shadow-[0_0_18px_rgba(59,130,246,.14)] cursor-default min-h-[4.5rem] flex flex-col justify-center"
+                  >
                     <div class="font-semibold text-txt text-sm">BigQuery</div>
-                    <div class="text-xs text-muted mt-1 leading-snug">Partitioned DATE<br/>Clustered ID</div>
+                    <div class="text-xs text-muted mt-1 leading-snug">
+                      Partitioned DATE<br />Clustered ID
+                    </div>
                   </div>
 
                   <div class="flex flex-col items-center md:items-stretch">
                     <div class="hidden md:flex items-center mt-3">
                       <div class="w-6 h-px bg-dim"></div>
-                      <div class="w-0 h-0 border-l-[6px] border-t-[4px] border-b-[4px]
-                                  border-l-dim border-t-transparent border-b-transparent"></div>
+                      <div
+                        class="w-0 h-0 border-l-[6px] border-t-[4px] border-b-[4px] border-l-dim border-t-transparent border-b-transparent"
+                      ></div>
                     </div>
                     <div class="md:hidden flex flex-col items-center">
                       <div class="w-px h-4 bg-dim"></div>
-                      <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px]
-                                  border-l-transparent border-r-transparent border-t-dim"></div>
+                      <div
+                        class="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-dim"
+                      ></div>
                     </div>
                   </div>
 
                   <!-- Validation Gate -->
-                  <div class="arch-node md:flex-1 bg-surface2 border-2 border-bdr2 rounded-xl p-4 text-center
-                              hover:border-txt hover:shadow-[0_0_18px_rgba(255,255,255,.07)] cursor-default
-                              min-h-[4.5rem] flex flex-col justify-center">
-                    <div class="font-semibold text-txt text-sm">Validation Gate</div>
-                    <div class="text-xs text-muted mt-1 leading-snug">Freshness + Quality<br/>Threshold Checks</div>
+                  <div
+                    class="arch-node md:flex-1 bg-surface2 border-2 border-bdr2 rounded-xl p-4 text-center hover:border-txt hover:shadow-[0_0_18px_rgba(255,255,255,.07)] cursor-default min-h-[4.5rem] flex flex-col justify-center"
+                  >
+                    <div class="font-semibold text-txt text-sm">
+                      Validation Gate
+                    </div>
+                    <div class="text-xs text-muted mt-1 leading-snug">
+                      Freshness + Quality<br />Threshold Checks
+                    </div>
                   </div>
                 </div>
 
@@ -419,24 +730,30 @@
                   <div class="grid grid-cols-2 gap-4 w-64">
                     <div class="flex flex-col items-center gap-1.5">
                       <div class="w-px h-4 bg-[#10b981]/40"></div>
-                      <div class="w-full bg-[#10b981]/10 border border-[#10b981]/35 text-[#10b981]
-                                  rounded-lg py-2.5 px-3 text-center">
+                      <div
+                        class="w-full bg-[#10b981]/10 border border-[#10b981]/35 text-[#10b981] rounded-lg py-2.5 px-3 text-center"
+                      >
                         <div class="text-xs font-bold">Published</div>
-                        <div class="text-[10px] font-mono opacity-70 mt-0.5">Analytics Views</div>
+                        <div class="text-[10px] font-mono opacity-70 mt-0.5">
+                          Analytics Views
+                        </div>
                       </div>
                     </div>
                     <div class="flex flex-col items-center gap-1.5">
                       <div class="w-px h-4 bg-[#ef4444]/40"></div>
-                      <div class="w-full bg-[#ef4444]/10 border border-[#ef4444]/35 text-[#ef4444]
-                                  rounded-lg py-2.5 px-3 text-center">
+                      <div
+                        class="w-full bg-[#ef4444]/10 border border-[#ef4444]/35 text-[#ef4444] rounded-lg py-2.5 px-3 text-center"
+                      >
                         <div class="text-xs font-bold">Blocked</div>
-                        <div class="text-[10px] font-mono opacity-70 mt-0.5">Teams Alert</div>
+                        <div class="text-[10px] font-mono opacity-70 mt-0.5">
+                          Teams Alert
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-
-              </div><!-- /Data Plane -->
+              </div>
+              <!-- /Data Plane -->
             </div>
           </div>
         </div>
@@ -446,64 +763,139 @@
       <section class="py-16 px-6 border-t border-bdr bg-surface/30">
         <div class="max-w-6xl mx-auto">
           <div class="rv mb-10">
-            <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">Engineering Decisions</div>
-            <h2 class="text-2xl font-bold">Architecture & Operational Controls</h2>
+            <div
+              class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2"
+            >
+              Engineering Decisions
+            </div>
+            <h2 class="text-2xl font-bold">
+              Architecture & Operational Controls
+            </h2>
           </div>
           <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-            <div class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl" style="transition-delay:.00s">
-              <div class="size-9 rounded-lg bg-copper/10 border border-copper/20 flex items-center justify-center mb-4">
-                <svg class="size-4 text-copper" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+            <div
+              class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl"
+              style="transition-delay: 0s"
+            >
+              <div
+                class="size-9 rounded-lg bg-copper/10 border border-copper/20 flex items-center justify-center mb-4"
+              >
+                <svg
+                  class="size-4 text-copper"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"
+                  />
                 </svg>
               </div>
-              <strong class="text-txt text-sm block mb-2">1. Stateless Compute</strong>
+              <strong class="text-txt text-sm block mb-2"
+                >1. Stateless Compute</strong
+              >
               <p class="text-muted text-xs leading-relaxed">
-                Cloud Run extraction jobs coerce key fields at ingestion, reducing downstream
-                BigQuery INT/FLOAT casting errors.
+                Cloud Run extraction jobs coerce key fields at ingestion,
+                reducing downstream BigQuery INT/FLOAT casting errors.
               </p>
             </div>
 
-            <div class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl" style="transition-delay:.08s">
-              <div class="size-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
-                <svg class="size-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+            <div
+              class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl"
+              style="transition-delay: 0.08s"
+            >
+              <div
+                class="size-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4"
+              >
+                <svg
+                  class="size-4 text-blue-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"
+                  />
                 </svg>
               </div>
-              <strong class="text-txt text-sm block mb-2">2. Immutable Raw Layer</strong>
+              <strong class="text-txt text-sm block mb-2"
+                >2. Immutable Raw Layer</strong
+              >
               <p class="text-muted text-xs leading-relaxed">
                 Parquet files in GCS are written to dated source partitions,
                 enabling deterministic replay for historical backfills.
               </p>
             </div>
 
-            <div class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl" style="transition-delay:.16s">
-              <div class="size-9 rounded-lg bg-sage/10 border border-sage/20 flex items-center justify-center mb-4">
-                <svg class="size-4 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            <div
+              class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl"
+              style="transition-delay: 0.16s"
+            >
+              <div
+                class="size-9 rounded-lg bg-sage/10 border border-sage/20 flex items-center justify-center mb-4"
+              >
+                <svg
+                  class="size-4 text-sage"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
               </div>
-              <strong class="text-txt text-sm block mb-2">3. Idempotent Writes</strong>
+              <strong class="text-txt text-sm block mb-2"
+                >3. Idempotent Writes</strong
+              >
               <p class="text-muted text-xs leading-relaxed">
                 Data is materialized via
-                <code class="font-mono text-copper text-[11px] bg-surface px-1 rounded">DATE(ts)</code>
+                <code
+                  class="font-mono text-copper text-[11px] bg-surface px-1 rounded"
+                  >DATE(ts)</code
+                >
                 partitions, enabling safe retries without data duplication.
               </p>
             </div>
 
-            <div class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl" style="transition-delay:.24s">
-              <div class="size-9 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 flex items-center justify-center mb-4">
-                <svg class="size-4 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <div
+              class="rv feat-card bg-[#0d0d0d] border border-bdr p-6 rounded-xl"
+              style="transition-delay: 0.24s"
+            >
+              <div
+                class="size-9 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 flex items-center justify-center mb-4"
+              >
+                <svg
+                  class="size-4 text-[#10b981]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
-              <strong class="text-txt text-sm block mb-2">4. Validation Gate</strong>
+              <strong class="text-txt text-sm block mb-2"
+                >4. Validation Gate</strong
+              >
               <p class="text-muted text-xs leading-relaxed">
-                Freshness checks, quality assertions, and row-threshold checks gate
-                every publish decision with repeatable quality assertions.
+                Freshness checks, quality assertions, and row-threshold checks
+                gate every publish decision with repeatable quality assertions.
               </p>
             </div>
-
           </div>
         </div>
       </section>
@@ -511,180 +903,360 @@
       <!-- ════════════════ SCALABILITY & TRADEOFFS (sticky scroll) ════════════════ -->
       <section id="tradeoffs" class="py-16 px-6 border-t border-bdr">
         <div class="max-w-6xl mx-auto">
-
           <div class="rv mb-14">
-            <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">Design Tradeoffs</div>
+            <div
+              class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2"
+            >
+              Design Tradeoffs
+            </div>
             <h2 class="text-2xl font-bold">Scalability & Tradeoffs</h2>
-            <p class="text-muted text-sm mt-2 max-w-xl">Every architectural decision is a deliberate tradeoff — here's what was chosen and why.</p>
+            <p class="text-muted text-sm mt-2 max-w-xl">
+              Every architectural decision is a deliberate tradeoff. Here's what
+              was chosen and why.
+            </p>
           </div>
 
           <!-- Two-column sticky layout -->
           <div class="flex flex-col md:flex-row gap-12 items-start">
-
             <!-- Left: scrollable cards with tall spacing so sticky panel has time to show -->
             <div class="md:w-1/2 space-y-6 md:space-y-[28vh] pb-0 md:pb-[18vh]">
-
-              <div class="rv tradeoff-card bg-[#0d0d0d] border border-bdr rounded-xl p-8" data-tradeoff="0">
-                <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-3">01 · Ingestion Model</div>
-                <strong class="text-txt text-base block mb-3">Micro-batch vs Streaming</strong>
+              <div
+                class="rv tradeoff-card bg-[#0d0d0d] border border-bdr rounded-xl p-8"
+                data-tradeoff="0"
+              >
+                <div
+                  class="text-[10px] font-mono uppercase tracking-widest text-muted mb-3"
+                >
+                  01 · Ingestion Model
+                </div>
+                <strong class="text-txt text-base block mb-3"
+                  >Micro-batch vs Streaming</strong
+                >
                 <p class="text-muted text-sm leading-relaxed">
-                  Scheduled micro-batch via GitHub Actions (with optional Cloud Scheduler). Streaming intentionally avoided to reduce operational complexity, simplify failure domains, and make partition-replay predictable.
+                  Scheduled micro-batch via GitHub Actions (with optional Cloud
+                  Scheduler). Streaming intentionally avoided to reduce
+                  operational complexity, simplify failure domains, and make
+                  partition-replay predictable.
                 </p>
               </div>
 
-              <div class="rv tradeoff-card bg-[#0d0d0d] border border-bdr rounded-xl p-8" data-tradeoff="1">
-                <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-3">02 · Storage Design</div>
-                <strong class="text-txt text-base block mb-3">Schema Evolution</strong>
+              <div
+                class="rv tradeoff-card bg-[#0d0d0d] border border-bdr rounded-xl p-8"
+                data-tradeoff="1"
+              >
+                <div
+                  class="text-[10px] font-mono uppercase tracking-widest text-muted mb-3"
+                >
+                  02 · Storage Design
+                </div>
+                <strong class="text-txt text-base block mb-3"
+                  >Schema Evolution</strong
+                >
                 <p class="text-muted text-sm leading-relaxed">
-                  Long-format schema <code class="font-mono text-copper text-xs bg-surface px-1 rounded">(ts, sensor_id, metric, value)</code> allows immediate ingestion of new hardware metrics without structural table migrations.
+                  Long-format schema
+                  <code
+                    class="font-mono text-copper text-xs bg-surface px-1 rounded"
+                    >(ts, sensor_id, metric, value)</code
+                  >
+                  allows immediate ingestion of new hardware metrics without
+                  structural table migrations.
                 </p>
               </div>
-
-
             </div>
 
             <!-- Right: sticky visual panel (hidden on mobile) -->
             <div class="hidden md:block md:w-1/2 sticky top-28 self-start">
-              <!-- Fixed-height container — panels stack absolutely so size never changes, no layout reflow -->
-              <div class="w-full bg-[#0a0a0a] border border-bdr rounded-2xl relative overflow-hidden" style="height:536px">
-
+              <!-- Fixed-height container panels stack absolutely so size never changes, no layout reflow -->
+              <div
+                class="w-full bg-[#0a0a0a] border border-bdr rounded-2xl relative overflow-hidden"
+                style="height: 536px"
+              >
                 <!-- Panel 0: Pipeline flow diagram -->
-                <div id="tradeoff-panel-0" class="tradeoff-panel absolute inset-0 p-8 overflow-y-auto">
-                  <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-6">Pipeline Flow</div>
+                <div
+                  id="tradeoff-panel-0"
+                  class="tradeoff-panel absolute inset-0 p-8 overflow-y-auto"
+                >
+                  <div
+                    class="text-[10px] font-mono uppercase tracking-widest text-muted mb-6"
+                  >
+                    Pipeline Flow
+                  </div>
 
                   <!-- Flex-column timeline: dot + line in left col, content in right col -->
                   <div class="space-y-0">
-
                     <div class="flex gap-3">
                       <div class="flex flex-col items-center flex-shrink-0 w-4">
-                        <div class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"></div>
+                        <div
+                          class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"
+                        ></div>
                         <div class="w-px flex-1 bg-bdr2 mt-1"></div>
                       </div>
                       <div class="pb-4">
-                        <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5">Trigger</div>
-                        <div class="text-sm font-semibold text-txt">GitHub Actions</div>
-                        <div class="text-xs text-muted mt-0.5">Hourly fast-lane refresh and daily stabilization, with concurrency queueing</div>
+                        <div
+                          class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5"
+                        >
+                          Trigger
+                        </div>
+                        <div class="text-sm font-semibold text-txt">
+                          GitHub Actions
+                        </div>
+                        <div class="text-xs text-muted mt-0.5">
+                          Hourly fast-lane refresh and daily stabilization, with
+                          concurrency queueing
+                        </div>
                       </div>
                     </div>
 
                     <div class="flex gap-3">
                       <div class="flex flex-col items-center flex-shrink-0 w-4">
-                        <div class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"></div>
+                        <div
+                          class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"
+                        ></div>
                         <div class="w-px flex-1 bg-bdr2 mt-1"></div>
                       </div>
                       <div class="pb-4">
-                        <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5">Compute</div>
-                        <div class="text-sm font-semibold text-txt">Cloud Run Job</div>
-                        <div class="text-xs text-muted mt-0.5">Fetches, validates, and writes</div>
+                        <div
+                          class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5"
+                        >
+                          Compute
+                        </div>
+                        <div class="text-sm font-semibold text-txt">
+                          Cloud Run Job
+                        </div>
+                        <div class="text-xs text-muted mt-0.5">
+                          Fetches, validates, and writes
+                        </div>
                       </div>
                     </div>
 
                     <div class="flex gap-3">
                       <div class="flex flex-col items-center flex-shrink-0 w-4">
-                        <div class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"></div>
+                        <div
+                          class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"
+                        ></div>
                         <div class="w-px flex-1 bg-bdr2 mt-1"></div>
                       </div>
                       <div class="pb-4">
-                        <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5">Storage</div>
-                        <div class="text-sm font-semibold text-txt">GCS Parquet</div>
-                        <div class="text-xs text-muted mt-0.5">Immutable raw record</div>
+                        <div
+                          class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5"
+                        >
+                          Storage
+                        </div>
+                        <div class="text-sm font-semibold text-txt">
+                          GCS Parquet
+                        </div>
+                        <div class="text-xs text-muted mt-0.5">
+                          Immutable raw record
+                        </div>
                       </div>
                     </div>
 
                     <!-- Last step: no line below dot -->
                     <div class="flex gap-3">
                       <div class="flex flex-col items-center flex-shrink-0 w-4">
-                        <div class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"></div>
+                        <div
+                          class="size-2 rounded-full bg-bdr2 border border-dim mt-0.5 flex-shrink-0"
+                        ></div>
                       </div>
                       <div class="pb-4">
-                        <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5">Warehouse</div>
-                        <div class="text-sm font-semibold text-txt">BigQuery</div>
-                        <div class="text-xs text-muted mt-0.5">Partitioned and clustered tables</div>
+                        <div
+                          class="text-[10px] font-mono text-muted uppercase tracking-widest mb-0.5"
+                        >
+                          Warehouse
+                        </div>
+                        <div class="text-sm font-semibold text-txt">
+                          BigQuery
+                        </div>
+                        <div class="text-xs text-muted mt-0.5">
+                          Partitioned and clustered tables
+                        </div>
                       </div>
                     </div>
-
                   </div>
 
                   <div class="mt-6 p-4 bg-surface rounded-xl border border-bdr">
-                    <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-2.5">Why micro-batch</div>
+                    <div
+                      class="text-[10px] font-mono text-muted uppercase tracking-widest mb-2.5"
+                    >
+                      Why micro-batch
+                    </div>
                     <div class="space-y-2">
-                      <div class="flex items-center gap-2 text-xs text-muted"><span class="w-1.5 h-1.5 rounded-full bg-dim flex-shrink-0"></span>Predictable partition replay on failure</div>
-                      <div class="flex items-center gap-2 text-xs text-muted"><span class="w-1.5 h-1.5 rounded-full bg-dim flex-shrink-0"></span>Zero idle infrastructure cost</div>
-                      <div class="flex items-center gap-2 text-xs text-muted"><span class="w-1.5 h-1.5 rounded-full bg-dim flex-shrink-0"></span>Simpler failure isolation per batch</div>
+                      <div class="flex items-center gap-2 text-xs text-muted">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-dim flex-shrink-0"
+                        ></span
+                        >Predictable partition replay on failure
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-muted">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-dim flex-shrink-0"
+                        ></span
+                        >Zero idle infrastructure cost
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-muted">
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-dim flex-shrink-0"
+                        ></span
+                        >Simpler failure isolation per batch
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Panel 1: Schema comparison -->
-                <div id="tradeoff-panel-1" class="tradeoff-panel absolute inset-0 p-8 overflow-y-auto opacity-0 pointer-events-none">
-                  <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-7">Schema Design</div>
+                <div
+                  id="tradeoff-panel-1"
+                  class="tradeoff-panel absolute inset-0 p-8 overflow-y-auto opacity-0 pointer-events-none"
+                >
+                  <div
+                    class="text-[10px] font-mono uppercase tracking-widest text-muted mb-7"
+                  >
+                    Schema Design
+                  </div>
                   <div class="space-y-5">
                     <div>
-                      <div class="text-[10px] font-mono text-copper uppercase tracking-widest mb-2">Long Format (chosen)</div>
-                      <div class="bg-[#080808] border border-copper/25 rounded-lg p-4 font-mono text-xs leading-relaxed">
+                      <div
+                        class="text-[10px] font-mono text-copper uppercase tracking-widest mb-2"
+                      >
+                        Long Format (chosen)
+                      </div>
+                      <div
+                        class="bg-[#080808] border border-copper/25 rounded-lg p-4 font-mono text-xs leading-relaxed"
+                      >
                         <div class="text-muted mb-1">-- sensor_readings</div>
-                        <div><span class="text-sage">ts</span>         <span class="text-dim">TIMESTAMP</span></div>
-                        <div><span class="text-sage">sensor_id</span>  <span class="text-dim">STRING</span></div>
-                        <div><span class="text-copper">metric</span>    <span class="text-dim">STRING</span>    <span class="text-muted text-[10px]">← flexible</span></div>
-                        <div><span class="text-copper">value</span>     <span class="text-dim">FLOAT64</span>   <span class="text-muted text-[10px]">← any metric</span></div>
+                        <div>
+                          <span class="text-sage">ts</span>
+                          <span class="text-dim">TIMESTAMP</span>
+                        </div>
+                        <div>
+                          <span class="text-sage">sensor_id</span>
+                          <span class="text-dim">STRING</span>
+                        </div>
+                        <div>
+                          <span class="text-copper">metric</span>
+                          <span class="text-dim">STRING</span>
+                          <span class="text-muted text-[10px]">← flexible</span>
+                        </div>
+                        <div>
+                          <span class="text-copper">value</span>
+                          <span class="text-dim">FLOAT64</span>
+                          <span class="text-muted text-[10px]"
+                            >← any metric</span
+                          >
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <div class="text-[10px] font-mono text-muted uppercase tracking-widest mb-2">Wide Format (avoided)</div>
-                      <div class="bg-[#080808] border border-bdr rounded-lg p-4 font-mono text-xs leading-relaxed opacity-70">
-                        <div class="text-muted mb-1">-- hypothetical wide table</div>
-                        <div><span class="text-dim">ts</span>          <span class="text-dim">TIMESTAMP</span></div>
-                        <div><span class="text-dim">temp_c</span>      <span class="text-dim">FLOAT64</span></div>
-                        <div><span class="text-dim">humidity</span>    <span class="text-dim">FLOAT64</span></div>
-                        <div><span class="text-dim">pm25</span>        <span class="text-dim">FLOAT64</span></div>
-                        <div><span class="text-dim">new_metric</span>  <span class="text-muted text-[10px]">← migration required</span></div>
+                      <div
+                        class="text-[10px] font-mono text-muted uppercase tracking-widest mb-2"
+                      >
+                        Wide Format (avoided)
+                      </div>
+                      <div
+                        class="bg-[#080808] border border-bdr rounded-lg p-4 font-mono text-xs leading-relaxed opacity-70"
+                      >
+                        <div class="text-muted mb-1">
+                          -- hypothetical wide table
+                        </div>
+                        <div>
+                          <span class="text-dim">ts</span>
+                          <span class="text-dim">TIMESTAMP</span>
+                        </div>
+                        <div>
+                          <span class="text-dim">temp_c</span>
+                          <span class="text-dim">FLOAT64</span>
+                        </div>
+                        <div>
+                          <span class="text-dim">humidity</span>
+                          <span class="text-dim">FLOAT64</span>
+                        </div>
+                        <div>
+                          <span class="text-dim">pm25</span>
+                          <span class="text-dim">FLOAT64</span>
+                        </div>
+                        <div>
+                          <span class="text-dim">new_metric</span>
+                          <span class="text-muted text-[10px]"
+                            >← migration required</span
+                          >
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-
-
               </div>
 
               <!-- Progress dots -->
               <div class="flex items-center justify-center gap-2.5 mt-5">
-                <button class="tradeoff-dot size-1.5 rounded-full bg-bdr2 transition-all duration-300" data-target="0" aria-label="Tradeoff 1"></button>
-                <button class="tradeoff-dot size-1.5 rounded-full bg-bdr2 transition-all duration-300" data-target="1" aria-label="Tradeoff 2"></button>
+                <button
+                  class="tradeoff-dot size-1.5 rounded-full bg-bdr2 transition-all duration-300"
+                  data-target="0"
+                  aria-label="Tradeoff 1"
+                ></button>
+                <button
+                  class="tradeoff-dot size-1.5 rounded-full bg-bdr2 transition-all duration-300"
+                  data-target="1"
+                  aria-label="Tradeoff 2"
+                ></button>
               </div>
             </div>
-
-          </div><!-- end flex row -->
+          </div>
+          <!-- end flex row -->
 
           <!-- What's Next: compact strip below the sticky-scroll layout -->
           <div class="rv mt-16 pt-8 border-t border-bdr">
             <div class="mb-6">
-              <span class="text-[10px] font-mono uppercase tracking-widest text-muted">What's Next</span>
+              <span
+                class="text-[10px] font-mono uppercase tracking-widest text-muted"
+                >What's Next</span
+              >
             </div>
             <div class="grid sm:grid-cols-3 gap-4">
               <div class="group flex items-start gap-3">
-                <span class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"></span>
+                <span
+                  class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"
+                ></span>
                 <div>
-                  <div class="text-sm font-semibold text-txt mb-1">Event-Driven Ingestion</div>
-                  <div class="text-xs text-muted leading-relaxed">Pub/Sub + Eventarc to replace cron triggers and reduce latency.</div>
+                  <div class="text-sm font-semibold text-txt mb-1">
+                    Event-Driven Ingestion
+                  </div>
+                  <div class="text-xs text-muted leading-relaxed">
+                    Pub/Sub + Eventarc to replace cron triggers and reduce
+                    latency.
+                  </div>
                 </div>
               </div>
               <div class="group flex items-start gap-3">
-                <span class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"></span>
+                <span
+                  class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"
+                ></span>
                 <div>
-                  <div class="text-sm font-semibold text-txt mb-1">Anomaly Detection</div>
-                  <div class="text-xs text-muted leading-relaxed">Z-score rolling baselines in BigQuery ML to flag degrading sensors.</div>
+                  <div class="text-sm font-semibold text-txt mb-1">
+                    Anomaly Detection
+                  </div>
+                  <div class="text-xs text-muted leading-relaxed">
+                    Z-score rolling baselines in BigQuery ML to flag degrading
+                    sensors.
+                  </div>
                 </div>
               </div>
               <div class="group flex items-start gap-3">
-                <span class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"></span>
+                <span
+                  class="mt-1 flex-shrink-0 size-1.5 rounded-full bg-copper/40 group-hover:bg-copper transition-colors duration-200"
+                ></span>
                 <div>
-                  <div class="text-sm font-semibold text-txt mb-1">Expanded dbt Migration</div>
-                  <div class="text-xs text-muted leading-relaxed">Keep dbt as an isolated validation lane (`sensors_dbt_ci`) while production transformations continue through the SQL runner.</div>
+                  <div class="text-sm font-semibold text-txt mb-1">
+                    Expanded dbt Migration
+                  </div>
+                  <div class="text-xs text-muted leading-relaxed">
+                    Keep dbt as an isolated validation lane (`sensors_dbt_ci`)
+                    while production transformations continue through the SQL
+                    runner.
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -692,75 +1264,130 @@
       <section id="stack" class="py-16 px-6 border-t border-bdr bg-surface/30">
         <div class="max-w-6xl mx-auto">
           <div class="rv text-center mb-10">
-            <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">Technologies</div>
+            <div
+              class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2"
+            >
+              Technologies
+            </div>
             <h2 class="text-2xl font-bold">Tech Stack</h2>
-            <p class="text-muted text-sm mt-2">Production-grade tools spanning ingest, storage, transformation, and orchestration.</p>
+            <p class="text-muted text-sm mt-2">
+              Production-grade tools spanning ingest, storage, transformation,
+              and orchestration.
+            </p>
           </div>
 
-          <div class="rv grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-
+          <div
+            class="rv grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
+          >
             <!-- Each badge: abbr + label + category -->
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-blue-400 mb-2">GCP</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-blue-400 mb-2">
+                GCP
+              </div>
               <div class="text-xs font-semibold text-txt">Google Cloud</div>
               <div class="text-[10px] text-muted mt-0.5">Infrastructure</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-blue-400 mb-2">BQ</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-blue-400 mb-2">
+                BQ
+              </div>
               <div class="text-xs font-semibold text-txt">BigQuery</div>
               <div class="text-[10px] text-muted mt-0.5">Data Warehouse</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-blue-400 mb-2">GCS</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-blue-400 mb-2">
+                GCS
+              </div>
               <div class="text-xs font-semibold text-txt">Cloud Storage</div>
               <div class="text-[10px] text-muted mt-0.5">Parquet Store</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
               <div class="text-xs font-mono font-bold text-copper mb-2">CR</div>
               <div class="text-xs font-semibold text-txt">Cloud Run</div>
-              <div class="text-[10px] text-muted mt-0.5">Serverless Compute</div>
+              <div class="text-[10px] text-muted mt-0.5">
+                Serverless Compute
+              </div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-copper mb-2">dbt</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-copper mb-2">
+                dbt
+              </div>
               <div class="text-xs font-semibold text-txt">dbt Core</div>
-              <div class="text-[10px] text-muted mt-0.5">Isolated Validation</div>
+              <div class="text-[10px] text-muted mt-0.5">
+                Isolated Validation
+              </div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-yellow-400 mb-2">PY</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-yellow-400 mb-2">
+                PY
+              </div>
               <div class="text-xs font-semibold text-txt">Python</div>
               <div class="text-[10px] text-muted mt-0.5">Ingestion Scripts</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
               <div class="text-xs font-mono font-bold text-txt mb-2">GHA</div>
               <div class="text-xs font-semibold text-txt">GitHub Actions</div>
               <div class="text-[10px] text-muted mt-0.5">CI/CD</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-[#10b981] mb-2">PQ</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-[#10b981] mb-2">
+                PQ
+              </div>
               <div class="text-xs font-semibold text-txt">Parquet</div>
               <div class="text-[10px] text-muted mt-0.5">Columnar Format</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-blue-300 mb-2">SQL</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-blue-300 mb-2">
+                SQL
+              </div>
               <div class="text-xs font-semibold text-txt">SQL</div>
               <div class="text-[10px] text-muted mt-0.5">Analytics Queries</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
               <div class="text-xs font-mono font-bold text-copper mb-2">CS</div>
               <div class="text-xs font-semibold text-txt">Cloud Scheduler</div>
-              <div class="text-[10px] text-muted mt-0.5">Optional Trigger Path</div>
+              <div class="text-[10px] text-muted mt-0.5">
+                Optional Trigger Path
+              </div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-teal-400 mb-2">CRT</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-teal-400 mb-2">
+                CRT
+              </div>
               <div class="text-xs font-semibold text-txt">Carto</div>
               <div class="text-[10px] text-muted mt-0.5">Spatial Analytics</div>
             </div>
-            <div class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default">
-              <div class="text-xs font-mono font-bold text-purple-400 mb-2">DN</div>
+            <div
+              class="tech-badge bg-[#0d0d0d] border border-bdr rounded-xl p-4 text-center cursor-default"
+            >
+              <div class="text-xs font-mono font-bold text-purple-400 mb-2">
+                DN
+              </div>
               <div class="text-xs font-semibold text-txt">Deepnote</div>
               <div class="text-[10px] text-muted mt-0.5">Analytics NB</div>
             </div>
-
           </div>
         </div>
       </section>
@@ -769,13 +1396,26 @@
       <section class="py-16 px-6 border-t border-bdr">
         <div class="max-w-2xl mx-auto">
           <div class="rv text-center mb-8">
-            <div class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">Data Quality Gate</div>
+            <div
+              class="text-[10px] font-mono uppercase tracking-widest text-muted mb-2"
+            >
+              Data Quality Gate
+            </div>
             <h2 class="text-xl font-bold">Pipeline Validation</h2>
-            <p class="text-muted text-sm mt-2">Every publish is gated on freshness, quality, and threshold assertions.</p>
+            <p class="text-muted text-sm mt-2">
+              Every publish is gated on freshness, quality, and threshold
+              assertions.
+            </p>
           </div>
-          <div class="rv code-block bg-[#0a0a0a] border border-bdr rounded-xl overflow-hidden font-mono text-xs shadow-2xl">
-            <div class="bg-surface2 px-4 py-2.5 border-b border-bdr flex items-center justify-between">
-              <span class="text-muted text-[10px] uppercase tracking-widest">pipeline_validation.sql</span>
+          <div
+            class="rv code-block bg-[#0a0a0a] border border-bdr rounded-xl overflow-hidden font-mono text-xs shadow-2xl"
+          >
+            <div
+              class="bg-surface2 px-4 py-2.5 border-b border-bdr flex items-center justify-between"
+            >
+              <span class="text-muted text-[10px] uppercase tracking-widest"
+                >pipeline_validation.sql</span
+              >
               <div class="flex gap-1.5">
                 <div class="size-2.5 rounded-full bg-[#ff5f57]"></div>
                 <div class="size-2.5 rounded-full bg-[#febc2e]"></div>
@@ -783,43 +1423,67 @@
               </div>
             </div>
             <div class="p-6 leading-[1.9] text-txt">
-              <span class="text-copper">SELECT</span><br/>
-              &nbsp;&nbsp;COUNT(*) <span class="text-copper">AS</span> row_count,<br/>
-              &nbsp;&nbsp;COUNTIF(pm2_5 <span class="text-copper">IS NULL</span>) <span class="text-copper">AS</span> null_count,<br/>
-              &nbsp;&nbsp;MAX(ts) <span class="text-copper">AS</span> latest_ts<br/>
-              <span class="text-copper">FROM</span> <span class="text-sage">`sensors.tsi_raw_materialized`</span><br/>
-              <span class="text-copper">WHERE</span> DATE(ts) &gt;=<br/>
-              &nbsp;&nbsp;DATE_SUB(CURRENT_DATE(), INTERVAL <span class="text-blue-400">1</span> DAY);<br/><br/>
-              <span class="text-[#10b981]">&gt; quality checks passed<span class="cur"></span></span>
+              <span class="text-copper">SELECT</span><br />
+              &nbsp;&nbsp;COUNT(*)
+              <span class="text-copper">AS</span> row_count,<br />
+              &nbsp;&nbsp;COUNTIF(pm2_5
+              <span class="text-copper">IS NULL</span>)
+              <span class="text-copper">AS</span> null_count,<br />
+              &nbsp;&nbsp;MAX(ts)
+              <span class="text-copper">AS</span> latest_ts<br />
+              <span class="text-copper">FROM</span>
+              <span class="text-sage">`sensors.tsi_raw_materialized`</span
+              ><br />
+              <span class="text-copper">WHERE</span> DATE(ts) &gt;=<br />
+              &nbsp;&nbsp;DATE_SUB(CURRENT_DATE(), INTERVAL
+              <span class="text-blue-400">1</span> DAY);<br /><br />
+              <span class="text-[#10b981]"
+                >&gt; quality checks passed<span class="cur"></span
+              ></span>
             </div>
           </div>
         </div>
       </section>
-
     </main>
 
     <!-- ════════════════ FOOTER ════════════════ -->
-<footer class="border-t border-bdr bg-surface/20 py-8 px-6">
-      <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-6
-                  text-xs font-mono text-muted">
-        
-        <div class="flex flex-col items-center md:items-start gap-1.5 text-center md:text-left">
+    <footer class="border-t border-bdr bg-surface/20 py-8 px-6">
+      <div
+        class="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-6 text-xs font-mono text-muted"
+      >
+        <div
+          class="flex flex-col items-center md:items-start gap-1.5 text-center md:text-left"
+        >
           <span>Durham Environmental Monitoring</span>
           <span class="text-[10px] text-dim max-w-sm leading-relaxed">
-            Note: The map and notebook display public WU stations only. Private TSI sensor data are excluded for privacy.
+            Note: The map and notebook display public WU stations only. Private
+            TSI sensor data are excluded for privacy.
           </span>
         </div>
 
-        <div class="flex flex-wrap justify-center items-center gap-6 mt-2 md:mt-0">
-          <a href="https://github.com/AlainS7/durham-environmental-monitoring"
-             target="_blank" class="hover:text-txt transition">GitHub</a>
-          <a href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/ARCHITECTURE_OVERVIEW.md"
-             target="_blank" class="hover:text-txt transition">Docs</a>
-          <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
-             target="_blank" class="hover:text-txt transition">Map</a>
+        <div
+          class="flex flex-wrap justify-center items-center gap-6 mt-2 md:mt-0"
+        >
+          <a
+            href="https://github.com/AlainS7/durham-environmental-monitoring"
+            target="_blank"
+            class="hover:text-txt transition"
+            >GitHub</a
+          >
+          <a
+            href="https://github.com/AlainS7/durham-environmental-monitoring/blob/main/docs/ARCHITECTURE_OVERVIEW.md"
+            target="_blank"
+            class="hover:text-txt transition"
+            >Docs</a
+          >
+          <a
+            href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb"
+            target="_blank"
+            class="hover:text-txt transition"
+            >Map</a
+          >
           <span class="text-dim">MIT License</span>
         </div>
-
       </div>
     </footer>
 
@@ -827,25 +1491,32 @@
       // ── Hero stagger ──
       window.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(() => {
-          document.querySelectorAll(".hf").forEach(el => el.classList.add("on"));
+          document
+            .querySelectorAll(".hf")
+            .forEach((el) => el.classList.add("on"));
         });
       });
 
       // ── Scroll reveal ──
       const ro = new IntersectionObserver(
-        entries => entries.forEach(e => {
-          if (e.isIntersecting) { e.target.classList.add("on"); ro.unobserve(e.target); }
-        }),
-        { threshold: 0.08 }
+        (entries) =>
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("on");
+              ro.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.08 },
       );
-      document.querySelectorAll(".rv").forEach(el => ro.observe(el));
+      document.querySelectorAll(".rv").forEach((el) => ro.observe(el));
 
       // ── Counter animation ──
       function animateCount(el) {
-        const target  = parseFloat(el.dataset.count);
-        const suffix  = el.dataset.suffix  || "";
+        const target = parseFloat(el.dataset.count);
+        const suffix = el.dataset.suffix || "";
         const divisor = parseFloat(el.dataset.divisor) || 1;
-        const dur = 1600, t0 = performance.now();
+        const dur = 1600,
+          t0 = performance.now();
         (function step(now) {
           const p = Math.min((now - t0) / dur, 1);
           const ease = 1 - Math.pow(1 - p, 3);
@@ -854,37 +1525,41 @@
         })(t0);
       }
       const co = new IntersectionObserver(
-        entries => entries.forEach(e => {
-          if (e.isIntersecting) { animateCount(e.target); co.unobserve(e.target); }
-        }),
-        { threshold: 0.5 }
+        (entries) =>
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              animateCount(e.target);
+              co.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.5 },
       );
-      document.querySelectorAll("[data-count]").forEach(el => co.observe(el));
+      document.querySelectorAll("[data-count]").forEach((el) => co.observe(el));
 
       // ── Tradeoff sticky-scroll panel switcher ──
       (function () {
-        const cards   = document.querySelectorAll(".tradeoff-card");
-        const panels  = document.querySelectorAll(".tradeoff-panel");
-        const dots    = document.querySelectorAll(".tradeoff-dot");
+        const cards = document.querySelectorAll(".tradeoff-card");
+        const panels = document.querySelectorAll(".tradeoff-panel");
+        const dots = document.querySelectorAll(".tradeoff-dot");
         const section = document.getElementById("tradeoffs");
-        let active    = -1;
+        let active = -1;
 
         function show(idx) {
           if (idx === active) return;
           active = idx;
-          // Pure opacity/pointer-events toggle — container size never changes, no reflow
+          // Pure opacity/pointer-events toggle container size never changes, no reflow
           panels.forEach((p, i) => {
             if (i === idx) {
-              p.style.opacity        = "1";
-              p.style.pointerEvents  = "auto";
+              p.style.opacity = "1";
+              p.style.pointerEvents = "auto";
             } else {
-              p.style.opacity        = "0";
-              p.style.pointerEvents  = "none";
+              p.style.opacity = "0";
+              p.style.pointerEvents = "none";
             }
           });
           dots.forEach((d, i) => {
             d.style.background = i === idx ? "#c07828" : "";
-            d.style.transform  = i === idx ? "scale(1.6)" : "";
+            d.style.transform = i === idx ? "scale(1.6)" : "";
           });
           // Highlight active left card
           cards.forEach((c, i) => {
@@ -896,31 +1571,42 @@
         // Works perfectly in both directions with no threshold fragility.
         function pickActive() {
           const mid = window.innerHeight / 2;
-          let best = 0, bestDist = Infinity;
+          let best = 0,
+            bestDist = Infinity;
           cards.forEach((c, i) => {
             const r = c.getBoundingClientRect();
             const dist = Math.abs(r.top + r.height / 2 - mid);
-            if (dist < bestDist) { bestDist = dist; best = i; }
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = i;
+            }
           });
           return best;
         }
 
-        window.addEventListener("scroll", () => {
-          const r = section.getBoundingClientRect();
-          if (r.top < window.innerHeight && r.bottom > 0) show(pickActive());
-        }, { passive: true });
+        window.addEventListener(
+          "scroll",
+          () => {
+            const r = section.getBoundingClientRect();
+            if (r.top < window.innerHeight && r.bottom > 0) show(pickActive());
+          },
+          { passive: true },
+        );
 
         // Card click → show that panel immediately
-        cards.forEach(c => {
+        cards.forEach((c) => {
           c.style.cursor = "pointer";
           c.addEventListener("click", () => show(Number(c.dataset.tradeoff)));
         });
 
         // Dot click: scroll card into view
-        dots.forEach(d => {
+        dots.forEach((d) => {
           d.addEventListener("click", () => {
-            const target = document.querySelector(`.tradeoff-card[data-tradeoff="${d.dataset.target}"]`);
-            if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+            const target = document.querySelector(
+              `.tradeoff-card[data-tradeoff="${d.dataset.target}"]`,
+            );
+            if (target)
+              target.scrollIntoView({ behavior: "smooth", block: "center" });
           });
         });
 
