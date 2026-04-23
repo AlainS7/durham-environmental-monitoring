@@ -151,7 +151,7 @@ class WUClient(BaseClient):
         Uses Pydantic WUResponse for validation.
         """
         mode = strategy or self.endpoint_strategy
-        data = None
+        payloads: list[dict] = []
         filter_end_date_for_helper = "" # Initialize for clarity
         if mode == EndpointStrategy.HOURLY:
             # Use /history/hourly endpoint (per-day, per-station) - Returns ALL fields including temp, wind, precip
@@ -167,6 +167,24 @@ class WUClient(BaseClient):
                 "numericPrecision": "decimal"
             }
             data = await self._request("GET", endpoint, params=params)
+            if data:
+                payloads.append(data)
+
+            # history/hourly can lag; supplement current UTC day with latest observation.
+            current_utc_day = pd.Timestamp.utcnow().strftime("%Y-%m-%d")
+            if start_date == current_utc_day:
+                current_params = {
+                    "stationId": station_id,
+                    "format": "json",
+                    "apiKey": self.api_key,
+                    "units": "e",
+                    "numericPrecision": "decimal",
+                }
+                current_payload = await self._request(
+                    "GET", "observations/current", params=current_params
+                )
+                if current_payload:
+                    payloads.append(current_payload)
             filter_end_date_for_helper = start_date # For history/hourly, filter for just the start_date
         elif mode == EndpointStrategy.ALL:
             endpoint = "observations/all"
@@ -180,6 +198,8 @@ class WUClient(BaseClient):
                 "endDate": filter_end_date_for_helper  # YYYY-MM-DD
             }
             data = await self._request("GET", endpoint, params=params)
+            if data:
+                payloads.append(data)
         else:
             # MULTIDAY path: use date-addressable dense history endpoint.
             # WU "date" is local-day based, while downstream partitioning is UTC-day based.
@@ -206,41 +226,31 @@ class WUClient(BaseClient):
                 if payload:
                     payloads.append(payload)
 
-            obs_dicts = []
-            for payload in payloads:
-                try:
-                    validated = WUResponse.model_validate(payload)
-                except pydantic.ValidationError as e:
-                    log.error(
-                        "WU API response validation failed for station %s: %s",
-                        station_id,
-                        e,
-                    )
-                    continue
-                obs_dicts.extend(obs.model_dump() for obs in validated.observations)
+        if not payloads:
+            log.warning(
+                "WU API returned empty payload for station %s (%s date=%s)",
+                station_id,
+                mode.value,
+                start_date,
+            )
+            return None
 
-            if not obs_dicts:
-                return None
-
-        # Validate and parse using Pydantic WUResponse
-        if mode != EndpointStrategy.MULTIDAY:
-            if not data:
-                log.warning(
-                    "WU API returned empty payload for station %s (%s date=%s)",
-                    station_id,
-                    mode.value,
-                    start_date,
-                )
-                return None
+        obs_dicts = []
+        for payload in payloads:
             try:
-                validated = WUResponse.model_validate(data)
+                validated = WUResponse.model_validate(payload)
             except pydantic.ValidationError as e:
-                log.error(f"WU API response validation failed for station {station_id}: {e}")
-                return None
+                log.error(
+                    "WU API response validation failed for station %s: %s",
+                    station_id,
+                    e,
+                )
+                continue
+            obs_dicts.extend(obs.model_dump() for obs in validated.observations)
 
-            # Convert validated observations to dicts for DataFrame
-            obs_dicts = [obs.model_dump() for obs in validated.observations]
-        
+        if not obs_dicts:
+            return None
+
         # Flatten the 'metric' and 'imperial' nested objects into top-level fields
         # WU API returns temp/wind/precip data inside these nested objects
         # Historical API (history/hourly) returns data in 'imperial' or 'metric' object based on units parameter

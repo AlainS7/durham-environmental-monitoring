@@ -113,7 +113,7 @@ run_one_execution() {
   fi
 
   # Pass-through optional WU runtime tuning env vars for this execution.
-  for wu_var in WU_ENDPOINT_STRATEGY WU_CONCURRENCY WU_MAX_RETRIES WU_RETRY_BASE_DELAY; do
+  for wu_var in WU_ENDPOINT_STRATEGY WU_CONCURRENCY WU_MAX_RETRIES WU_RETRY_BASE_DELAY WU_CURRENT_DAY_GRACE_HOURS_UTC; do
     wu_val="${!wu_var:-}"
     if [ -n "$wu_val" ]; then
       env_pairs="${env_pairs:+$env_pairs,}${wu_var}=${wu_val}"

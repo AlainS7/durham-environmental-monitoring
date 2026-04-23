@@ -69,6 +69,25 @@ for k in critical_env:
 
 
 # ---------------- Cleaning -----------------
+def _coalesce_duplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Merge duplicate columns by taking the first non-null value left-to-right."""
+    if not df.columns.has_duplicates:
+        return df
+
+    duplicate_names = pd.Index(df.columns[df.columns.duplicated(keep=False)]).unique()
+    for col in duplicate_names:
+        duplicate_slice = df.loc[:, df.columns == col]
+        merged_series = duplicate_slice.bfill(axis=1).iloc[:, 0]
+        df = df.loc[:, df.columns != col].copy()
+        df[col] = merged_series
+
+    log.warning(
+        "Coalesced duplicate columns after schema normalization: %s",
+        ", ".join(str(col) for col in duplicate_names),
+    )
+    return df
+
+
 def clean_and_transform_data(df: pd.DataFrame, source: str) -> pd.DataFrame:
     if df.empty:
         return df
@@ -149,6 +168,7 @@ def clean_and_transform_data(df: pd.DataFrame, source: str) -> pd.DataFrame:
             "longitude": "longitude",
         }
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+    df = _coalesce_duplicate_columns(df)
     if source == "WU":
         for col in ["qc_status", "epoch"]:
             if col in df.columns:
@@ -377,9 +397,31 @@ def _clean(
 def _assert_required_source_data(
     source: str, day_str: str, wu_raw: pd.DataFrame, tsi_raw: pd.DataFrame
 ) -> None:
+    grace_raw = os.getenv("WU_CURRENT_DAY_GRACE_HOURS_UTC", "4")
+    try:
+        wu_current_day_grace_hours = max(int(grace_raw), 0)
+    except ValueError:
+        log.warning(
+            "Invalid WU_CURRENT_DAY_GRACE_HOURS_UTC value '%s'; defaulting to 4",
+            grace_raw,
+        )
+        wu_current_day_grace_hours = 4
+
     missing_sources: list[str] = []
     if source in ("all", "wu") and wu_raw.empty:
-        missing_sources.append("WU")
+        now_utc = datetime.utcnow()
+        is_current_utc_day = day_str == now_utc.strftime("%Y-%m-%d")
+        in_grace_window = is_current_utc_day and now_utc.hour < wu_current_day_grace_hours
+        if in_grace_window:
+            log.warning(
+                "No WU rows for %s during UTC current-day grace window (hour=%s < %s); "
+                "continuing without failing run.",
+                day_str,
+                now_utc.hour,
+                wu_current_day_grace_hours,
+            )
+        else:
+            missing_sources.append("WU")
     if source in ("all", "tsi") and tsi_raw.empty:
         missing_sources.append("TSI")
     if missing_sources:

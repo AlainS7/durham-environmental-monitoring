@@ -78,8 +78,8 @@ class Config:
         return {
             "base_url": "https://api.weather.com/v2/pws",
             "api_key": api_key,
-            # Multiday is a quota-safe default that retains dense intraday data.
-            "endpoint_strategy": os.getenv("WU_ENDPOINT_STRATEGY", "multiday"),
+            # Hybrid keeps hourly freshness and supplements with denser intraday rows.
+            "endpoint_strategy": os.getenv("WU_ENDPOINT_STRATEGY", "hybrid"),
             "semaphore_limit": self._parse_int_env("WU_CONCURRENCY", 2),
             "max_retries": self._parse_int_env("WU_MAX_RETRIES", 6),
             "retry_base_delay": self._parse_float_env("WU_RETRY_BASE_DELAY", 2.0),

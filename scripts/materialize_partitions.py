@@ -84,21 +84,40 @@ def daterange(start: dt.date, end: dt.date) -> Iterable[dt.date]:
         cur = cur + dt.timedelta(days=1)
 
 
-def _resolve_time_field(client: bigquery.Client, dataset: str, external_table: str) -> str:
-    """Pick the best timestamp-like field present in the external table schema."""
+def _resolve_time_field(
+    client: bigquery.Client, dataset: str, external_table: str
+) -> tuple[str, str]:
+    """Pick the best timestamp-like field present in the source table schema."""
     table_ref = f"{client.project}.{dataset}.{external_table}"
     table = client.get_table(table_ref)
-    field_names = {f.name for f in table.schema}
-    candidates = ["timestamp", "epoch", "ts", "time", "event_time"]
+    field_types = {f.name: f.field_type for f in table.schema}
+    # Prefer explicit observation timestamps over epoch helpers when available.
+    candidates = ["obsTimeUtc", "timestamp", "ts", "epoch", "time", "event_time"]
     for c in candidates:
-        if c in field_names:
-            return c
+        if c in field_types:
+            return c, field_types[c]
     # Fall back to first TIMESTAMP/INTEGER-like field
     for f in table.schema:
         if f.field_type in ("TIMESTAMP", "DATETIME", "INTEGER", "INT64"):
-            return f.name
+            return f.name, f.field_type
     # As last resort, raise an error
     raise RuntimeError(f"Could not determine time field for table {table_ref}")
+
+
+def _build_ts_expr(field_ref: str, source_type: str) -> str:
+    normalized_source = _normalize_type_name(source_type)
+    if normalized_source in {"TIMESTAMP", "DATETIME", "STRING"}:
+        return f"SAFE_CAST({field_ref} AS TIMESTAMP)"
+    return (
+        "CASE "
+        f"WHEN ABS(CAST({field_ref} AS INT64)) >= 100000000000000000 THEN "
+        f"  TIMESTAMP_MICROS(DIV(CAST({field_ref} AS INT64), 1000)) "
+        f"WHEN ABS(CAST({field_ref} AS INT64)) >= 100000000000000 THEN "
+        f"  TIMESTAMP_MICROS(CAST({field_ref} AS INT64)) "
+        f"WHEN ABS(CAST({field_ref} AS INT64)) >= 100000000000 THEN "
+        f"  TIMESTAMP_MILLIS(CAST({field_ref} AS INT64)) "
+        f"ELSE TIMESTAMP_SECONDS(CAST({field_ref} AS INT64)) END"
+    )
 
 
 def ensure_materialized_table(client: bigquery.Client, dataset: str, table: str, external_table: str, cluster_by: List[str] | None = None) -> None:
@@ -111,22 +130,13 @@ def ensure_materialized_table(client: bigquery.Client, dataset: str, table: str,
 
     # Create table using CTAS with zero rows to define schema: cast epoch to TIMESTAMP as ts
     # Filter cluster_by to columns that actually exist in source (excluding time field)
-    time_field = _resolve_time_field(client, dataset, external_table)
+    time_field, time_field_type = _resolve_time_field(client, dataset, external_table)
     src_schema = {f.name for f in client.get_table(f"{client.project}.{dataset}.{external_table}").schema}
     cluster_cols = [c for c in (cluster_by or []) if c in src_schema]
     cluster_clause = f" CLUSTER BY {', '.join(cluster_cols)}" if cluster_cols else ""
     # Choose correct epoch unit dynamically (ns/us/ms/s) to avoid TIMESTAMP overflow
     # Boundaries based on orders of magnitude around current epoch (~1.7e9 s)
-    ts_expr = (
-        "CASE "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000000 THEN "
-        f"  TIMESTAMP_MICROS(DIV(CAST(t.{time_field} AS INT64), 1000)) "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000 THEN "
-        f"  TIMESTAMP_MICROS(CAST(t.{time_field} AS INT64)) "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000 THEN "
-        f"  TIMESTAMP_MILLIS(CAST(t.{time_field} AS INT64)) "
-        f"ELSE TIMESTAMP_SECONDS(CAST(t.{time_field} AS INT64)) END"
-    )
+    ts_expr = _build_ts_expr(f"t.{time_field}", time_field_type)
     except_cols = [c for c in ["timestamp", "epoch", "ts"] if c in src_schema]
     except_clause = f" EXCEPT({', '.join(except_cols)})" if except_cols else ""
     sql = f"""
@@ -251,18 +261,8 @@ def insert_partition_from_external(client: bigquery.Client, dataset: str, table:
         f.name: _normalize_type_name(f.field_type) for f in external_table_obj.schema
     }
 
-    time_field = _resolve_time_field(client, dataset, external_table)
-
-    ts_expr = (
-        "CASE "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000000 THEN "
-        f"  TIMESTAMP_MICROS(DIV(CAST(t.{time_field} AS INT64), 1000)) "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000 THEN "
-        f"  TIMESTAMP_MICROS(CAST(t.{time_field} AS INT64)) "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000 THEN "
-        f"  TIMESTAMP_MILLIS(CAST(t.{time_field} AS INT64)) "
-        f"ELSE TIMESTAMP_SECONDS(CAST(t.{time_field} AS INT64)) END"
-    )
+    time_field, time_field_type = _resolve_time_field(client, dataset, external_table)
+    ts_expr = _build_ts_expr(f"t.{time_field}", time_field_type)
 
     select_list = []
     for col in target_cols:
@@ -372,18 +372,8 @@ def insert_partition_from_gcs(
         f.name: _normalize_type_name(f.field_type) for f in stage_table_obj.schema
     }
 
-    time_field = _resolve_time_field(client, dataset, stage_table.split('.')[-1])
-
-    ts_expr = (
-        "CASE "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000000 THEN "
-        f"  TIMESTAMP_MICROS(DIV(CAST(t.{time_field} AS INT64), 1000)) "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000000 THEN "
-        f"  TIMESTAMP_MICROS(CAST(t.{time_field} AS INT64)) "
-        f"WHEN ABS(CAST(t.{time_field} AS INT64)) >= 100000000000 THEN "
-        f"  TIMESTAMP_MILLIS(CAST(t.{time_field} AS INT64)) "
-        f"ELSE TIMESTAMP_SECONDS(CAST(t.{time_field} AS INT64)) END"
-    )
+    time_field, time_field_type = _resolve_time_field(client, dataset, stage_table.split('.')[-1])
+    ts_expr = _build_ts_expr(f"t.{time_field}", time_field_type)
 
     # Build the SELECT list, providing NULL for columns missing in the staging table
     select_list = []
