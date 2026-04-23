@@ -120,3 +120,48 @@ async def test_multiday_uses_history_all_with_date_param(mocker):
     assert all(c['params']['numericPrecision'] == 'decimal' for c in calls)
     assert not df.empty
     assert pd.Timestamp('2026-04-01T00:05:00Z') in set(df['obsTimeUtc'])
+
+
+@pytest.mark.asyncio
+async def test_hourly_current_day_fetch_includes_observations_current(mocker):
+    station = 'KNCGARNE13'
+    mocker.patch(
+        'src.data_collection.clients.wu_client.get_wu_stations',
+        return_value=[{'stationId': station}],
+    )
+    client = WUClient(
+        api_key='test_key',
+        base_url='https://fake-wu.com',
+        endpoint_strategy='hourly',
+    )
+
+    today = pd.Timestamp.utcnow().strftime('%Y-%m-%d')
+    calls = []
+
+    async def _fake_request(method, endpoint, params=None):
+        calls.append(endpoint)
+        if endpoint == 'history/hourly':
+            return {
+                'observations': [
+                    {'stationID': station, 'obsTimeUtc': f'{today}T01:00:00Z'}
+                ]
+            }
+        if endpoint == 'observations/current':
+            return {
+                'observations': [
+                    {'stationID': station, 'obsTimeUtc': f'{today}T02:00:00Z'}
+                ]
+            }
+        raise AssertionError(f'Unexpected endpoint: {endpoint}')
+
+    mocker.patch.object(client, '_request', side_effect=_fake_request)
+
+    df = await client._fetch_one(
+        station,
+        today,
+        strategy=EndpointStrategy.HOURLY,
+    )
+
+    assert calls == ['history/hourly', 'observations/current']
+    assert not df.empty
+    assert pd.Timestamp(f'{today}T02:00:00Z') in set(df['obsTimeUtc'])

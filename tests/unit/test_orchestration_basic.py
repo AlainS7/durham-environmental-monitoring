@@ -69,3 +69,36 @@ def test_run_collection_process_fails_when_required_source_empty(monkeypatch):
                 source='wu',
             )
         )
+
+
+def test_run_collection_process_allows_empty_wu_during_current_day_grace(monkeypatch):
+    monkeypatch.setattr(dc, 'WUClient', lambda **cfg: DummyWUEmpty())
+    monkeypatch.setattr(dc, 'TSIClient', lambda **cfg: DummyTSI())
+    monkeypatch.setenv('WU_CURRENT_DAY_GRACE_HOURS_UTC', '24')
+    monkeypatch.setenv('GCS_FAKE_UPLOAD', '1')
+
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    asyncio.run(
+        dc.run_collection_process(
+            today,
+            today,
+            sink='gcs',
+            source='all',
+        )
+    )
+
+
+def test_clean_and_transform_data_coalesces_duplicate_wu_columns():
+    raw = pd.DataFrame(
+        {
+            'stationID': ['S1', 'S1'],
+            'obsTimeUtc': [datetime(2026, 4, 16, 0, 0), datetime(2026, 4, 16, 0, 5)],
+            'humidityAvg': [60.0, None],
+            'humidity': [55.0, 56.0],
+        }
+    )
+
+    cleaned = dc.clean_and_transform_data(raw, 'WU')
+
+    assert list(cleaned.columns).count('humidity') == 1
+    assert cleaned['humidity'].tolist() == [60.0, 56.0]
