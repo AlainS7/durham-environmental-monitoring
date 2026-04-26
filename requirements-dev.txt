@@ -280,7 +280,7 @@ urllib3==2.6.3
     # via
     #   durham-environmental-monitoring (pyproject.toml)
     #   requests
-wheel==0.45.1
+wheel==0.46.2
     # via pip-tools
 zipp==3.23.0
     # via importlib-metadata
