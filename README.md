@@ -11,17 +11,19 @@ A comprehensive, cloud-native environmental monitoring system for Durham, NC. Th
     <img src="https://img.shields.io/badge/🖥️_Participant-Demo_Dashboard-f97316?style=for-the-badge" alt="View Participant Demo Dashboard">
   </a>
   &nbsp;&nbsp;
-  <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb">
-    <img src="https://img.shields.io/badge/🗺️_Interactive-Map-0088cc?style=for-the-badge" alt="View Interactive Map">
-  </a>
-  &nbsp;&nbsp;
   <a href="https://alains7.github.io/durham-environmental-monitoring/">
     <img src="https://img.shields.io/badge/📚_Documentation-Site-10b981?style=for-the-badge" alt="View Documentation Site">
   </a>
+  <!--
   &nbsp;&nbsp;
   <a href="https://deepnote.com/app/durham-weather/Durham-Environmental-Monitoring-01675d6c-334a-428e-9914-3106705b40c8?utm_content=01675d6c-334a-428e-9914-3106705b40c8&__run=true">
     <img src="https://img.shields.io/badge/📊_Analysis-Notebook-9333ea?style=for-the-badge" alt="View Deepnote Notebook">
   </a>
+  &nbsp;&nbsp;
+  <a href="https://clausa.app.carto.com/map/abad0569-7066-48a1-b068-6da27fff21cb">
+    <img src="https://img.shields.io/badge/🗺️_Interactive-Map-0088cc?style=for-the-badge" alt="View Interactive Map">
+  </a>
+  -->
 </p>
 
 ---
