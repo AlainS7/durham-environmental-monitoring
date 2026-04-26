@@ -1,0 +1,75 @@
+name: NIFC Fire Perimeter Ingest
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_hours:
+        description: "Watermark lookback window in hours"
+        required: false
+        default: "12"
+      page_size:
+        description: "ArcGIS page size (max ~2000)"
+        required: false
+        default: "1000"
+      max_pages:
+        description: "Optional debug cap for pages (0 = unlimited)"
+        required: false
+        default: "0"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  NIFC_BQ_DATASET: sensors_shared
+  NIFC_WEATHER_DATASET: sensors
+  NIFC_FEATURE_LAYER_URL: https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0
+  NIFC_RADIUS_METERS: "50000"
+
+concurrency:
+  group: nifc-fire-ingest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VERIFIER_SA }}
+          token_format: access_token
+
+      - name: Ingest NIFC perimeter data
+        env:
+          LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '12' }}
+          PAGE_SIZE: ${{ github.event.inputs.page_size || '1000' }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages || '0' }}
+        run: |
+          python scripts/ingest_nifc_fire_perimeters.py \
+            --project "$GCP_PROJECT_ID" \
+            --dataset "$NIFC_BQ_DATASET" \
+            --weather-dataset "$NIFC_WEATHER_DATASET" \
+            --layer-url "$NIFC_FEATURE_LAYER_URL" \
+            --lookback-hours "$LOOKBACK_HOURS" \
+            --page-size "$PAGE_SIZE" \
+            --max-pages "$MAX_PAGES" \
+            --radius-meters "$NIFC_RADIUS_METERS" \
+            --execute
