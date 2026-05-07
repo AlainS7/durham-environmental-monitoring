@@ -7,7 +7,7 @@ name = "durham-environmental-monitoring"
 version = "0.1.0"
 description = "A service to collect and upload TSI and Weather Underground sensor data."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -21,7 +21,7 @@ dependencies = [
     "google-cloud-secret-manager>=2.21.0",
     "google-cloud-storage>=2.18.2",
     "google-cloud-bigquery>=3.38.0",
-    "python-dotenv>=1.1.1",
+    "python-dotenv>=1.2.2",
     "tqdm>=4.66.4",
     "nest-asyncio>=1.6.0",
     "google-cloud-logging>=3.10.0",
@@ -38,7 +38,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
+    "pytest>=9.0.3",
     "pytest-asyncio",
     "pytest-mock",
     "flake8",
