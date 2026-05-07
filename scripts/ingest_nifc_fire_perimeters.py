@@ -19,6 +19,7 @@ import datetime as dt
 import hashlib
 import json
 import logging
+import uuid
 from typing import Any
 
 import requests
@@ -206,6 +207,15 @@ def ensure_raw_table(client: bigquery.Client, project: str, dataset: str) -> Non
     table_id = f"{project}.{dataset}.{RAW_TABLE_NAME}"
     table = bigquery.Table(table_id, schema=raw_table_schema())
     table.time_partitioning = bigquery.TimePartitioning(field="ingest_ts")
+    table.clustering_fields = ["incident_id", "record_hash", "incident_type_category"]
+    client.create_table(table, exists_ok=True)
+    log.info("Ensured table exists: %s", table_id)
+
+
+def ensure_current_table(client: bigquery.Client, project: str, dataset: str) -> None:
+    table_id = f"{project}.{dataset}.{CURRENT_TABLE_NAME}"
+    table = bigquery.Table(table_id, schema=current_table_schema())
+    table.time_partitioning = bigquery.TimePartitioning(field="snapshot_ts")
     table.clustering_fields = ["incident_id", "incident_type_category"]
     client.create_table(table, exists_ok=True)
     log.info("Ensured table exists: %s", table_id)
@@ -366,27 +376,33 @@ def build_rows(
     return rows
 
 
-def insert_raw_rows(
-    client: bigquery.Client, project: str, dataset: str, rows: list[dict[str, Any]]
-) -> int:
-    if not rows:
-        return 0
-
-    table_id = f"{project}.{dataset}.{RAW_TABLE_NAME}"
-    row_ids = [row["record_hash"] for row in rows]
-    errors = client.insert_rows_json(table_id, rows, row_ids=row_ids)
-    if errors:
-        raise RuntimeError(f"Failed inserting NIFC rows: {errors[:3]}")
-    return len(rows)
-
-
-def refresh_current_table(client: bigquery.Client, project: str, dataset: str) -> None:
+def build_merge_raw_sql(project: str, dataset: str, temp_table_id: str) -> str:
     raw_id = f"{project}.{dataset}.{RAW_TABLE_NAME}"
+    insert_columns = ",\n    ".join(f"`{column}`" for column in RAW_COLUMN_NAMES)
+    insert_values = ",\n    ".join(f"S.`{column}`" for column in RAW_COLUMN_NAMES)
+    return f"""
+MERGE `{raw_id}` T
+USING `{temp_table_id}` S
+ON T.record_hash = S.record_hash
+WHEN NOT MATCHED THEN
+  INSERT (
+    {insert_columns}
+  )
+  VALUES (
+    {insert_values}
+  )
+"""
+
+
+def build_merge_current_sql(project: str, dataset: str, temp_table_id: str) -> str:
     current_id = f"{project}.{dataset}.{CURRENT_TABLE_NAME}"
-    sql = f"""
-CREATE OR REPLACE TABLE `{current_id}`
-PARTITION BY DATE(snapshot_ts)
-CLUSTER BY incident_id, incident_type_category AS
+    updatable_columns = [column for column in CURRENT_COLUMN_NAMES if column != "incident_id"]
+    update_set = ",\n  ".join(f"`{column}` = S.`{column}`" for column in updatable_columns)
+    insert_columns = ",\n    ".join(f"`{column}`" for column in CURRENT_COLUMN_NAMES)
+    insert_values = ",\n    ".join(f"S.`{column}`" for column in CURRENT_COLUMN_NAMES)
+    return f"""
+MERGE `{current_id}` T
+USING (
 WITH ranked AS (
   SELECT
     ingest_ts AS snapshot_ts,
@@ -408,9 +424,9 @@ WITH ranked AS (
     record_hash,
     ROW_NUMBER() OVER (
       PARTITION BY incident_id
-      ORDER BY source_modified_at DESC, ingest_ts DESC
+      ORDER BY source_modified_at DESC NULLS LAST, ingest_ts DESC
     ) AS rn
-  FROM `{raw_id}`
+  FROM `{temp_table_id}`
   WHERE incident_id IS NOT NULL
 ),
 latest AS (
@@ -446,9 +462,81 @@ SELECT
   CASE WHEN geog IS NULL THEN NULL ELSE ST_Y(ST_CENTROID(geog)) END AS centroid_latitude,
   CASE WHEN geog IS NULL THEN NULL ELSE ST_X(ST_CENTROID(geog)) END AS centroid_longitude
 FROM with_geog
+ ) S
+ON T.incident_id = S.incident_id
+WHEN MATCHED AND (
+  COALESCE(S.source_modified_at, TIMESTAMP '1970-01-01 00:00:00+00')
+  > COALESCE(T.source_modified_at, TIMESTAMP '1970-01-01 00:00:00+00')
+  OR (
+    COALESCE(S.source_modified_at, TIMESTAMP '1970-01-01 00:00:00+00')
+    = COALESCE(T.source_modified_at, TIMESTAMP '1970-01-01 00:00:00+00')
+    AND S.snapshot_ts > T.snapshot_ts
+  )
+)
+THEN UPDATE SET
+  {update_set}
+WHEN NOT MATCHED THEN
+  INSERT (
+    {insert_columns}
+  )
+  VALUES (
+    {insert_values}
+  )
 """
-    client.query(sql).result()
-    log.info("Refreshed table: %s", current_id)
+
+
+def _load_rows_into_temp_table(
+    client: bigquery.Client,
+    project: str,
+    dataset: str,
+    rows: list[dict[str, Any]],
+) -> str:
+    temp_table_id = f"{project}.{dataset}._tmp_nifc_ingest_{uuid.uuid4().hex}"
+    temp_table = bigquery.Table(temp_table_id, schema=raw_table_schema())
+    temp_table.expires = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=6)
+    client.create_table(temp_table, exists_ok=False)
+
+    load_job = client.load_table_from_json(
+        rows,
+        temp_table_id,
+        job_config=bigquery.LoadJobConfig(
+            schema=raw_table_schema(),
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+        ),
+    )
+    load_job.result()
+    return temp_table_id
+
+
+def _run_dml(client: bigquery.Client, sql: str) -> int:
+    job = client.query(sql)
+    job.result()
+    return int(job.num_dml_affected_rows or 0)
+
+
+def upsert_rows(
+    client: bigquery.Client,
+    project: str,
+    dataset: str,
+    rows: list[dict[str, Any]],
+) -> tuple[int, int]:
+    if not rows:
+        return 0, 0
+
+    temp_table_id = _load_rows_into_temp_table(client, project, dataset, rows)
+    try:
+        inserted_raw = _run_dml(
+            client=client,
+            sql=build_merge_raw_sql(project, dataset, temp_table_id),
+        )
+        changed_current = _run_dml(
+            client=client,
+            sql=build_merge_current_sql(project, dataset, temp_table_id),
+        )
+    finally:
+        client.delete_table(temp_table_id, not_found_ok=True)
+
+    return inserted_raw, changed_current
 
 
 def resolve_weather_view(
@@ -690,6 +778,7 @@ def main() -> None:
 
     client = bigquery.Client(project=args.project)
     ensure_raw_table(client, args.project, args.dataset)
+    ensure_current_table(client, args.project, args.dataset)
 
     watermark = get_watermark(
         client=client,
@@ -713,10 +802,13 @@ def main() -> None:
         log.info("Dry run complete. Re-run with --execute to write data.")
         return
 
-    inserted = insert_raw_rows(client, args.project, args.dataset, rows)
-    log.info("Inserted %d rows into %s.%s.%s", inserted, args.project, args.dataset, RAW_TABLE_NAME)
+    inserted, changed = upsert_rows(client, args.project, args.dataset, rows)
+    log.info(
+        "Upserted NIFC rows: raw inserts=%d, current mutations=%d",
+        inserted,
+        changed,
+    )
 
-    refresh_current_table(client, args.project, args.dataset)
     refresh_views(
         client=client,
         project=args.project,
