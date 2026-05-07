@@ -54,6 +54,96 @@ OUT_FIELDS = [
 
 log = logging.getLogger("ingest_nifc_fire_perimeters")
 
+RAW_COLUMN_NAMES = (
+    "ingest_ts",
+    "source_modified_at",
+    "incident_id",
+    "incident_name",
+    "incident_type_category",
+    "incident_type_kind",
+    "fire_discovery_at",
+    "percent_contained",
+    "incident_size_acres",
+    "perimeter_acres",
+    "gacc",
+    "state",
+    "source_object_id",
+    "geometry_json",
+    "properties_json",
+    "source_layer_url",
+    "record_hash",
+)
+
+CURRENT_COLUMN_NAMES = (
+    "snapshot_ts",
+    "source_modified_at",
+    "incident_id",
+    "incident_name",
+    "incident_type_category",
+    "incident_type_kind",
+    "fire_discovery_at",
+    "percent_contained",
+    "incident_size_acres",
+    "perimeter_acres",
+    "gacc",
+    "state",
+    "source_object_id",
+    "geometry_json",
+    "properties_json",
+    "source_layer_url",
+    "record_hash",
+    "geog",
+    "centroid_latitude",
+    "centroid_longitude",
+)
+
+
+def raw_table_schema() -> list[bigquery.SchemaField]:
+    return [
+        bigquery.SchemaField("ingest_ts", "TIMESTAMP", mode="REQUIRED"),
+        bigquery.SchemaField("source_modified_at", "TIMESTAMP"),
+        bigquery.SchemaField("incident_id", "STRING"),
+        bigquery.SchemaField("incident_name", "STRING"),
+        bigquery.SchemaField("incident_type_category", "STRING"),
+        bigquery.SchemaField("incident_type_kind", "STRING"),
+        bigquery.SchemaField("fire_discovery_at", "TIMESTAMP"),
+        bigquery.SchemaField("percent_contained", "FLOAT64"),
+        bigquery.SchemaField("incident_size_acres", "FLOAT64"),
+        bigquery.SchemaField("perimeter_acres", "FLOAT64"),
+        bigquery.SchemaField("gacc", "STRING"),
+        bigquery.SchemaField("state", "STRING"),
+        bigquery.SchemaField("source_object_id", "INT64"),
+        bigquery.SchemaField("geometry_json", "STRING"),
+        bigquery.SchemaField("properties_json", "STRING"),
+        bigquery.SchemaField("source_layer_url", "STRING"),
+        bigquery.SchemaField("record_hash", "STRING"),
+    ]
+
+
+def current_table_schema() -> list[bigquery.SchemaField]:
+    return [
+        bigquery.SchemaField("snapshot_ts", "TIMESTAMP", mode="REQUIRED"),
+        bigquery.SchemaField("source_modified_at", "TIMESTAMP"),
+        bigquery.SchemaField("incident_id", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("incident_name", "STRING"),
+        bigquery.SchemaField("incident_type_category", "STRING"),
+        bigquery.SchemaField("incident_type_kind", "STRING"),
+        bigquery.SchemaField("fire_discovery_at", "TIMESTAMP"),
+        bigquery.SchemaField("percent_contained", "FLOAT64"),
+        bigquery.SchemaField("incident_size_acres", "FLOAT64"),
+        bigquery.SchemaField("perimeter_acres", "FLOAT64"),
+        bigquery.SchemaField("gacc", "STRING"),
+        bigquery.SchemaField("state", "STRING"),
+        bigquery.SchemaField("source_object_id", "INT64"),
+        bigquery.SchemaField("geometry_json", "STRING"),
+        bigquery.SchemaField("properties_json", "STRING"),
+        bigquery.SchemaField("source_layer_url", "STRING"),
+        bigquery.SchemaField("record_hash", "STRING"),
+        bigquery.SchemaField("geog", "GEOGRAPHY"),
+        bigquery.SchemaField("centroid_latitude", "FLOAT64"),
+        bigquery.SchemaField("centroid_longitude", "FLOAT64"),
+    ]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -114,26 +204,7 @@ def parse_args() -> argparse.Namespace:
 
 def ensure_raw_table(client: bigquery.Client, project: str, dataset: str) -> None:
     table_id = f"{project}.{dataset}.{RAW_TABLE_NAME}"
-    schema = [
-        bigquery.SchemaField("ingest_ts", "TIMESTAMP", mode="REQUIRED"),
-        bigquery.SchemaField("source_modified_at", "TIMESTAMP"),
-        bigquery.SchemaField("incident_id", "STRING"),
-        bigquery.SchemaField("incident_name", "STRING"),
-        bigquery.SchemaField("incident_type_category", "STRING"),
-        bigquery.SchemaField("incident_type_kind", "STRING"),
-        bigquery.SchemaField("fire_discovery_at", "TIMESTAMP"),
-        bigquery.SchemaField("percent_contained", "FLOAT64"),
-        bigquery.SchemaField("incident_size_acres", "FLOAT64"),
-        bigquery.SchemaField("perimeter_acres", "FLOAT64"),
-        bigquery.SchemaField("gacc", "STRING"),
-        bigquery.SchemaField("state", "STRING"),
-        bigquery.SchemaField("source_object_id", "INT64"),
-        bigquery.SchemaField("geometry_json", "STRING"),
-        bigquery.SchemaField("properties_json", "STRING"),
-        bigquery.SchemaField("source_layer_url", "STRING"),
-        bigquery.SchemaField("record_hash", "STRING"),
-    ]
-    table = bigquery.Table(table_id, schema=schema)
+    table = bigquery.Table(table_id, schema=raw_table_schema())
     table.time_partitioning = bigquery.TimePartitioning(field="ingest_ts")
     table.clustering_fields = ["incident_id", "incident_type_category"]
     client.create_table(table, exists_ok=True)
