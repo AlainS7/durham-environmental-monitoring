@@ -88,6 +88,27 @@ def test_run_collection_process_allows_empty_wu_during_current_day_grace(monkeyp
     )
 
 
+def test_clean_and_transform_tsi_temperature_c_to_f():
+    raw = pd.DataFrame(
+        {
+            "device_id": ["D1"],
+            "cloud_timestamp": [datetime(2026, 4, 16, 12, 0)],
+            "temperature": [0.0],
+        }
+    )
+    out = dc.clean_and_transform_data(raw, "TSI")
+    assert out["temperature"].iloc[0] == pytest.approx(32.0)
+    raw2 = pd.DataFrame(
+        {
+            "device_id": ["D1"],
+            "cloud_timestamp": [datetime(2026, 4, 16, 12, 0)],
+            "temperature": [100.0],
+        }
+    )
+    out2 = dc.clean_and_transform_data(raw2, "TSI")
+    assert out2["temperature"].iloc[0] == pytest.approx(212.0)
+
+
 def test_clean_and_transform_data_coalesces_duplicate_wu_columns():
     raw = pd.DataFrame(
         {

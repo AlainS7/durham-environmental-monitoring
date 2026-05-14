@@ -63,7 +63,8 @@ async def test_tsi_client_fetch_data_success(mocker):
                     'measurements': [
                         {'name': 'PM 2.5', 'data': {'value': 15.5}},
                         {'name': 'Temperature', 'data': {'value': 26.0}},
-                        {'name': 'Relative Humidity', 'data': {'value': 55.0}}
+                        {'name': 'Relative Humidity', 'data': {'value': 55.0}},
+                        {'name': 'CO\u2082', 'data': {'value': 450.0}},
                     ]
                 }
             ]
@@ -82,6 +83,7 @@ async def test_tsi_client_fetch_data_success(mocker):
     assert df.iloc[0]['pm2_5'] == 15.5, "PM2.5 value should match test data"
     assert df.iloc[0]['temperature'] == 26.0, "Temperature value should match test data"
     assert df.iloc[0]['rh'] == 55.0, "Relative humidity value should match test data"
+    assert df.iloc[0]['co2_ppm'] == 450.0, "CO2 (Unicode label) should map to co2_ppm"
 
 
 @pytest.mark.asyncio
