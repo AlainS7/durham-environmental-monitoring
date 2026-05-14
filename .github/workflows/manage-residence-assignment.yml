@@ -61,11 +61,17 @@ on:
       execute:
         description: "Apply changes (true) or dry-run (false)"
         required: false
+        type: choice
         default: "true"
+        options: &bool_options
+          - "true"
+          - "false"
       sync_grafana:
         description: "Sync updated tables to sensors_shared after successful execute"
         required: false
+        type: choice
         default: "true"
+        options: *bool_options
 
 permissions:
   contents: read
