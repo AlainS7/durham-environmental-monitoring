@@ -72,8 +72,8 @@ class EnhancedAnomalyDetector(AnomalyDetectionSystem):
                     "consecutive_readings": 3
                 },
                 "temperature": {
-                    "extreme_high": 40.0,
-                    "extreme_low": -20.0,
+                    "extreme_high": 104.0,
+                    "extreme_low": -4.0,
                     "consecutive_readings": 2
                 },
                 "humidity": {
@@ -222,10 +222,10 @@ class EnhancedAnomalyDetector(AnomalyDetectionSystem):
         
         if temperature >= thresholds['extreme_high']:
             alert_level = 'high'
-            message = f"EXTREME HEAT: Temperature {temperature:.1f}°C exceeds safe limits"
+            message = f"EXTREME HEAT: Temperature {temperature:.1f}°F exceeds safe limits"
         elif temperature <= thresholds['extreme_low']:
             alert_level = 'high'
-            message = f"EXTREME COLD: Temperature {temperature:.1f}°C below safe limits"
+            message = f"EXTREME COLD: Temperature {temperature:.1f}°F below safe limits"
         
         if alert_level:
             alert = {
@@ -325,14 +325,14 @@ class EnhancedAnomalyDetector(AnomalyDetectionSystem):
 
     def _get_temperature_recommendations(self, temperature: float) -> List[str]:
         """Get recommendations for extreme temperatures."""
-        if temperature >= 40:
+        if temperature >= 104:
             return [
                 "🌡️ Extreme heat warning - avoid outdoor activities",
                 "Stay hydrated and in air-conditioned spaces",
                 "Check on vulnerable community members",
                 "Limit physical exertion"
             ]
-        elif temperature <= -20:
+        elif temperature <= -4:
             return [
                 "🥶 Extreme cold warning - limit outdoor exposure",
                 "Dress in layers and cover exposed skin",
@@ -633,7 +633,7 @@ def main():
     print("\n🧪 Testing real-time alert detection...")
     test_data = {
         'pm25': 75.5,  # High level
-        'temperature': 22.1,
+        'temperature': 71.9,
         'humidity': 65.3,
         'timestamp': datetime.now().isoformat()
     }

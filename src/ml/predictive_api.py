@@ -443,7 +443,7 @@ def main():
     print("\n⚡ Testing real-time processing...")
     test_data = {
         'pm25': 45.2,
-        'temperature': 23.5,
+        'temperature': 74.5,
         'humidity': 68.3
     }
     

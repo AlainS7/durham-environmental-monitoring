@@ -300,10 +300,10 @@ class PredictiveAnalytics:
             ]
         
         if 'temperature' in self.historical_data.columns:
-            # Filter temperature outliers (-50°C to 60°C)
+            # Filter temperature outliers; expect °F when data comes from current BQ/ingest pipeline
             self.historical_data = self.historical_data[
-                (self.historical_data['temperature'] >= -50) & 
-                (self.historical_data['temperature'] <= 60)
+                (self.historical_data['temperature'] >= -58)
+                & (self.historical_data['temperature'] <= 140)
             ]
         
         if 'humidity' in self.historical_data.columns:
@@ -574,7 +574,7 @@ class PredictiveAnalytics:
                     # Default baseline conditions
                     current_conditions = {
                         'pm25': 15.0,
-                        'temperature': 20.0,
+                        'temperature': 68.0,
                         'humidity': 50.0
                     }
                     print("📊 Using default baseline conditions")
@@ -598,7 +598,7 @@ class PredictiveAnalytics:
                 features['month'] = future_time.month
                 
                 # Environmental features (use current conditions or reasonable defaults)
-                features['temperature'] = current_conditions.get('temperature', 20.0)
+                features['temperature'] = current_conditions.get('temperature', 68.0)
                 features['humidity'] = current_conditions.get('humidity', 50.0)
                 
                 # Lag features - use recent predictions or baseline
