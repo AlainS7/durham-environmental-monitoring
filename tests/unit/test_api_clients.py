@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import httpx
 
-from src.data_collection.clients.wu_client import WUClient
+from src.data_collection.clients.wu_client import WUClient, EndpointStrategy
 from src.data_collection.clients.tsi_client import TSIClient
 from src.data_collection.clients.base_client import BaseClient
 
@@ -38,6 +38,45 @@ async def test_wu_client_fetch_data_success(mocker):
     assert not df.empty
     assert df.iloc[0]['stationID'] == 'KNCGARNE13'
     assert df.iloc[0]['tempAvg'] == 25.0
+
+
+@pytest.mark.asyncio
+async def test_wu_client_prefers_imperial_when_both_unit_objects_present(mocker):
+    """When API payload has both unit objects, keep imperial values."""
+    mock_response = {
+        "observations": [
+            {
+                "stationID": "KNCGARNE13",
+                "obsTimeUtc": "2025-07-27T12:00:00Z",
+                "obsTimeLocal": "2025-07-27 08:00:00",
+                "epoch": 1753617600,
+                "imperial": {"tempAvg": 71.6, "dewptAvg": 60.8},
+                "metric": {"tempAvg": 22.0, "dewptAvg": 16.0},
+            }
+        ]
+    }
+
+    mocker.patch(
+        "src.data_collection.clients.base_client.BaseClient._request",
+        return_value=mock_response,
+    )
+    mocker.patch(
+        "src.data_collection.clients.wu_client.get_wu_stations",
+        return_value=[{"stationId": "KNCGARNE13"}],
+    )
+
+    client = WUClient(api_key="test_key", base_url="https://fake-wu.com")
+    df = await client._fetch_one(
+        station_id="KNCGARNE13",
+        start_date="2025-07-27",
+        end_date="2025-07-27",
+        strategy=EndpointStrategy.HOURLY,
+    )
+
+    assert df is not None
+    assert not df.empty
+    assert df.iloc[0]["tempAvg"] == 71.6
+    assert df.iloc[0]["dewptAvg"] == 60.8
 
 @pytest.mark.asyncio
 async def test_tsi_client_fetch_data_success(mocker):
