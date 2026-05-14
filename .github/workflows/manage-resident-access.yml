@@ -24,17 +24,21 @@ on:
         required: false
         type: choice
         default: "true"
-        options:
+        options: &bool_options
           - "true"
           - "false"
       execute:
         description: "Apply changes (true) or dry-run (false)"
         required: false
+        type: choice
         default: "true"
+        options: *bool_options
       sync_grafana:
         description: "Sync updated access table to sensors_shared after successful execute"
         required: false
+        type: choice
         default: "true"
+        options: *bool_options
 
 permissions:
   contents: read
