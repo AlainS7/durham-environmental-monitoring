@@ -63,9 +63,10 @@ function getUVCategory(uv) {
 }
 
 // Current state for smooth transitions
+// Mock data uses Fahrenheit for temperature / dew point (matches BigQuery ingest).
 let currentState = {
   outdoor: {
-    temperature: 22,
+    temperature: 71.6,
     humidity: 55,
     windSpeed: 12,
     windGust: 18,
@@ -74,10 +75,10 @@ let currentState = {
     pressure: 1015,
     uv: 4,
     solar: 450,
-    dewPoint: 12,
+    dewPoint: 53.6,
   },
   indoor: {
-    temperature: 23,
+    temperature: 73.4,
     humidity: 45,
     pm1: 5,
     pm25: 8,
@@ -101,7 +102,7 @@ export function getOutdoorData() {
   // Update values with slight variations for realism
   const state = currentState.outdoor;
 
-  state.temperature = varyValue(state.temperature, 0.5, 10, 35);
+  state.temperature = varyValue(state.temperature, 0.5, 45, 95);
   state.humidity = varyValue(state.humidity, 2, 30, 90);
   state.windSpeed = varyValue(state.windSpeed, 2, 0, 40);
   state.windGust = Math.max(
@@ -114,7 +115,7 @@ export function getOutdoorData() {
   state.pressure = varyValue(state.pressure, 1, 990, 1040);
   state.uv = varyValue(state.uv, 0.5, 0, 11);
   state.solar = varyValue(state.solar, 50, 0, 1000);
-  state.dewPoint = varyValue(state.dewPoint, 0.5, 0, 25);
+  state.dewPoint = varyValue(state.dewPoint, 0.5, 32, 72);
 
   return {
     sensorId: SENSORS.outdoor.id,
@@ -152,9 +153,9 @@ export function getOutdoorData() {
     dewPoint: state.dewPoint,
 
     heatIndex:
-      state.temperature + (state.humidity > 60 ? randomInRange(1, 3) : 0),
+      state.temperature + (state.humidity > 60 ? randomInRange(1, 5) : 0),
     windChill:
-      state.temperature - (state.windSpeed > 15 ? randomInRange(1, 4) : 0),
+      state.temperature - (state.windSpeed > 15 ? randomInRange(1, 8) : 0),
   };
 }
 
@@ -165,7 +166,7 @@ export function getIndoorData() {
   // Update values with slight variations for realism
   const state = currentState.indoor;
 
-  state.temperature = varyValue(state.temperature, 0.3, 18, 28);
+  state.temperature = varyValue(state.temperature, 0.3, 64, 82);
   state.humidity = varyValue(state.humidity, 1, 25, 70);
   state.pm1 = varyValue(state.pm1, 1, 1, 20);
   state.pm25 = varyValue(state.pm25, 2, 2, 50);
@@ -237,7 +238,7 @@ export function getHistoricalData(sensorType, hours = 24, interval = 60) {
   const points = Math.floor((hours * 60) / interval);
 
   // Initialize base values
-  let baseTemp = sensorType === "outdoor" ? 18 : 22;
+  let baseTemp = sensorType === "outdoor" ? 58 : 72;
   let baseHumidity = sensorType === "outdoor" ? 60 : 45;
   let basePm25 = 10;
   let baseCo2 = 600;
@@ -251,7 +252,7 @@ export function getHistoricalData(sensorType, hours = 24, interval = 60) {
     const nightFactor = hour >= 22 || hour <= 6 ? 0.8 : 1;
 
     if (sensorType === "outdoor") {
-      const temp = baseTemp + dayFactor * 6 + randomInRange(-1, 1);
+      const temp = baseTemp + dayFactor * 18 + randomInRange(-2, 2);
       const humidity = baseHumidity - dayFactor * 10 + randomInRange(-3, 3);
 
       data.push({
@@ -267,7 +268,7 @@ export function getHistoricalData(sensorType, hours = 24, interval = 60) {
         pressure: randomInRange(1010, 1020),
       });
 
-      baseTemp = varyValue(baseTemp, 0.3, 15, 25);
+      baseTemp = varyValue(baseTemp, 0.3, 50, 82);
       baseHumidity = varyValue(baseHumidity, 1, 40, 80);
     } else {
       const temp = baseTemp + randomInRange(-0.5, 0.5);
@@ -289,7 +290,7 @@ export function getHistoricalData(sensorType, hours = 24, interval = 60) {
         pressure: Number((29.92 + randomInRange(-0.1, 0.1)).toFixed(2)),
       });
 
-      baseTemp = varyValue(baseTemp, 0.2, 20, 25);
+      baseTemp = varyValue(baseTemp, 0.2, 68, 76);
       baseHumidity = varyValue(baseHumidity, 0.5, 40, 55);
       basePm25 = varyValue(basePm25, 1, 5, 20);
       baseCo2 = varyValue(baseCo2, 20, 500, 800, 0);
@@ -324,7 +325,7 @@ export function getHistoryTableData(startDate, endDate, limit = 50) {
       timestamp: timestamp.toISOString(),
       displayTime: timestamp.toLocaleString(),
       sensor: "Outdoor (WU)",
-      temperature: randomInRange(15, 30),
+      temperature: randomInRange(59, 86),
       humidity: Math.round(randomInRange(40, 80)),
       pm25: "-",
       pressure: randomInRange(1010, 1020),
@@ -335,7 +336,7 @@ export function getHistoryTableData(startDate, endDate, limit = 50) {
       timestamp: timestamp.toISOString(),
       displayTime: timestamp.toLocaleString(),
       sensor: "Indoor (TSI)",
-      temperature: randomInRange(20, 25),
+      temperature: randomInRange(68, 77),
       humidity: Math.round(randomInRange(40, 55)),
       pm25: randomInRange(5, 25),
       pressure: randomInRange(29.8, 30.1, 2),

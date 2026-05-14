@@ -10,7 +10,7 @@ import DataService from "./data-service.js";
 const state = {
   user: null,
   preferences: {
-    tempUnit: "celsius",
+    tempUnit: "fahrenheit",
     pressureUnit: "hpa",
     refreshInterval: 300,
     darkMode: false,
@@ -392,7 +392,7 @@ function applyPreferences() {
   }
 
   // Settings form values
-  document.getElementById("temp-unit").value = prefs.tempUnit || "celsius";
+  document.getElementById("temp-unit").value = prefs.tempUnit || "fahrenheit";
   document.getElementById("pressure-unit").value = prefs.pressureUnit || "hpa";
   document.getElementById("refresh-interval").value =
     prefs.refreshInterval || 300;
@@ -781,7 +781,7 @@ function initializeCharts() {
         labels: [],
         datasets: [
           {
-            label: "Temperature (°C)",
+            label: "Temperature (°F)",
             data: [],
             borderColor: "#f59e0b",
             backgroundColor: "rgba(245, 158, 11, 0.1)",
@@ -898,11 +898,11 @@ function updateCharts() {
   // Temperature Comparison
   if (state.charts.tempComparison) {
     state.charts.tempComparison.data.labels = labels;
-    state.charts.tempComparison.data.datasets[0].data = outdoorHistory.map(
-      (d) => d.temperature
+    state.charts.tempComparison.data.datasets[0].data = outdoorHistory.map((d) =>
+      temperatureAsDisplayUnit(d.temperature)
     );
-    state.charts.tempComparison.data.datasets[1].data = indoorHistory.map(
-      (d) => d.temperature
+    state.charts.tempComparison.data.datasets[1].data = indoorHistory.map((d) =>
+      temperatureAsDisplayUnit(d.temperature)
     );
     state.charts.tempComparison.update("none");
   }
@@ -930,8 +930,8 @@ function updateCharts() {
   // Outdoor Temperature
   if (state.charts.outdoorTemp) {
     state.charts.outdoorTemp.data.labels = labels;
-    state.charts.outdoorTemp.data.datasets[0].data = outdoorHistory.map(
-      (d) => d.temperature
+    state.charts.outdoorTemp.data.datasets[0].data = outdoorHistory.map((d) =>
+      temperatureAsDisplayUnit(d.temperature)
     );
     state.charts.outdoorTemp.update("none");
   }
@@ -1008,11 +1008,11 @@ function updateChartsForPeriod(period) {
 
   if (state.charts.tempComparison) {
     state.charts.tempComparison.data.labels = labels;
-    state.charts.tempComparison.data.datasets[0].data = outdoorHistory.map(
-      (d) => d.temperature
+    state.charts.tempComparison.data.datasets[0].data = outdoorHistory.map((d) =>
+      temperatureAsDisplayUnit(d.temperature)
     );
-    state.charts.tempComparison.data.datasets[1].data = indoorHistory.map(
-      (d) => d.temperature
+    state.charts.tempComparison.data.datasets[1].data = indoorHistory.map((d) =>
+      temperatureAsDisplayUnit(d.temperature)
     );
     state.charts.tempComparison.update();
   }
@@ -1104,10 +1104,15 @@ function updateHistoryChart() {
 
   const datasets = [];
 
+  const yFromPoint = (d) =>
+    metric === "temperature"
+      ? temperatureAsDisplayUnit(d.temperature)
+      : d[metric];
+
   if (showOutdoor) {
     datasets.push({
       label: "Outdoor",
-      data: outdoorData.map((d) => d[metric]),
+      data: outdoorData.map(yFromPoint),
       borderColor: "#06b6d4",
       backgroundColor: "rgba(6, 182, 212, 0.1)",
       fill: true,
@@ -1118,7 +1123,7 @@ function updateHistoryChart() {
   if (showIndoor) {
     datasets.push({
       label: "Indoor",
-      data: indoorData.map((d) => d[metric]),
+      data: indoorData.map(yFromPoint),
       borderColor: "#f59e0b",
       backgroundColor: "rgba(245, 158, 11, 0.1)",
       fill: true,
@@ -1187,12 +1192,27 @@ function exportCSV() {
 }
 
 // ===== UTILITY FUNCTIONS =====
+/**
+ * Sensor temperature / dew point: canonical Fahrenheit (BigQuery / WU imperial / TSI post-conversion).
+ * Charts use `temperatureAsDisplayUnit` when plotting so Celsius preference scales the Y axis.
+ */
+function temperatureAsDisplayUnit(valueF) {
+  const v = Number(valueF);
+  if (Number.isNaN(v)) return v;
+  if (state.preferences.tempUnit === "fahrenheit") return v;
+  return ((v - 32) * 5) / 9;
+}
+
 function formatTemperature(value, includeUnit = true) {
-  if (state.preferences.tempUnit === "fahrenheit") {
-    const fahrenheit = (value * 9) / 5 + 32;
-    return includeUnit ? `${fahrenheit.toFixed(1)}°F` : fahrenheit.toFixed(1);
+  const v = Number(value);
+  if (value === null || value === undefined || Number.isNaN(v)) {
+    return includeUnit ? "—" : "";
   }
-  return includeUnit ? `${value.toFixed(1)}°C` : value.toFixed(1);
+  if (state.preferences.tempUnit === "fahrenheit") {
+    return includeUnit ? `${v.toFixed(1)}°F` : v.toFixed(1);
+  }
+  const celsius = ((v - 32) * 5) / 9;
+  return includeUnit ? `${celsius.toFixed(1)}°C` : celsius.toFixed(1);
 }
 
 function formatPressure(value) {

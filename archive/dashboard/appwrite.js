@@ -56,7 +56,7 @@ const MockAuthService = {
     localStorage.setItem(this._storageKey, JSON.stringify(user));
     // default prefs
     const prefs = {
-      tempUnit: "celsius",
+      tempUnit: "fahrenheit",
       pressureUnit: "hpa",
       refreshInterval: 300,
       darkMode: false,
@@ -82,7 +82,7 @@ const MockAuthService = {
       localStorage.setItem(this._storageKey, JSON.stringify(user));
       // ensure prefs
       const prefs = {
-        tempUnit: "celsius",
+        tempUnit: "fahrenheit",
         pressureUnit: "hpa",
         refreshInterval: 300,
         darkMode: false,
@@ -107,7 +107,7 @@ const MockAuthService = {
     };
     localStorage.setItem(this._storageKey, JSON.stringify(user));
     const prefs = {
-      tempUnit: "celsius",
+      tempUnit: "fahrenheit",
       pressureUnit: "hpa",
       refreshInterval: 300,
       darkMode: false,

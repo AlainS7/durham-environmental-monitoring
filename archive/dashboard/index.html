@@ -222,9 +222,9 @@
                 </div>
                 <div class="stat-info">
                   <span class="stat-label">Outdoor Temperature</span>
-                  <span class="stat-value" id="outdoor-temp">--°C</span>
+                  <span class="stat-value" id="outdoor-temp">--°F</span>
                   <span class="stat-trend" id="outdoor-temp-trend">
-                    <i class="fas fa-arrow-up"></i> +2°C
+                    <i class="fas fa-arrow-up"></i> +2°F
                   </span>
                 </div>
               </div>
@@ -234,9 +234,9 @@
                 </div>
                 <div class="stat-info">
                   <span class="stat-label">Indoor Temperature</span>
-                  <span class="stat-value" id="indoor-temp">--°C</span>
+                  <span class="stat-value" id="indoor-temp">--°F</span>
                   <span class="stat-trend" id="indoor-temp-trend">
-                    <i class="fas fa-arrow-down"></i> -1°C
+                    <i class="fas fa-arrow-down"></i> -1°F
                   </span>
                 </div>
               </div>
@@ -297,7 +297,7 @@
                       <i class="fas fa-thermometer-half"></i>
                       <div class="metric-info">
                         <span class="metric-value" id="indoor-temp-detail"
-                          >--°C</span
+                          >--°F</span
                         >
                         <span class="metric-label">Temperature</span>
                       </div>
@@ -345,7 +345,7 @@
                       <i class="fas fa-thermometer-half"></i>
                       <div class="metric-info">
                         <span class="metric-value" id="outdoor-temp-detail"
-                          >--°C</span
+                          >--°F</span
                         >
                         <span class="metric-label">Temperature</span>
                       </div>
@@ -444,7 +444,7 @@
                 </div>
                 <div class="metric-details">
                   <span class="metric-name">Temperature</span>
-                  <span class="metric-value" id="outdoor-temp-full">-- °C</span>
+                  <span class="metric-value" id="outdoor-temp-full">-- °F</span>
                   <span class="metric-range"
                     >High: <span id="outdoor-temp-high">--</span>° / Low:
                     <span id="outdoor-temp-low">--</span>°</span
@@ -540,7 +540,7 @@
                 </div>
                 <div class="metric-details">
                   <span class="metric-name">Dew Point</span>
-                  <span class="metric-value" id="outdoor-dewpoint">-- °C</span>
+                  <span class="metric-value" id="outdoor-dewpoint">-- °F</span>
                 </div>
               </div>
             </div>
@@ -600,7 +600,7 @@
                 </div>
                 <div class="metric-details">
                   <span class="metric-name">Temperature</span>
-                  <span class="metric-value" id="indoor-temp-full">-- °C</span>
+                  <span class="metric-value" id="indoor-temp-full">-- °F</span>
                 </div>
               </div>
 
@@ -871,8 +871,8 @@
                   <div class="form-group">
                     <label for="temp-unit">Temperature Unit</label>
                     <select id="temp-unit">
+                      <option value="fahrenheit" selected>Fahrenheit (°F)</option>
                       <option value="celsius">Celsius (°C)</option>
-                      <option value="fahrenheit">Fahrenheit (°F)</option>
                     </select>
                   </div>
                   <div class="form-group">
