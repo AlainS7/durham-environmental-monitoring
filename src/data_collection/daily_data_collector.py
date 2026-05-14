@@ -3,6 +3,7 @@
 Features:
  - Fetch raw or aggregated data
  - Clean/standardize column names, add canonical ts + float lat/lon copies
+ - Store air temperature in °F (WU imperial API; TSI °C converted here)
  - Upload wide parquet files to GCS (partitioned path layout)
  - Optional legacy DB insertion (wide->long melt)
  - Resilient upload: skip dataframes missing timestamp, tolerate validation issues
@@ -169,6 +170,10 @@ def clean_and_transform_data(df: pd.DataFrame, source: str) -> pd.DataFrame:
         }
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
     df = _coalesce_duplicate_columns(df)
+    # TSI API returns °C; store °F to match WU and sensor_readings_long / pm2_5_mv_corrected.
+    if source == "TSI" and "temperature" in df.columns:
+        _t = pd.to_numeric(df["temperature"], errors="coerce")
+        df["temperature"] = _t * (9.0 / 5.0) + 32.0
     if source == "WU":
         for col in ["qc_status", "epoch"]:
             if col in df.columns:
