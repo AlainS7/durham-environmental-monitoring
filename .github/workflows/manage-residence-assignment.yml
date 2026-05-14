@@ -20,11 +20,11 @@ on:
         required: false
         default: "sensors"
       residence_id:
-        description: "Residence ID (required for add/end)"
+        description: "Residence ID (e.g. R3, R12) (required for add/end)"
         required: false
         default: ""
       native_sensor_id:
-        description: "Native sensor ID (required for all operations)"
+        description: "Native sensor ID (required). Examples: KNCDURHA609 (WU station id); d14rvf5lveq1prvgrvn0 (particle)"
         required: true
         default: ""
       sensor_name:
@@ -47,11 +47,11 @@ on:
         required: false
         default: ""
       from_residence_id:
-        description: "From residence (required for switch-assignment)"
+        description: "From residence (e.g. R5) (required for switch-assignment)"
         required: false
         default: ""
       to_residence_id:
-        description: "To residence (required for switch-assignment)"
+        description: "To residence (e.g. R8) (required for switch-assignment)"
         required: false
         default: ""
       switch_ts:

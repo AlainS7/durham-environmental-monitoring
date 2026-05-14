@@ -16,7 +16,7 @@ on:
         required: true
         default: ""
       residence_id:
-        description: "Residence ID to grant or revoke"
+        description: "Residence ID (e.g. R3, R12) to grant or revoke access for"
         required: true
         default: ""
       active:
