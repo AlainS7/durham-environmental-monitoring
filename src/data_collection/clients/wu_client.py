@@ -193,7 +193,7 @@ class WUClient(BaseClient):
                 "stationId": station_id,
                 "format": "json",
                 "apiKey": self.api_key,
-                "units": "m",
+                "units": "e",
                 "startDate": start_date,  # YYYY-MM-DD
                 "endDate": filter_end_date_for_helper  # YYYY-MM-DD
             }
@@ -219,7 +219,7 @@ class WUClient(BaseClient):
                     "date": local_date.replace("-", ""),  # YYYYMMDD
                     "format": "json",
                     "apiKey": self.api_key,
-                    "units": "m",
+                    "units": "e",
                     "numericPrecision": "decimal",
                 }
                 payload = await self._request("GET", endpoint, params=params)
@@ -251,26 +251,20 @@ class WUClient(BaseClient):
         if not obs_dicts:
             return None
 
-        # Flatten the 'metric' and 'imperial' nested objects into top-level fields
-        # WU API returns temp/wind/precip data inside these nested objects
-        # Historical API (history/hourly) returns data in 'imperial' or 'metric' object based on units parameter
+        # Flatten nested unit objects into top-level fields.
+        # Important: prefer imperial when present. Some payloads can include both
+        # objects; applying metric after imperial would overwrite °F with °C.
         for o in obs_dicts:
-            # Flatten 'imperial' object (contains temperature, wind speed, precipitation in imperial units)
-            if 'imperial' in o and isinstance(o['imperial'], dict):
-                for key, value in o['imperial'].items():
-                    # Overwrite top-level field with imperial value
-                    # This handles case where Pydantic sets top-level fields to None but imperial has actual values
+            imperial_values = o.pop('imperial', None)
+            metric_values = o.pop('metric', None)
+
+            if isinstance(imperial_values, dict) and imperial_values:
+                for key, value in imperial_values.items():
                     o[key] = value
-                o.pop('imperial', None)  # Remove the nested object after flattening
-            
-            # Flatten 'metric' object (contains temperature, wind speed, precipitation in metric units)
-            # Only used if units=m was specified in request
-            if 'metric' in o and isinstance(o['metric'], dict):
-                for key, value in o['metric'].items():
-                    # Overwrite top-level field with metric value (metric values take precedence)
-                    # This handles case where Pydantic sets top-level fields to None but metric has actual values
+            elif isinstance(metric_values, dict) and metric_values:
+                # Fallback only when imperial object is absent.
+                for key, value in metric_values.items():
                     o[key] = value
-                o.pop('metric', None)  # Remove the nested object after flattening
 
         if obs_dicts:
             df = pd.DataFrame(obs_dicts)
