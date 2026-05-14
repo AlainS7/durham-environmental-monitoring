@@ -47,7 +47,7 @@ For a comprehensive view of the entire system, including data flow, components, 
 
 Before setup, ensure you have:
 
-- Python 3.9+
+- Python 3.10+
 - [`uv`](https://docs.astral.sh/uv/)
 - Google Cloud SDK (`gcloud`)
 - Access to a GCP project with BigQuery and Cloud Storage permissions
