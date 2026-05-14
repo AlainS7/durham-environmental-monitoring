@@ -1,4 +1,4 @@
-# Grafana: Resident Environment Dashboard — Setup Guide
+# Grafana: Resident Environment Dashboard Setup Guide
 
 **Dashboard file:** `dashboard/home_env_dashboard_import.json`  
 **SQL reference:** `docs/GRAFANA_RESIDENT_ENVIRONMENT_QUERIES.sql`
@@ -75,9 +75,9 @@ Example timestamps:
 
 The resident import keeps one template variable:
 
-| Variable        | Type  | Default       | Purpose                                 |
-| --------------- | ----- | ------------- | --------------------------------------- |
-| `$metric_name`  | Query | `pm2_5_mv_corrected` | Metric shown in resident sensor panels |
+| Variable       | Type  | Default              | Purpose                                |
+| -------------- | ----- | -------------------- | -------------------------------------- |
+| `$metric_name` | Query | `pm2_5_mv_corrected` | Metric shown in resident sensor panels |
 
 Residents do not get a residence selector in this dashboard.
 
@@ -85,7 +85,7 @@ Residents do not get a residence selector in this dashboard.
 
 ## 5. Panels Included
 
-### Section — Individual Sensors per Network (resident scoped)
+### Individual Sensors per Network (resident scoped)
 
 > Panels **"Air Assure (AA) Sensors"**, **"Bluesky (BS) Sensors"**, **"Ambient (AM) Sensors"**
 
@@ -94,14 +94,14 @@ Residents do not get a residence selector in this dashboard.
 - No cross-residence data appears when secure view mapping is configured correctly
 - Change `$metric_name` to switch metric
 
-### Section — Colocation network comparison (resident scoped)
+### Colocation network comparison (resident scoped)
 
 > Panels **"AA vs BS vs AM — Daily Averages"**, **"Network Agreement Stats"**, **"AA − BS Delta"**, **"BS − AM Delta"**
 
 - Shows agreement/divergence across network types for the mapped residence only
 - Useful for quality checks and interpretation of harmonized metrics
 
-### Section — Resident Daily Summary
+### Resident Daily Summary
 
 > Panels **"Current State"** + **"Daily Metrics"**
 
