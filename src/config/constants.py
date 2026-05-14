@@ -10,8 +10,8 @@ MAX_RETRIES = 3
 # Data Validation Limits
 PM25_MIN = 0.0
 PM25_MAX = 1000.0
-TEMP_MIN = -50.0
-TEMP_MAX = 60.0
+TEMP_MIN = -58.0  # °F (pipeline storage; ≈ -50 °C)
+TEMP_MAX = 140.0  # °F (≈ 60 °C)
 HUMIDITY_MIN = 0.0
 HUMIDITY_MAX = 100.0
 
@@ -30,8 +30,8 @@ DEFAULT_COLLECTION_HOURS = 24
 
 # Alert Thresholds
 PM25_UNHEALTHY_THRESHOLD = 55.5  # μg/m³
-TEMP_EXTREME_LOW = -20.0  # °C
-TEMP_EXTREME_HIGH = 45.0  # °C
+TEMP_EXTREME_LOW = -4.0  # °F (≈ -20 °C)
+TEMP_EXTREME_HIGH = 113.0  # °F (≈ 45 °C)
 
 # Test Sensor Configuration
 TEST_SENSOR_PREFIXES = ['AA-', 'TEST-', 'DEBUG-']

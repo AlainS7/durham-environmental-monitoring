@@ -7,8 +7,8 @@
       "consecutive_readings": 3
     },
     "temperature": {
-      "extreme_high": 40.0,
-      "extreme_low": -20.0,
+      "extreme_high": 104.0,
+      "extreme_low": -4.0,
       "consecutive_readings": 2
     },
     "humidity": {
