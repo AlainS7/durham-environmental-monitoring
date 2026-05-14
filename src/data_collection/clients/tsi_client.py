@@ -20,6 +20,17 @@ def _normalize_measurement_label(name: str) -> str:
     n = n.replace("₂", "2").replace("\u2082", "2")
     return " ".join(n.split())
 
+
+def _is_co2_measurement(name: str) -> bool:
+    n = _normalize_measurement_label(name)
+    if n == "CO2":
+        return True
+    if "CARBON" in n and "DIOXIDE" in n:
+        return True
+    # e.g. "CO2 (ppm)", "CO2ppm"
+    return n.startswith("CO2")
+
+
 def _measurement_value(measurement: dict) -> Any:
     """Prefer nested data.value; some payloads put value at top level."""
     data = measurement.get("data")
@@ -173,7 +184,7 @@ class TSIClient(BaseClient):
                         rh = float(value)
                     elif name == 'Typical Particle Size':
                         tpsize = float(value)
-                    elif name == 'CO2':
+                    elif _is_co2_measurement(name):
                         co2_ppm = float(value)
                     elif name == 'CO':
                         co_ppm = float(value)
