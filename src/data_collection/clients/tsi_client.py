@@ -1,14 +1,32 @@
 
 import asyncio
-import pandas as pd
 import logging
+import unicodedata
+import pandas as pd
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from .base_client import BaseClient
 from src.utils.config_loader import get_tsi_devices
 
 log = logging.getLogger(__name__)
+
+
+def _normalize_measurement_label(name: str) -> str:
+    """TSI API may use Unicode subscripts or full words; normalize for comparisons."""
+    if not isinstance(name, str):
+        return ""
+    n = unicodedata.normalize("NFKC", name).strip().upper()
+    n = n.replace("₂", "2").replace("\u2082", "2")
+    return " ".join(n.split())
+
+def _measurement_value(measurement: dict) -> Any:
+    """Prefer nested data.value; some payloads put value at top level."""
+    data = measurement.get("data")
+    if isinstance(data, dict) and data.get("value") is not None:
+        return data.get("value")
+    return measurement.get("value")
+
 
 class TSIClient(BaseClient):
     """Client for fetching data from the TSI API."""
@@ -120,7 +138,7 @@ class TSIClient(BaseClient):
                 measurements = sensor.get('measurements', [])
                 for measurement in measurements:
                     name = measurement.get('name', '')
-                    value = measurement.get('data', {}).get('value')
+                    value = _measurement_value(measurement)
                     
                     # Only update field if value is not None (preserve 0.0 default for missing measurements)
                     if value is None:
