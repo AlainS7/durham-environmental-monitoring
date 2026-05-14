@@ -2,14 +2,18 @@
 -- Uses @proc_date; safe to re-run for the same date.
 --
 -- HARMONIZATION STRATEGY (Feb 2026):
---   1. Raw metrics preserved as-is (e.g., pm2_5, temperature, humidity)
+--   1. Raw metrics preserved as-is (e.g., pm2_5, temperature, humidity).
+--      TSI `temperature` is °F in BigQuery (converted at ingest from API °C).
+--      WU `temperature` is °F (imperial API).
 --   2. Per-sensor harmonized metrics added with _harmonized suffix
 --      (e.g., pm2_5_harmonized, temperature_harmonized)
 --      Uses per-sensor slope/intercept from calibration_config table.
 --   3. Multivariate-corrected PM2.5 added as pm2_5_mv_corrected
 --      Uses regression model: f(PM2.5, Temperature, Humidity) per sensor type.
---      AA (indoor):  30.2038 + 0.7833*PM2.5 - 0.2791*RH - 0.1221*T
---      BS (outdoor):  2.6875 + 0.6923*PM2.5 + 0.1156*T  - 0.0238*RH
+--      Original fit used T in °C; TSI temperature is converted to °F at ingest, so this
+--      CTE uses coefficients transformed with T_C = (T_F - 32) * 5/9 (same predictions).
+--      AA (indoor, °C form):  30.2038 + 0.7833*PM2.5 - 0.2791*RH - 0.1221*T_C
+--      BS (outdoor, °C form):  2.6875 + 0.6923*PM2.5 + 0.1156*T_C - 0.0238*RH
 
 DECLARE proc_date DATE DEFAULT @proc_date;
 
@@ -308,30 +312,38 @@ WITH
   -- Coefficients come from the initial indoor/outdoor multivariate PM2.5
   -- calibration fit introduced in PR #153 (Feb 2026).
   -- Keep these constants aligned with the latest documented calibration fit.
-  -- AA: pm2_5_mv = 30.2038 + 0.7833*PM2.5 - 0.2791*RH - 0.1221*T
-  -- BS: pm2_5_mv =  2.6875 + 0.6923*PM2.5 + 0.1156*T  - 0.0238*RH
+  -- AA (°F): intercept & T coeff derived from °C fit via T_C = (T_F-32)*5/9
+  -- BS (°F): same
   tsi_multivar_pm25 AS (
     SELECT
       timestamp,
       native_sensor_id,
       'pm2_5_mv_corrected' AS metric_name,
-      CASE
-        WHEN is_indoor = TRUE THEN
-          30.203778832333313
-          + 0.7832728929424163 * pm2_5
-          + (-0.27911836195444806) * humidity
-          + (-0.12214891946933756) * temperature
-        ELSE
-          2.687510099385168
-          + 0.6922536497361194 * pm2_5
-          + 0.11562486449436704 * temperature
-          + (-0.023752731801088067) * humidity
-      END AS value,
+      GREATEST(
+        0.0,
+        CASE
+          WHEN is_indoor = TRUE THEN
+            32.37531517845487
+            + 0.7832728929424163 * pm2_5
+            + (-0.27911836195444806) * humidity
+            + (-0.06786051081629864) * temperature
+          ELSE
+            0.6319569528186428
+            + 0.6922536497361194 * pm2_5
+            + 0.06423603583020391 * temperature
+            + (-0.023752731801088067) * humidity
+        END
+      ) AS value,
       'tsi' AS source
     FROM tsi_src
     WHERE pm2_5 IS NOT NULL
       AND humidity IS NOT NULL
       AND temperature IS NOT NULL
+      -- Guardrails prevent implausible raw spikes from exploding the
+      -- multivariate correction output (e.g., transient 12k+ PM2.5 glitches).
+      AND pm2_5 BETWEEN 0.0 AND 1000.0
+      AND humidity BETWEEN 0.0 AND 100.0
+      AND temperature BETWEEN -58.0 AND 140.0
   ),
 
   -- ─── Combine everything ──────────────────────────────────────────────
