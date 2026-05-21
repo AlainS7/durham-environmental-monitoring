@@ -16,8 +16,41 @@ on:
         required: true
         default: ""
       residence_id:
-        description: "Residence ID (e.g. R3, R12) to grant or revoke access for"
+        description: "Residence ID to grant or revoke access for (choose CUSTOM to supply manually)"
         required: true
+        type: choice
+        default: "UNSET"
+        options: &residence_options
+          - UNSET
+          - R1
+          - R2
+          - R3
+          - R4
+          - R5
+          - R6
+          - R7
+          - R8
+          - R9
+          - R10
+          - R11
+          - R12
+          - R13
+          - R14
+          - R15
+          - R16
+          - R17
+          - R18
+          - R19
+          - R20
+          - R21
+          - R22
+          - R23
+          - R24
+          - R25
+          - CUSTOM
+      residence_id_custom:
+        description: "Custom residence ID when residence_id=CUSTOM"
+        required: false
         default: ""
       active:
         description: "Set mapping active"
@@ -77,6 +110,24 @@ jobs:
           BQ_DATASET: ${{ github.event.inputs.dataset_id }}
         run: |
           set -euo pipefail
+          resolve_choice_input() {
+            local selected="$1"
+            local custom="$2"
+            case "$selected" in
+              UNSET) printf '' ;;
+              CUSTOM) printf '%s' "$custom" ;;
+              *) printf '%s' "$selected" ;;
+            esac
+          }
+          require_value() {
+            local value="$1"
+            local field_name="$2"
+            test -n "$value" || { echo "$field_name is required"; exit 1; }
+          }
+
+          RESIDENCE_ID="$(resolve_choice_input "${{ github.event.inputs.residence_id }}" "${{ github.event.inputs.residence_id_custom }}")"
+          require_value "$RESIDENCE_ID" "residence_id"
+
           CMD=(uv run python scripts/manage_residence_assignments.py
             --project "$BQ_PROJECT"
             --dataset "$BQ_DATASET")
@@ -87,7 +138,7 @@ jobs:
 
           CMD+=(add-resident-access
             --principal-email "${{ github.event.inputs.principal_email }}"
-            --residence-id "${{ github.event.inputs.residence_id }}"
+            --residence-id "$RESIDENCE_ID"
             --active "${{ github.event.inputs.active }}")
 
           printf 'Command: '
