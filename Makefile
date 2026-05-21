@@ -2,7 +2,7 @@ UV?=uv
 PY?=python
 PKG_SRC=src
 
-.PHONY: help lint test fmt run-collector run-transformations generate-sensor-assignments install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
+.PHONY: help lint test fmt run-collector run-transformations generate-sensor-assignments sync-workflow-sensor-options install create-external materialize e2e verify-outputs quality-check schema-validate sync-sharepoint-today sync-sharepoint-date sync-sharepoint-backfill
 
 help:
 	@echo "Targets:"
@@ -13,6 +13,7 @@ help:
 	@echo "  run-collector          Execute data collection (env controls)"
 	@echo "  run-transformations    Execute transformation SQL files"
 	@echo "  generate-sensor-assignments  Generate gitignored residence assignment SQL with real sensor IDs"
+	@echo "  sync-workflow-sensor-options Sync workflow sensor dropdown options from production config"
 	@echo "  create-external        Create or replace BQ external tables over GCS raw Parquet"
 	@echo "  materialize            Materialize daily partitions from externals into native tables"
 	@echo "  e2e                    End-to-end: collect -> materialize -> transformations"
@@ -50,6 +51,10 @@ generate-sensor-assignments:
 	@test -n "$${PROJECT:-$$BQ_PROJECT}" || (echo "PROJECT or BQ_PROJECT is required" && exit 1)
 	@test -n "$${RAW_DATASET:-$$BQ_DATASET}" || (echo "RAW_DATASET or BQ_DATASET is required" && exit 1)
 	$(UV) run python scripts/generate_residence_assignments.py --project $${PROJECT:-$$BQ_PROJECT} --raw-dataset $${RAW_DATASET:-$$BQ_DATASET} --execute
+
+sync-workflow-sensor-options:
+	@# Sync workflow native_sensor_id dropdown options from config/environments/production.json
+	$(UV) run python scripts/sync_workflow_sensor_options.py
 
 create-external:
 	@# Uses env: BQ_PROJECT/BQ_DATASET/GCS_BUCKET/GCS_PREFIX
