@@ -20,12 +20,106 @@ on:
         required: false
         default: "sensors"
       residence_id:
-        description: "Residence ID (e.g. R3, R12) (required for add/end)"
+        description: "Residence ID for add/end (choose CUSTOM to supply manually; UNSET leaves blank)"
+        required: false
+        type: choice
+        default: "UNSET"
+        options: &residence_options
+          - UNSET
+          - R1
+          - R2
+          - R3
+          - R4
+          - R5
+          - R6
+          - R7
+          - R8
+          - R9
+          - R10
+          - R11
+          - R12
+          - R13
+          - R14
+          - R15
+          - R16
+          - R17
+          - R18
+          - R19
+          - R20
+          - R21
+          - R22
+          - R23
+          - R24
+          - R25
+          - CUSTOM
+      residence_id_custom:
+        description: "Custom residence ID when residence_id=CUSTOM"
         required: false
         default: ""
       native_sensor_id:
-        description: "Native sensor ID (required). Examples: KNCDURHA609 (WU station id); d14rvf5lveq1prvgrvn0 (particle)"
+        description: "Native sensor ID dropdown (choose CUSTOM for manual entry)"
         required: true
+        type: choice
+        default: "UNSET"
+        options: &native_sensor_options
+          - UNSET
+          # SENSOR_OPTIONS_BEGIN
+          - KNCDURHA610
+          - KNCDURHA617
+          - KNCDURHA616
+          - KNCDURHA623
+          - KNCDURHA652
+          - KNCDURHA649
+          - KNCDURHA653
+          - KNCDURHA655
+          - KNCDURHA609
+          - KNCDURHA656
+          - KNCDURHA660
+          - KNCDURHA661
+          - KNCDURHA662
+          - d14rfblfk2973f196c5g
+          - d14rvrtfk2973f196c8g
+          - d15hqklfk2973f196cag
+          - d10qjt45n0vb5ljnncj0
+          - d14r0a5lveq1prvgrvlg
+          - d14rgsdfk2973f196c60
+          - d10uesllveq1prvgrvhg
+          - d10u275fk29em88uh8vg
+          - d10anndfk29em88uh8v0
+          - d10a64s5n0vb5ljnncig
+          - d10uqedfk29em88uh90g
+          - d14rlg5fk2973f196c7g
+          - d10ui2dfk29em88uh900
+          - d14r2q5fk2973f196c3g
+          - d14rumdfk2973f196c80
+          - d1ok78tlveq94soark30
+          - d14rbglfk2973f196c40
+          - d3ruqfpc660c73e6t89g
+          - d3ruqu1c660c73e6t8a0
+          - d7kj0nb8c00s73di18r0
+          - d7kj16j8c00s73di18rg
+          - d7kj0ovtna1s73fe1uq0
+          - d14rhodfk2973f196c6g
+          - d14rf6lfk2973f196c50
+          - d15hov5lveq1prvgrvog
+          - d14rvf5lveq1prvgrvn0
+          - d147psdlveq1prvgrvkg
+          - d14romdlveq1prvgrvmg
+          - d14rinlfk2973f196c70
+          - d14rc3dfk2973f196c4g
+          - curp515veott0jmp5ajg
+          - d14r5o5lveq1prvgrvm0
+          - curotklveott0jmp5agg
+          - curp44dveott0jmp5aig
+          - curp2jdveott0jmp5ahg
+          - d092rmnoovhpfm35n490
+          - curp4k5veott0jmp5aj0
+          - d0930cvoovhpfm35n49g
+          # SENSOR_OPTIONS_END
+          - CUSTOM
+      native_sensor_id_custom:
+        description: "Custom native sensor ID when native_sensor_id=CUSTOM"
+        required: false
         default: ""
       sensor_name:
         description: "Optional sensor display name"
@@ -47,11 +141,23 @@ on:
         required: false
         default: ""
       from_residence_id:
-        description: "From residence (e.g. R5) (required for switch-assignment)"
+        description: "From residence for switch (choose CUSTOM to supply manually)"
+        required: false
+        type: choice
+        default: "UNSET"
+        options: *residence_options
+      from_residence_id_custom:
+        description: "Custom from_residence_id when from_residence_id=CUSTOM"
         required: false
         default: ""
       to_residence_id:
-        description: "To residence (e.g. R8) (required for switch-assignment)"
+        description: "To residence for switch (choose CUSTOM to supply manually)"
+        required: false
+        type: choice
+        default: "UNSET"
+        options: *residence_options
+      to_residence_id_custom:
+        description: "Custom to_residence_id when to_residence_id=CUSTOM"
         required: false
         default: ""
       switch_ts:
@@ -110,6 +216,21 @@ jobs:
           BQ_DATASET: ${{ github.event.inputs.dataset_id }}
         run: |
           set -euo pipefail
+          resolve_choice_input() {
+            local selected="$1"
+            local custom="$2"
+            case "$selected" in
+              UNSET) printf '' ;;
+              CUSTOM) printf '%s' "$custom" ;;
+              *) printf '%s' "$selected" ;;
+            esac
+          }
+          require_value() {
+            local value="$1"
+            local field_name="$2"
+            test -n "$value" || { echo "$field_name is required"; exit 1; }
+          }
+
           OP="${{ github.event.inputs.operation }}"
           EXEC_FLAG="${{ github.event.inputs.execute }}"
           CMD=(uv run python scripts/manage_residence_assignments.py --project "$BQ_PROJECT" --dataset "$BQ_DATASET")
@@ -117,14 +238,21 @@ jobs:
             CMD+=(--execute)
           fi
 
+          NATIVE_SENSOR_ID="$(resolve_choice_input "${{ github.event.inputs.native_sensor_id }}" "${{ github.event.inputs.native_sensor_id_custom }}")"
+          RESIDENCE_ID="$(resolve_choice_input "${{ github.event.inputs.residence_id }}" "${{ github.event.inputs.residence_id_custom }}")"
+          FROM_RESIDENCE_ID="$(resolve_choice_input "${{ github.event.inputs.from_residence_id }}" "${{ github.event.inputs.from_residence_id_custom }}")"
+          TO_RESIDENCE_ID="$(resolve_choice_input "${{ github.event.inputs.to_residence_id }}" "${{ github.event.inputs.to_residence_id_custom }}")"
+
+          require_value "$NATIVE_SENSOR_ID" "native_sensor_id"
+
           case "$OP" in
             add-assignment)
-              test -n "${{ github.event.inputs.residence_id }}" || { echo "residence_id is required"; exit 1; }
-              test -n "${{ github.event.inputs.sensor_role }}" || { echo "sensor_role is required"; exit 1; }
-              test -n "${{ github.event.inputs.start_ts }}" || { echo "start_ts is required"; exit 1; }
+              require_value "$RESIDENCE_ID" "residence_id"
+              require_value "${{ github.event.inputs.sensor_role }}" "sensor_role"
+              require_value "${{ github.event.inputs.start_ts }}" "start_ts"
               CMD+=(add-assignment
-                --residence-id "${{ github.event.inputs.residence_id }}"
-                --native-sensor-id "${{ github.event.inputs.native_sensor_id }}"
+                --residence-id "$RESIDENCE_ID"
+                --native-sensor-id "$NATIVE_SENSOR_ID"
                 --sensor-role "${{ github.event.inputs.sensor_role }}"
                 --start-ts "${{ github.event.inputs.start_ts }}")
               if [ -n "${{ github.event.inputs.sensor_name }}" ]; then
@@ -132,23 +260,23 @@ jobs:
               fi
               ;;
             end-assignment)
-              test -n "${{ github.event.inputs.end_ts }}" || { echo "end_ts is required"; exit 1; }
+              require_value "${{ github.event.inputs.end_ts }}" "end_ts"
               CMD+=(end-assignment
-                --native-sensor-id "${{ github.event.inputs.native_sensor_id }}"
+                --native-sensor-id "$NATIVE_SENSOR_ID"
                 --end-ts "${{ github.event.inputs.end_ts }}")
-              if [ -n "${{ github.event.inputs.residence_id }}" ]; then
-                CMD+=(--residence-id "${{ github.event.inputs.residence_id }}")
+              if [ -n "$RESIDENCE_ID" ]; then
+                CMD+=(--residence-id "$RESIDENCE_ID")
               fi
               ;;
             switch-assignment)
-              test -n "${{ github.event.inputs.from_residence_id }}" || { echo "from_residence_id is required"; exit 1; }
-              test -n "${{ github.event.inputs.to_residence_id }}" || { echo "to_residence_id is required"; exit 1; }
-              test -n "${{ github.event.inputs.sensor_role }}" || { echo "sensor_role is required"; exit 1; }
-              test -n "${{ github.event.inputs.switch_ts }}" || { echo "switch_ts is required"; exit 1; }
+              require_value "$FROM_RESIDENCE_ID" "from_residence_id"
+              require_value "$TO_RESIDENCE_ID" "to_residence_id"
+              require_value "${{ github.event.inputs.sensor_role }}" "sensor_role"
+              require_value "${{ github.event.inputs.switch_ts }}" "switch_ts"
               CMD+=(switch-assignment
-                --native-sensor-id "${{ github.event.inputs.native_sensor_id }}"
-                --from-residence-id "${{ github.event.inputs.from_residence_id }}"
-                --to-residence-id "${{ github.event.inputs.to_residence_id }}"
+                --native-sensor-id "$NATIVE_SENSOR_ID"
+                --from-residence-id "$FROM_RESIDENCE_ID"
+                --to-residence-id "$TO_RESIDENCE_ID"
                 --sensor-role "${{ github.event.inputs.sensor_role }}"
                 --switch-ts "${{ github.event.inputs.switch_ts }}")
               if [ -n "${{ github.event.inputs.sensor_name }}" ]; then
