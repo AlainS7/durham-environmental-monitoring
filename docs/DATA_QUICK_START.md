@@ -1,6 +1,8 @@
-# Guide — Pulling TSI (indoor) and WU (outdoor) data
+# Guide Pulling TSI (indoor) and WU (outdoor) data
 
 Purpose: fast, copy-paste queries and a short decision map for common TSI (indoor air quality) and WU (Weather Underground) use cases.
+
+**Temperature units:** For data loaded through the current ingest + `sensor_readings_*` pipeline, `temperature` is **Fahrenheit** everywhere (WU from the API in imperial; TSI converted from API Celsius before GCS/BigQuery). Older partitions may still be °C for TSI-only until backfilled.
 
 ## How to tell which table needs to be accessed
 
