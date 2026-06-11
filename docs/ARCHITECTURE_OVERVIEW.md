@@ -237,6 +237,26 @@ The `oura-rings/` directory is intentionally separate from the core production p
 - Shared dashboard tables exist to isolate consumers from production-schema churn.
 - Operational details such as backfill windows, row counts, and current freshness are intentionally kept out of this document because they go stale quickly.
 
+### Batch vs Streaming (Pub/Sub)
+
+Ideal for now: keep micro-batch as the primary architecture.
+
+Why:
+
+- Source systems are polled APIs, not event emitters. Pub/Sub does not remove the polling bottleneck.
+- The current system already runs hourly fast-lane processing plus daily stabilization.
+- Research and participant UX needs are mostly hourly/daily; reliability matters more than sub-minute latency.
+- Streaming adds ack/retry/ordering/flow-control complexity.
+- Pub/Sub docs note streaming paths still require batching + flow control tuning (maxMessages, maxMilliseconds, outstanding bytes/messages), adding more moving parts.
+
+Idea:
+
+- Primary: keep batch/micro-batch (current architecture).
+- If product later needs near-real-time (<5 min), add a hybrid:
+- keep batch as the system of record,
+- add a small streaming side-path for a "live" dashboard only,
+- reconcile/override with batch every hour.
+
 ## Related Docs
 
 - [OPERATIONS_RUNBOOK.md](OPERATIONS_RUNBOOK.md) - reproducible procedures for setup, ingestion, backfill, refresh, and verification
