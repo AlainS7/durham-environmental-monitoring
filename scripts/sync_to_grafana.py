@@ -20,6 +20,8 @@ TABLES = [
     "sensor_readings_long",
     "sensor_readings_hourly",
     "sensor_readings_daily",
+    "residence_hourly_by_residence",
+    "residence_daily_by_residence",
     "sensor_id_map",
     "residence_sensor_assignments",
     "calibration_config",  # required by 01_sensor_readings_long.sql
