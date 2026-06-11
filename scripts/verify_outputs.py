@@ -24,6 +24,8 @@ DEFAULT_TABLES = [
     ("sensor_readings_long", "timestamp", "sensor_readings_long"),
     ("sensor_readings_hourly", "hour_ts", "sensor_readings_hourly"),
     ("sensor_readings_daily", "day_ts", "sensor_readings_daily"),
+    ("residence_hourly_by_residence", "hour_ts", "residence_hourly_by_residence"),
+    ("residence_daily_by_residence", "day_ts", "residence_daily_by_residence"),
 ]
 
 
