@@ -78,9 +78,11 @@ jobs:
             "SELECT COUNT(*) FROM \`${BQ_PROJECT}.${BQ_PROD_DATASET}.sensor_readings_daily\` WHERE DATE(day_ts)=DATE('${CHECK_DATE}')" | tail -1)
           RESIDENCE_DAILY_ROWS=$(bq query --project_id="$BQ_PROJECT" --nouse_legacy_sql --format=csv \
             "SELECT COUNT(*) FROM \`${BQ_PROJECT}.${BQ_PROD_DATASET}.residence_readings_daily\` WHERE DATE(day_ts)=DATE('${CHECK_DATE}')" | tail -1)
+          RESIDENCE_MAT_DAILY_ROWS=$(bq query --project_id="$BQ_PROJECT" --nouse_legacy_sql --format=csv \
+            "SELECT COUNT(*) FROM \`${BQ_PROJECT}.${BQ_PROD_DATASET}.residence_daily_by_residence\` WHERE DATE(day_ts)=DATE('${CHECK_DATE}')" | tail -1)
 
-          echo "Production transformed row checks on ${CHECK_DATE}: sensor_daily=${SENSOR_DAILY_ROWS}, residence_daily=${RESIDENCE_DAILY_ROWS}"
-          if [ "${SENSOR_DAILY_ROWS}" -eq 0 ] || [ "${RESIDENCE_DAILY_ROWS}" -eq 0 ]; then
+          echo "Production transformed row checks on ${CHECK_DATE}: sensor_daily=${SENSOR_DAILY_ROWS}, residence_daily=${RESIDENCE_DAILY_ROWS}, residence_daily_by_residence=${RESIDENCE_MAT_DAILY_ROWS}"
+          if [ "${SENSOR_DAILY_ROWS}" -eq 0 ] || [ "${RESIDENCE_DAILY_ROWS}" -eq 0 ] || [ "${RESIDENCE_MAT_DAILY_ROWS}" -eq 0 ]; then
             echo "Pre-publish gate failed: production transformed daily data missing for ${CHECK_DATE}" >&2
             exit 1
           fi
