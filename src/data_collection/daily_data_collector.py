@@ -334,8 +334,20 @@ def _normalize_dates(
     return start_str, end_str
 
 
+def _apply_tsi_device_filter(tsi_client: TSIClient, device_ids: Optional[list[str]]) -> None:
+    if not device_ids:
+        return
+    tsi_client.device_ids = device_ids
+    log.info("TSI device filter active (%s devices): %s", len(device_ids), device_ids)
+
+
 async def _fetch_raw(
-    start_str: str, end_str: str, source: str, aggregate: bool, agg_interval: str
+    start_str: str,
+    end_str: str,
+    source: str,
+    aggregate: bool,
+    agg_interval: str,
+    tsi_device_ids: Optional[list[str]] = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     wu_raw = pd.DataFrame()
     tsi_raw = pd.DataFrame()
@@ -344,6 +356,7 @@ async def _fetch_raw(
             WUClient(**app_config.wu_api_config) as wu_client,
             TSIClient(**app_config.tsi_api_config) as tsi_client,
         ):
+            _apply_tsi_device_filter(tsi_client, tsi_device_ids)
             wu_task = (
                 wu_client.fetch_data(
                     start_str, end_str, aggregate=aggregate, agg_interval=agg_interval
@@ -372,6 +385,7 @@ async def _fetch_raw(
             )
     elif source == "tsi":
         async with TSIClient(**app_config.tsi_api_config) as tsi_client:
+            _apply_tsi_device_filter(tsi_client, tsi_device_ids)
             tsi_raw = await (
                 tsi_client.fetch_data(
                     start_str, end_str, aggregate=aggregate, agg_interval=agg_interval
@@ -1046,6 +1060,7 @@ class RunConfig:
     agg_interval: str = "h"
     sink: str = "gcs"
     source: str = "all"
+    tsi_device_ids: Optional[list[str]] = None
 
     # Backward compat helper to allow existing call style
     @classmethod
@@ -1123,7 +1138,12 @@ async def run_collection_process(
         try:
             log.info(f"[DEBUG] Starting TSI fetch for all devices on {day_str}")
             wu_raw, tsi_raw = await _fetch_raw(
-                day_str, day_str, config.source, config.aggregate, config.agg_interval
+                day_str,
+                day_str,
+                config.source,
+                config.aggregate,
+                config.agg_interval,
+                config.tsi_device_ids,
             )
             _assert_required_source_data(config.source, day_str, wu_raw, tsi_raw)
             log.info(
@@ -1196,7 +1216,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--sink", choices=["gcs", "db", "both"], default="gcs")
     p.add_argument("--source", choices=["all", "wu", "tsi"],
                    default=os.getenv("SOURCE", "all"))
+    p.add_argument(
+        "--tsi-device-ids",
+        default=os.getenv("TSI_DEVICE_IDS", ""),
+        help="Comma-separated TSI native device IDs (limits fetch to these devices)",
+    )
     return p.parse_args(argv)
+
+
+def _parse_tsi_device_ids(raw: str) -> Optional[list[str]]:
+    if not raw or not str(raw).strip():
+        return None
+    ids = [part.strip() for part in str(raw).split(",") if part.strip()]
+    return ids or None
 
 
 def compute_date_range(args: argparse.Namespace) -> Tuple[datetime, datetime]:
@@ -1226,15 +1258,21 @@ def compute_date_range(args: argparse.Namespace) -> Tuple[datetime, datetime]:
 def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
     start, end = compute_date_range(args)
+    tsi_device_ids = _parse_tsi_device_ids(args.tsi_device_ids)
     asyncio.run(
         run_collection_process(
             start,
             end,
-            is_dry_run=args.dry_run,
-            aggregate=args.aggregate,
-            agg_interval=args.agg_interval,
-            sink=args.sink,
-            source=args.source,
+            config=RunConfig.from_legacy(
+                start,
+                end,
+                is_dry_run=args.dry_run,
+                aggregate=args.aggregate,
+                agg_interval=args.agg_interval,
+                sink=args.sink,
+                source=args.source,
+                tsi_device_ids=tsi_device_ids,
+            ),
         )
     )
 
