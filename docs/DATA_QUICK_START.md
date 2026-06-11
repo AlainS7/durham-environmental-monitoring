@@ -126,6 +126,8 @@ Use this when you need to decide which table to query. Prefer `sensor_readings_d
   - `wu_raw_materialized` — hourly/raw WU weather data
   - `wu_raw_view` — enriched WU view (sensor_id/location)
   - `residence_readings_daily` — TSI aggregated by residence (useful for Grafana)
+  - `residence_hourly_by_residence` — materialized hourly by residence (apps / low-cost queries)
+  - `residence_daily_by_residence` — materialized daily by residence (apps / low-cost queries)
 
 - `sensors` (metadata & enriched views)
   - `sensors` — sensor names, deployment, lat/lon, sensor type
