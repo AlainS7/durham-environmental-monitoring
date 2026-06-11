@@ -1,6 +1,11 @@
 -- Residence-enriched views for Grafana
 -- Joins sensor readings with residence assignments for person-centric analysis.
 -- Automatically handles temporal sensor assignments (sensors moving between residences).
+--
+-- NOTE: Apps (research-study-dashboard) must query the materialized tables in
+-- 10_residence_materialized_tables.sql (residence_hourly_by_residence,
+-- residence_daily_by_residence). These views scan all sensors in each partition
+-- when filtered only by residence_id; see docs/DASHBOARD_BIGQUERY_TABLES.md.
 
 -- ============================================================================
 -- VIEW 1: Hourly readings by residence (for Grafana dashboards)
