@@ -74,7 +74,13 @@ WITH
       CAST(ncpm2_5 AS FLOAT64) AS ncpm2_5,
       CAST(ncpm4_0 AS FLOAT64) AS ncpm4_0,
       CAST(ncpm10 AS FLOAT64) AS ncpm10,
-      CAST(temperature AS FLOAT64) AS temperature,
+      CAST(
+        CASE
+          WHEN temperature IS NOT NULL AND temperature BETWEEN -40 AND 50
+          THEN ROUND((temperature * 9.0 / 5.0) + 32.0, 6)
+          ELSE temperature
+        END
+      AS FLOAT64) AS temperature,
       CAST(humidity AS FLOAT64) AS humidity,
       CAST(tpsize AS FLOAT64) AS tpsize,
       CAST(co2_ppm AS FLOAT64) AS co2_ppm,
@@ -205,7 +211,13 @@ WITH
       CAST(ncpm2_5 AS FLOAT64) AS ncpm2_5,
       CAST(ncpm4_0 AS FLOAT64) AS ncpm4_0,
       CAST(ncpm10 AS FLOAT64) AS ncpm10,
-      CAST(temperature AS FLOAT64) AS temperature,
+      CAST(
+        CASE
+          WHEN temperature IS NOT NULL AND temperature BETWEEN -40 AND 50
+          THEN ROUND((temperature * 9.0 / 5.0) + 32.0, 6)
+          ELSE temperature
+        END
+      AS FLOAT64) AS temperature,
       CAST(humidity AS FLOAT64) AS humidity,
       CAST(tpsize AS FLOAT64) AS tpsize,
       CAST(co2_ppm AS FLOAT64) AS co2_ppm,

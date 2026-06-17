@@ -168,11 +168,13 @@ def convert_temperature(
     start_date: str,
     end_date: str,
 ) -> int:
+    # Only touch Celsius-like values so already-imperial rows stay idempotent.
     query = f"""
     UPDATE `{table_fq}`
     SET temperature = ROUND((temperature * 9.0 / 5.0) + 32.0, 6)
     WHERE DATE(ts) BETWEEN @start_date AND @end_date
       AND temperature IS NOT NULL
+      AND temperature BETWEEN -40 AND 50
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
