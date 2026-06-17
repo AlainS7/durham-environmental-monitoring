@@ -26,7 +26,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 try:
     from google.cloud import bigquery
@@ -124,6 +124,47 @@ def fetch_stats(
     return dict(row.items())
 
 
+def fetch_daily_scale_stats(
+    client: bigquery.Client,
+    table_fq: str,
+    start_date: str,
+    end_date: str,
+) -> List[Dict[str, Any]]:
+    """Return per-day scale signals to avoid row-only heuristics."""
+    query = f"""
+    SELECT
+      DATE(ts) AS day,
+      COUNTIF(temperature IS NOT NULL) AS non_null_rows,
+      APPROX_QUANTILES(temperature, 100)[SAFE_OFFSET(50)] AS p50,
+      COUNTIF(temperature BETWEEN -40 AND 50) AS celsius_like_rows,
+      COUNTIF(temperature BETWEEN 50 AND 130) AS fahrenheit_like_rows
+    FROM `{table_fq}`
+    WHERE DATE(ts) BETWEEN @start_date AND @end_date
+      AND temperature IS NOT NULL
+    GROUP BY day
+    ORDER BY day
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("start_date", "DATE", start_date),
+            bigquery.ScalarQueryParameter("end_date", "DATE", end_date),
+        ]
+    )
+    rows = client.query(query, job_config=job_config).result()
+    out: List[Dict[str, Any]] = []
+    for row in rows:
+        item = dict(row.items())
+        non_null_rows = int(item.get("non_null_rows") or 0)
+        celsius_like_rows = int(item.get("celsius_like_rows") or 0)
+        p50 = float(item.get("p50") or 0.0)
+        c_ratio = (celsius_like_rows / non_null_rows) if non_null_rows else 0.0
+        # Celsius day if both central tendency + majority support it.
+        item["celsius_ratio"] = c_ratio
+        item["likely_celsius_day"] = p50 < 55.0 and c_ratio >= 0.90
+        out.append(item)
+    return out
+
+
 def classify_scale(stats: Dict[str, Any]) -> str:
     non_null = int(stats.get("non_null_rows") or 0)
     if non_null == 0:
@@ -162,19 +203,53 @@ def print_stats(stats: Dict[str, Any], label: str) -> None:
     print(f"overlap_rows_32_50  : {int(stats.get('overlap_rows') or 0)}")
 
 
+def print_daily_scale_stats(rows: List[Dict[str, Any]]) -> None:
+    if not rows:
+        print("\nDaily scale scan: no non-null temperature rows.")
+        return
+    print("\nDaily scale scan")
+    print("----------------")
+    print("day         p50    c_ratio  likely_celsius")
+    for r in rows:
+        day = str(r.get("day"))
+        p50 = float(r.get("p50") or 0.0)
+        c_ratio = float(r.get("celsius_ratio") or 0.0)
+        likely = bool(r.get("likely_celsius_day"))
+        print(f"{day}  {p50:6.2f}  {c_ratio:7.3f}  {str(likely).lower()}")
+
+
 def convert_temperature(
     client: bigquery.Client,
     table_fq: str,
     start_date: str,
     end_date: str,
 ) -> int:
-    # Only touch Celsius-like values so already-imperial rows stay idempotent.
+    # Convert only days strongly classified as Celsius-like.
     query = f"""
+    WITH daily_scale AS (
+      SELECT
+        DATE(ts) AS day,
+        APPROX_QUANTILES(temperature, 100)[SAFE_OFFSET(50)] AS p50,
+        SAFE_DIVIDE(
+          COUNTIF(temperature BETWEEN -40 AND 50),
+          COUNTIF(temperature IS NOT NULL)
+        ) AS celsius_ratio
+      FROM `{table_fq}`
+      WHERE DATE(ts) BETWEEN @start_date AND @end_date
+        AND temperature IS NOT NULL
+      GROUP BY day
+    ),
+    celsius_days AS (
+      SELECT day
+      FROM daily_scale
+      WHERE p50 < 55.0
+        AND celsius_ratio >= 0.90
+    )
     UPDATE `{table_fq}`
     SET temperature = ROUND((temperature * 9.0 / 5.0) + 32.0, 6)
-    WHERE DATE(ts) BETWEEN @start_date AND @end_date
+    WHERE DATE(ts) IN (SELECT day FROM celsius_days)
       AND temperature IS NOT NULL
-      AND temperature BETWEEN -40 AND 50
+      AND temperature BETWEEN -40 AND 60
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
