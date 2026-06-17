@@ -284,6 +284,12 @@ def main() -> None:
     print_stats(before_stats, "Before conversion")
     classification = classify_scale(before_stats)
     print(f"\nscale_assessment: {classification}")
+    daily_rows = fetch_daily_scale_stats(client, table_fq, args.start, args.end)
+    print_daily_scale_stats(daily_rows)
+    candidate_days = [str(r["day"]) for r in daily_rows if r.get("likely_celsius_day")]
+    print(f"\nlikely_celsius_days: {len(candidate_days)}")
+    if candidate_days:
+        print("days: " + ", ".join(candidate_days))
 
     if not args.execute:
         print("\nNo data changed. Re-run with --execute only after manual review.")
@@ -292,11 +298,9 @@ def main() -> None:
     if args.confirm_scale != "celsius":
         sys.exit("Blocked: --execute requires --confirm-scale celsius")
 
-    if classification == "fahrenheit_likely" and not args.force:
-        sys.exit(
-            "Blocked: data appears Fahrenheit already. "
-            "Use --force only if you are certain selected range is Celsius."
-        )
+    if not candidate_days and classification == "fahrenheit_likely" and not args.force:
+        print("\nNo likely Celsius days found in range. Nothing to convert.")
+        return
 
     affected = convert_temperature(client, table_fq, args.start, args.end)
     print(f"\nUpdated rows: {affected}")
