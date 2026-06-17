@@ -58,6 +58,18 @@ WITH
     FROM `${PROJECT}.${DATASET}.wu_raw_materialized`
     WHERE ts IS NOT NULL AND DATE(ts) = proc_date
   ),
+  tsi_temp_scale AS (
+    SELECT
+      APPROX_QUANTILES(temperature, 100)[SAFE_OFFSET(50)] AS p50,
+      SAFE_DIVIDE(
+        COUNTIF(temperature BETWEEN -40 AND 50),
+        COUNTIF(temperature IS NOT NULL)
+      ) AS celsius_ratio
+    FROM `${PROJECT}.${DATASET}.tsi_raw_materialized`
+    WHERE ts IS NOT NULL
+      AND DATE(ts) = proc_date
+      AND temperature IS NOT NULL
+  ),
   tsi_src AS (
     SELECT
       ts AS timestamp,
@@ -76,7 +88,11 @@ WITH
       CAST(ncpm10 AS FLOAT64) AS ncpm10,
       CAST(
         CASE
-          WHEN temperature IS NOT NULL AND temperature BETWEEN -40 AND 50
+          WHEN
+            (SELECT p50 FROM tsi_temp_scale) < 55.0
+            AND (SELECT celsius_ratio FROM tsi_temp_scale) >= 0.90
+            AND temperature IS NOT NULL
+            AND temperature BETWEEN -40 AND 60
           THEN ROUND((temperature * 9.0 / 5.0) + 32.0, 6)
           ELSE temperature
         END
@@ -193,6 +209,19 @@ WITH
     WHERE ts IS NOT NULL AND DATE(ts) = proc_date
   ),
 
+  tsi_temp_scale AS (
+    SELECT
+      APPROX_QUANTILES(temperature, 100)[SAFE_OFFSET(50)] AS p50,
+      SAFE_DIVIDE(
+        COUNTIF(temperature BETWEEN -40 AND 50),
+        COUNTIF(temperature IS NOT NULL)
+      ) AS celsius_ratio
+    FROM `${PROJECT}.${DATASET}.tsi_raw_materialized`
+    WHERE ts IS NOT NULL
+      AND DATE(ts) = proc_date
+      AND temperature IS NOT NULL
+  ),
+
   tsi_src AS (
     SELECT
       ts AS timestamp,
@@ -213,7 +242,11 @@ WITH
       CAST(ncpm10 AS FLOAT64) AS ncpm10,
       CAST(
         CASE
-          WHEN temperature IS NOT NULL AND temperature BETWEEN -40 AND 50
+          WHEN
+            (SELECT p50 FROM tsi_temp_scale) < 55.0
+            AND (SELECT celsius_ratio FROM tsi_temp_scale) >= 0.90
+            AND temperature IS NOT NULL
+            AND temperature BETWEEN -40 AND 60
           THEN ROUND((temperature * 9.0 / 5.0) + 32.0, 6)
           ELSE temperature
         END
