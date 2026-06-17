@@ -221,8 +221,8 @@ jobs:
             local custom="$2"
             case "$selected" in
               UNSET) printf '' ;;
-              CUSTOM) printf '%s' "$custom" ;;
-              *) printf '%s' "$selected" ;;
+              CUSTOM) printf '%s' "$(printf '%s' "$custom" | xargs)" ;;
+              *) printf '%s' "$(printf '%s' "$selected" | xargs)" ;;
             esac
           }
           require_value() {

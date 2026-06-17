@@ -21,7 +21,7 @@ from google.api_core.exceptions import NotFound
 
 
 def sql_quote(value: str) -> str:
-    return value.replace("'", "''")
+    return value.strip().replace("'", "''")
 
 
 def parse_ts(value: str) -> datetime:
