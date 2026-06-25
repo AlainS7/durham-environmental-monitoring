@@ -97,24 +97,84 @@ def preview_or_execute(client: bigquery.Client, sql: str, execute: bool) -> None
     client.query(sql).result()
 
 
+def upsert_assignment_sql(
+    project: str,
+    dataset: str,
+    table_name: str,
+    residence_id: str,
+    native_sensor_id: str,
+    sensor_name: str | None,
+    sensor_role: str,
+    start_ts: datetime,
+    end_ts: datetime | None,
+    include_override_source: bool = False,
+) -> str:
+    sensor_name_expr = f"'{sql_quote(sensor_name)}'" if sensor_name else "NULL"
+    end_ts_expr = (
+        f"TIMESTAMP('{ts_literal(end_ts)}')" if end_ts else "CAST(NULL AS TIMESTAMP)"
+    )
+    override_col = ", override_source" if include_override_source else ""
+    override_select = (
+        ", 'manual-workflow' AS override_source" if include_override_source else ""
+    )
+    override_update = ", override_source = S.override_source" if include_override_source else ""
+    override_insert = ", S.override_source" if include_override_source else ""
+
+    return f"""
+MERGE `{project}.{dataset}.{table_name}` T
+USING (
+  SELECT
+    '{sql_quote(residence_id)}' AS residence_id,
+    '{sql_quote(native_sensor_id)}' AS native_sensor_id,
+    {sensor_name_expr} AS sensor_name,
+    '{sql_quote(sensor_role)}' AS sensor_role,
+    TIMESTAMP('{ts_literal(start_ts)}') AS start_ts,
+    {end_ts_expr} AS end_ts
+    {override_select}
+) S
+ON T.residence_id = S.residence_id
+AND T.native_sensor_id = S.native_sensor_id
+AND T.sensor_role = S.sensor_role
+AND T.start_ts = S.start_ts
+WHEN MATCHED THEN
+  UPDATE SET
+    sensor_name = S.sensor_name,
+    end_ts = S.end_ts,
+    updated_at = CURRENT_TIMESTAMP()
+    {override_update}
+WHEN NOT MATCHED THEN
+  INSERT (residence_id, native_sensor_id, sensor_name, sensor_role, start_ts, end_ts, updated_at{override_col})
+  VALUES (S.residence_id, S.native_sensor_id, S.sensor_name, S.sensor_role, S.start_ts, S.end_ts, CURRENT_TIMESTAMP(){override_insert})
+"""
+
+
 def op_add_assignment(client: bigquery.Client, args: argparse.Namespace) -> None:
     start_ts = parse_ts(args.start_ts)
-    sensor_name_expr = f"'{sql_quote(args.sensor_name)}'" if args.sensor_name else "NULL"
-    sql = f"""
-INSERT INTO `{args.project}.{args.dataset}.residence_sensor_assignments`
-  (residence_id, native_sensor_id, sensor_name, sensor_role, start_ts, end_ts, updated_at)
-VALUES
-  (
-    '{sql_quote(args.residence_id)}',
-    '{sql_quote(args.native_sensor_id)}',
-    {sensor_name_expr},
-    '{sql_quote(args.sensor_role)}',
-    TIMESTAMP('{ts_literal(start_ts)}'),
-    NULL,
-    CURRENT_TIMESTAMP()
-  )
-"""
-    preview_or_execute(client, sql, args.execute)
+    upsert_main = upsert_assignment_sql(
+        args.project,
+        args.dataset,
+        "residence_sensor_assignments",
+        args.residence_id,
+        args.native_sensor_id,
+        args.sensor_name,
+        args.sensor_role,
+        start_ts,
+        None,
+    )
+    upsert_override = upsert_assignment_sql(
+        args.project,
+        args.dataset,
+        "residence_sensor_assignment_overrides",
+        args.residence_id,
+        args.native_sensor_id,
+        args.sensor_name,
+        args.sensor_role,
+        start_ts,
+        None,
+        include_override_source=True,
+    )
+    preview_or_execute(client, upsert_main, args.execute)
+    preview_or_execute(client, upsert_override, args.execute)
 
 
 def op_end_assignment(client: bigquery.Client, args: argparse.Namespace) -> None:
@@ -134,7 +194,16 @@ SET end_ts = TIMESTAMP('{ts_literal(end_ts)}'),
 WHERE end_ts IS NULL
   AND {' AND '.join(filters)}
 """
+    sql_overrides = f"""
+UPDATE `{args.project}.{args.dataset}.residence_sensor_assignment_overrides`
+SET end_ts = TIMESTAMP('{ts_literal(end_ts)}'),
+    updated_at = CURRENT_TIMESTAMP(),
+    override_source = 'manual-workflow'
+WHERE end_ts IS NULL
+  AND {' AND '.join(filters)}
+"""
     preview_or_execute(client, sql, args.execute)
+    preview_or_execute(client, sql_overrides, args.execute)
 
 
 def op_switch_assignment(client: bigquery.Client, args: argparse.Namespace) -> None:
@@ -149,22 +218,42 @@ WHERE end_ts IS NULL
   AND native_sensor_id = '{sql_quote(args.native_sensor_id)}'
   AND residence_id = '{sql_quote(args.from_residence_id)}'
 """
-    insert_sql = f"""
-INSERT INTO `{args.project}.{args.dataset}.residence_sensor_assignments`
-  (residence_id, native_sensor_id, sensor_name, sensor_role, start_ts, end_ts, updated_at)
-VALUES
-  (
-    '{sql_quote(args.to_residence_id)}',
-    '{sql_quote(args.native_sensor_id)}',
-    {("'" + sql_quote(args.sensor_name) + "'") if args.sensor_name else "NULL"},
-    '{sql_quote(args.sensor_role)}',
-    TIMESTAMP('{ts_literal(switch_ts)}'),
-    NULL,
-    CURRENT_TIMESTAMP()
-  )
+    close_overrides_sql = f"""
+UPDATE `{args.project}.{args.dataset}.residence_sensor_assignment_overrides`
+SET end_ts = TIMESTAMP('{ts_literal(prior_end)}'),
+    updated_at = CURRENT_TIMESTAMP(),
+    override_source = 'manual-workflow'
+WHERE end_ts IS NULL
+  AND native_sensor_id = '{sql_quote(args.native_sensor_id)}'
+  AND residence_id = '{sql_quote(args.from_residence_id)}'
 """
+    insert_sql = upsert_assignment_sql(
+        args.project,
+        args.dataset,
+        "residence_sensor_assignments",
+        args.to_residence_id,
+        args.native_sensor_id,
+        args.sensor_name,
+        args.sensor_role,
+        switch_ts,
+        None,
+    )
+    insert_overrides_sql = upsert_assignment_sql(
+        args.project,
+        args.dataset,
+        "residence_sensor_assignment_overrides",
+        args.to_residence_id,
+        args.native_sensor_id,
+        args.sensor_name,
+        args.sensor_role,
+        switch_ts,
+        None,
+        include_override_source=True,
+    )
     preview_or_execute(client, close_sql, args.execute)
+    preview_or_execute(client, close_overrides_sql, args.execute)
     preview_or_execute(client, insert_sql, args.execute)
+    preview_or_execute(client, insert_overrides_sql, args.execute)
 
 
 def op_add_resident_access(client: bigquery.Client, args: argparse.Namespace) -> None:
