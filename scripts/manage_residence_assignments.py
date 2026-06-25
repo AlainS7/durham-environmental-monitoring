@@ -70,6 +70,25 @@ CLUSTER BY principal_email, residence_id
 """
     ).result()
 
+    # durable manual overrides used to re-apply assignments after template refreshes
+    client.query(
+        f"""
+CREATE TABLE IF NOT EXISTS `{project}.{dataset}.residence_sensor_assignment_overrides`
+(
+  residence_id STRING NOT NULL,
+  native_sensor_id STRING NOT NULL,
+  sensor_name STRING,
+  sensor_role STRING NOT NULL,
+  start_ts TIMESTAMP NOT NULL,
+  end_ts TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL,
+  override_source STRING
+)
+PARTITION BY DATE(start_ts)
+CLUSTER BY residence_id, native_sensor_id
+"""
+    ).result()
+
 
 def preview_or_execute(client: bigquery.Client, sql: str, execute: bool) -> None:
     if not execute:
