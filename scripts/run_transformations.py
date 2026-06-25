@@ -59,6 +59,52 @@ def execute_sql(client: bigquery.Client, sql: str, process_date: str):
     job.result()
 
 
+def reconcile_assignment_overrides(
+    client: bigquery.Client, project: str, dataset: str, process_date: str
+) -> None:
+    """Re-apply manual assignment overrides after 07 refreshes."""
+    sql = f"""
+CREATE TABLE IF NOT EXISTS `{project}.{dataset}.residence_sensor_assignment_overrides`
+(
+  residence_id STRING NOT NULL,
+  native_sensor_id STRING NOT NULL,
+  sensor_name STRING,
+  sensor_role STRING NOT NULL,
+  start_ts TIMESTAMP NOT NULL,
+  end_ts TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL,
+  override_source STRING
+)
+PARTITION BY DATE(start_ts)
+CLUSTER BY residence_id, native_sensor_id;
+
+MERGE `{project}.{dataset}.residence_sensor_assignments` T
+USING (
+  SELECT
+    residence_id,
+    native_sensor_id,
+    sensor_name,
+    sensor_role,
+    start_ts,
+    end_ts
+  FROM `{project}.{dataset}.residence_sensor_assignment_overrides`
+) S
+ON T.residence_id = S.residence_id
+AND T.native_sensor_id = S.native_sensor_id
+AND T.sensor_role = S.sensor_role
+AND T.start_ts = S.start_ts
+WHEN MATCHED THEN
+  UPDATE SET
+    sensor_name = S.sensor_name,
+    end_ts = S.end_ts,
+    updated_at = CURRENT_TIMESTAMP()
+WHEN NOT MATCHED THEN
+  INSERT (residence_id, native_sensor_id, sensor_name, sensor_role, start_ts, end_ts, updated_at)
+  VALUES (S.residence_id, S.native_sensor_id, S.sensor_name, S.sensor_role, S.start_ts, S.end_ts, CURRENT_TIMESTAMP());
+"""
+    execute_sql(client, sql, process_date)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Run transformation SQL files")
     ap.add_argument(
@@ -98,6 +144,11 @@ def main():
             # mypy: client is not None in execute path
             execute_sql(client, sql, args.date)  # type: ignore[arg-type]
             print(f"Executed {sql_file.name}")
+            if sql_file.name == "07_residence_sensor_assignments.sql":
+                reconcile_assignment_overrides(
+                    client, project_id, args.dataset, args.date
+                )  # type: ignore[arg-type]
+                print("Reconciled residence assignment overrides")
         else:
             print(sql)
 
