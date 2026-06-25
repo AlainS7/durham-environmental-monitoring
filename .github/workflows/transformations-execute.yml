@@ -143,6 +143,40 @@ jobs:
             CUR=$(python -c "import datetime as dt,sys; cur=dt.date.fromisoformat(sys.argv[1]); print((cur+dt.timedelta(days=1)).isoformat())" "$CUR")
           done
 
+      - name: Verify assignment override reconciliation
+        env:
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          BQ_DATASET: ${{ env.DATASET_ID }}
+        run: |
+          set -euo pipefail
+          OVERRIDE_TABLE="${BQ_PROJECT}.${BQ_DATASET}.residence_sensor_assignment_overrides"
+          ASSIGN_TABLE="${BQ_PROJECT}.${BQ_DATASET}.residence_sensor_assignments"
+          OVERRIDE_EXISTS=$(bq --project_id="$BQ_PROJECT" ls "$BQ_DATASET" | awk '{print $1}' | grep -Fx "residence_sensor_assignment_overrides" || true)
+          if [ -z "$OVERRIDE_EXISTS" ]; then
+            echo "Override table not present; skipping reconciliation assertion."
+            exit 0
+          fi
+          MISSING_COUNT=$(bq query --project_id="$BQ_PROJECT" --nouse_legacy_sql --format=csv \
+            "WITH o AS (
+               SELECT residence_id, native_sensor_id, sensor_role, start_ts, sensor_name, end_ts
+               FROM \`${OVERRIDE_TABLE}\`
+             )
+             SELECT COUNT(*)
+             FROM o
+             LEFT JOIN \`${ASSIGN_TABLE}\` a
+               ON a.residence_id = o.residence_id
+              AND a.native_sensor_id = o.native_sensor_id
+              AND a.sensor_role = o.sensor_role
+              AND a.start_ts = o.start_ts
+             WHERE a.residence_id IS NULL
+                OR COALESCE(a.sensor_name, '') != COALESCE(o.sensor_name, '')
+                OR COALESCE(CAST(a.end_ts AS STRING), '') != COALESCE(CAST(o.end_ts AS STRING), '')" | tail -1)
+          echo "Override rows missing after reconcile: $MISSING_COUNT"
+          if [ "$MISSING_COUNT" -ne 0 ]; then
+            echo "Assignment override reconciliation failed; refusing to publish stale assignments." >&2
+            exit 1
+          fi
+
       - name: Teams notify failure
         if: failure() && vars.ENABLE_TEAMS_NOTIFICATIONS == 'true'
         env:
