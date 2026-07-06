@@ -515,6 +515,20 @@ def _safe_upload(
         log.warning(f"Skip {src}: no ts/timestamp column")
         return False
 
+    # Guard against duplicate raw observations within a single pull. TSI has been
+    # observed emitting the same (native_sensor_id, timestamp) twice, which fans out
+    # through the downstream UNPIVOT into duplicate sensor_readings_long rows. Dedup
+    # at the write boundary so duplicates never reach GCS/BigQuery.
+    if not aggregate and "native_sensor_id" in df.columns:
+        before = len(df)
+        df = df.drop_duplicates(subset=["native_sensor_id", ts_col], keep="first")
+        removed = before - len(df)
+        if removed:
+            log.warning(
+                f"{src}: dropped {removed} duplicate (native_sensor_id, {ts_col}) "
+                f"row(s) before upload"
+            )
+
     # Validate schema before upload (non-aggregated data only)
     if not aggregate:
         if src == "TSI":

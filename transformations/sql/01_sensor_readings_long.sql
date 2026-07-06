@@ -431,4 +431,11 @@ SELECT
   value,
   source,
   FARM_FINGERPRINT(CONCAT(CAST(timestamp AS STRING), native_sensor_id, metric_name)) AS row_id
-FROM all_readings;
+FROM all_readings
+-- Guard against duplicate raw observations (e.g. TSI occasionally emits the same
+-- (timestamp, native_sensor_id) twice in a single pull). Keep one row per logical
+-- reading; DESC orders NULLs last so a non-null value wins over a null.
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY timestamp, native_sensor_id, metric_name, source
+  ORDER BY value DESC
+) = 1;
