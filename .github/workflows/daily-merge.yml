@@ -10,7 +10,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: prod-data-pipeline-${{ github.ref }}
+  group: daily-merge-${{ github.ref }}
   cancel-in-progress: false
 
 env:
