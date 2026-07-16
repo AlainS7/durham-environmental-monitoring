@@ -211,7 +211,70 @@ jobs:
               echo "Failed to update job env vars" >&2; exit 2; }
           echo "Cloud Run job environment updated."
 
-      - name: Execute ingestion job
+      - name: Execute ingestion job (scheduled TSI)
+        if: github.event_name == 'schedule'
+        id: execute_ingestion_tsi
+        continue-on-error: true
+        env:
+          JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
+          REGION: ${{ github.event.inputs.region || 'us-east1' }}
+          START_DATE: ${{ steps.processing_window.outputs.start }}
+          END_DATE: ${{ steps.processing_window.outputs.end }}
+          DATE: ""
+          SOURCE: tsi
+          # BigQuery env for staging writer inside container
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          BQ_DATASET: sensors
+          # GCS location for raw parquet (enables fallback staging synthesis)
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+          GCS_PREFIX: raw/
+          # Force per-day parquet overwrites during backfills so raw files are refreshed
+          GCS_FORCE_OVERWRITE: '1'
+          # Secret Manager IDs (the app will fetch JSON secrets at runtime)
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+          # WU quota-safe defaults for scheduled runs
+          WU_ENDPOINT_STRATEGY: hybrid
+          WU_CONCURRENCY: '2'
+          WU_MAX_RETRIES: '6'
+          WU_RETRY_BASE_DELAY: '2'
+          WU_CURRENT_DAY_GRACE_HOURS_UTC: '4'
+        run: |
+          bash scripts/run_cr_job.sh
+
+      - name: Execute ingestion job (scheduled WU)
+        if: github.event_name == 'schedule'
+        id: execute_ingestion_wu
+        continue-on-error: true
+        env:
+          JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
+          REGION: ${{ github.event.inputs.region || 'us-east1' }}
+          START_DATE: ${{ steps.processing_window.outputs.start }}
+          END_DATE: ${{ steps.processing_window.outputs.end }}
+          DATE: ""
+          SOURCE: wu
+          # BigQuery env for staging writer inside container
+          BQ_PROJECT: ${{ env.PROJECT_ID }}
+          BQ_DATASET: sensors
+          # GCS location for raw parquet (enables fallback staging synthesis)
+          GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+          GCS_PREFIX: raw/
+          # Force per-day parquet overwrites during backfills so raw files are refreshed
+          GCS_FORCE_OVERWRITE: '1'
+          # Secret Manager IDs (the app will fetch JSON secrets at runtime)
+          TSI_CREDS_SECRET_ID: ${{ secrets.TSI_CREDS_SECRET_ID }}
+          WU_API_KEY_SECRET_ID: ${{ secrets.WU_API_KEY_SECRET_ID }}
+          # WU quota-safe defaults for scheduled runs
+          WU_ENDPOINT_STRATEGY: hybrid
+          WU_CONCURRENCY: '2'
+          WU_MAX_RETRIES: '6'
+          WU_RETRY_BASE_DELAY: '2'
+          WU_CURRENT_DAY_GRACE_HOURS_UTC: '4'
+        run: |
+          bash scripts/run_cr_job.sh
+
+      - name: Execute ingestion job (manual)
+        if: github.event_name == 'workflow_dispatch'
         id: execute_ingestion
         continue-on-error: true
         env:
@@ -419,7 +482,10 @@ jobs:
           done
 
       - name: Fail workflow if ingestion step failed
-        if: steps.execute_ingestion.outcome == 'failure'
+        if: |
+          steps.execute_ingestion.outcome == 'failure' ||
+          steps.execute_ingestion_tsi.outcome == 'failure' ||
+          steps.execute_ingestion_wu.outcome == 'failure'
         run: |
           echo "Ingestion execution reported failure; marking workflow as failed after merge/check attempts." >&2
           exit 1
