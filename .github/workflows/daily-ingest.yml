@@ -212,6 +212,8 @@ jobs:
           echo "Cloud Run job environment updated."
 
       - name: Execute ingestion job
+        id: execute_ingestion
+        continue-on-error: true
         env:
           JOB_NAME: ${{ github.event.inputs.job_name || 'weather-data-uploader' }}
           REGION: ${{ github.event.inputs.region || 'us-east1' }}
@@ -415,6 +417,12 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Fail workflow if ingestion step failed
+        if: steps.execute_ingestion.outcome == 'failure'
+        run: |
+          echo "Ingestion execution reported failure; marking workflow as failed after merge/check attempts." >&2
+          exit 1
 
       - name: Prepare failure summary
         if: failure() && github.event_name == 'schedule'
