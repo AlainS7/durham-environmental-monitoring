@@ -166,15 +166,21 @@ USING (
   )
   GROUP BY timestamp, deployment_fk, metric_name
 ) S
-ON T.timestamp = S.timestamp AND T.deployment_fk = S.deployment_fk AND T.metric_name = S.metric_name
+ON T.timestamp = S.timestamp
+ AND T.deployment_fk = S.deployment_fk
+ AND T.metric_name = S.metric_name
+ AND DATE(T.timestamp) = @d
 WHEN MATCHED AND {predicate} THEN UPDATE SET value = S.value
 WHEN NOT MATCHED THEN INSERT (timestamp, deployment_fk, metric_name, value) VALUES (S.timestamp, S.deployment_fk, S.metric_name, S.value)
 """.strip()
         if a.dry_run:
             log.info("[DRY RUN] Would MERGE %s from %d tables", day, len(existing))
             continue
+        cfg = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("d", "DATE", day.isoformat())]
+        )
         log.info("Merging %s from %d tables...", day, len(existing))
-        job = client.query(sql)
+        job = client.query(sql, job_config=cfg)
         job.result()
         log.info(
             "Merged %s (affected rows: %s)",

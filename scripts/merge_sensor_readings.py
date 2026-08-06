@@ -112,7 +112,10 @@ def ensure_target_exists_from_reference(
             "Could not derive schema subset from staging table (required fields missing)"
         )
     tbl = bigquery.Table(f"{client.project}.{dataset}.{target}", schema=schema)
-    tbl.time_partitioning = bigquery.TimePartitioning(field="timestamp")
+    tbl.time_partitioning = bigquery.TimePartitioning(
+        field="timestamp", require_partition_filter=True
+    )
+    tbl.clustering_fields = ["deployment_fk", "metric_name"]
     client.create_table(tbl)
     log.info(
         "Created target table %s.%s from schema of %s",
@@ -189,6 +192,7 @@ USING (
 ON T.timestamp = S.timestamp
  AND T.deployment_fk = S.deployment_fk
  AND T.metric_name = S.metric_name
+ AND DATE(T.timestamp) = @d
 WHEN MATCHED AND {predicate} THEN UPDATE SET value = S.value
 WHEN NOT MATCHED THEN INSERT (timestamp, deployment_fk, metric_name, value) VALUES (S.timestamp, S.deployment_fk, S.metric_name, S.value)
 """.strip()
