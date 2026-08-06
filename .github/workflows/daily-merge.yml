@@ -1,8 +1,6 @@
 name: Daily Sensor Readings Merge
 
 on:
-  schedule:
-    - cron: '10 7 * * *' # 07:10 UTC daily, after verification (adjust as needed)
   workflow_dispatch:
 
 permissions:

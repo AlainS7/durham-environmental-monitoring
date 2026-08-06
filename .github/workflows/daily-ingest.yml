@@ -26,10 +26,6 @@ on:
         description: 'Set to true to build & push latest container image before running job'
         required: false
         default: 'false'
-      backfill_merge:
-        description: 'Set to true to run merge_backfill_range after ingestion (range or single)'
-        required: false
-        default: 'true'
       run_checks:
         description: 'Set to true to run staging presence & raw freshness checks after merge'
         required: false
@@ -418,24 +414,6 @@ jobs:
             done
             cur=$(python -c "import datetime as dt,sys; cur=dt.date.fromisoformat(sys.argv[1]); print((cur+dt.timedelta(days=1)).isoformat())" "$cur")
           done
-
-      - name: Merge backfill range (optional)
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.backfill_merge == 'true' }}
-        env:
-          BQ_PROJECT: ${{ env.PROJECT_ID }}
-        run: |
-          set -euo pipefail
-          START="${{ steps.processing_window.outputs.start }}"
-          END="${{ steps.processing_window.outputs.end }}"
-          echo "Running per-source dated merge backfill $START -> $END"
-          python scripts/merge_backfill_range.py \
-            --project "$BQ_PROJECT" \
-            --dataset sensors \
-            --start "$START" \
-            --end "$END" \
-            --per-source-dated \
-            --sources tsi,wu \
-            --update-only-if-changed
 
       - name: Staging presence check (optional)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_checks == 'true' }}

@@ -68,17 +68,6 @@ jobs:
           echo "days=$DAYS" >> "$GITHUB_OUTPUT"
           echo "Self-heal window: $START -> $END ($DAYS days)"
 
-      - name: Re-merge recent staged partitions
-        run: |
-          python scripts/merge_backfill_range.py \
-            --project "${{ env.PROJECT_ID }}" \
-            --dataset "${{ env.DATASET_ID }}" \
-            --start "${{ steps.window.outputs.start }}" \
-            --end "${{ steps.window.outputs.end }}" \
-            --per-source-dated \
-            --sources tsi,wu \
-            --update-only-if-changed
-
       - name: Rebuild recent transformation partitions
         run: |
           python scripts/backfill_transformations.py \
